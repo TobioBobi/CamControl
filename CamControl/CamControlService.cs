@@ -31,5 +31,15 @@ namespace CamControl
         {
             _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&ptzstop&10&10");
         }
+
+        public void Zoom(Zoom zoom)
+        {
+            _httpClient.GetAsync($"cgi-bin/ptzctrl.cgi?ptzcmd&{zoom.ToString().ToLower()}&5");
+
+        }
+        public void StopZooming()
+        {
+            _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&zoomstop&5");
+        }
     }
 }

@@ -10,6 +10,8 @@ namespace CamControl
             camControlService = new CamControlService();
         }
 
+        #region Positions
+
         private void buttonRedner_Click(object sender, EventArgs e)
         {
             camControlService.MoveToPosition(Position.Redner);
@@ -36,6 +38,53 @@ namespace CamControl
         }
 
         private void buttonStandBy_Click(object sender, EventArgs e)
+        {
+            camControlService.MoveToPosition(Position.StandBy);
+        }
+
+        #endregion
+
+
+
+        #region Directions
+        private void buttonUp_MouseDown(object sender, MouseEventArgs e)
+        {
+            camControlService.MoveInDirection(Direction.Up);
+        }
+
+        private void buttonDown_MouseDown(object sender, MouseEventArgs e)
+        {
+            camControlService.MoveInDirection(Direction.Down);
+
+        }
+        private void buttonLeft_MouseDown(object sender, MouseEventArgs e)
+        {
+            camControlService.MoveInDirection(Direction.Left);
+
+        }
+        private void buttonRight_MouseDown(object sender, MouseEventArgs e)
+        {
+            camControlService.MoveInDirection(Direction.Right);
+
+        }
+
+        private void button_MouseUpStopDirectionalMovement(object sender, MouseEventArgs e)
+        {
+            camControlService.StopDirectionalMovement();
+        }
+
+
+
+        #endregion
+
+        #region Form
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            camControlService.MoveToPosition(Position.BuehneKomplett);
+        }
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             camControlService.MoveToPosition(Position.StandBy);
         }
@@ -67,43 +116,27 @@ namespace CamControl
 
         }
 
-        #region Directions
-        private void buttonUp_MouseDown(object sender, MouseEventArgs e)
+        #endregion
+
+        #region Zoom
+
+        private void buttonZoomOut_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.MoveInDirection(Direction.Up);
+            camControlService.Zoom(Zoom.ZoomOut);
         }
 
-        private void buttonDown_MouseDown(object sender, MouseEventArgs e)
+        private void buttonZoomIn_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.MoveInDirection(Direction.Down);
-
-        }
-        private void buttonLeft_MouseDown(object sender, MouseEventArgs e)
-        {
-            camControlService.MoveInDirection(Direction.Left);
-
-        }
-        private void buttonRight_MouseDown(object sender, MouseEventArgs e)
-        {
-            camControlService.MoveInDirection(Direction.Right);
+            camControlService.Zoom(Zoom.ZoomIn);
 
         }
 
-        private void button_MouseUpStopDirectionalMovement(object sender, MouseEventArgs e)
+        private void button_MouseUpStopZooming(object sender, MouseEventArgs e)
         {
-            camControlService.StopDirectionalMovement();
+            camControlService.StopZooming();
         }
 
         #endregion
 
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            camControlService.MoveToPosition(Position.BuehneKomplett);
-        }
-
-        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
-        {
-            camControlService.MoveToPosition(Position.StandBy);
-        }
     }
 }

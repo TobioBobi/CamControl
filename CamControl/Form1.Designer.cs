@@ -38,6 +38,10 @@
             buttonLeft = new Button();
             buttonRight = new Button();
             buttonStandBy = new Button();
+            buttonZoomIn = new Button();
+            buttonZoomOut = new Button();
+            tableLayoutPanel1 = new TableLayoutPanel();
+            tableLayoutPanel1.SuspendLayout();
             SuspendLayout();
             // 
             // buttonRedner
@@ -144,11 +148,50 @@
             buttonStandBy.UseVisualStyleBackColor = true;
             buttonStandBy.Click += buttonStandBy_Click;
             // 
+            // buttonZoomIn
+            // 
+            buttonZoomIn.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            buttonZoomIn.Location = new Point(3, 3);
+            buttonZoomIn.Name = "buttonZoomIn";
+            buttonZoomIn.Size = new Size(89, 68);
+            buttonZoomIn.TabIndex = 10;
+            buttonZoomIn.Text = "Zoom In";
+            buttonZoomIn.UseVisualStyleBackColor = true;
+            buttonZoomIn.MouseDown += buttonZoomIn_MouseDown;
+            buttonZoomIn.MouseUp += button_MouseUpStopZooming;
+            // 
+            // buttonZoomOut
+            // 
+            buttonZoomOut.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            buttonZoomOut.Location = new Point(98, 3);
+            buttonZoomOut.Name = "buttonZoomOut";
+            buttonZoomOut.Size = new Size(89, 68);
+            buttonZoomOut.TabIndex = 11;
+            buttonZoomOut.Text = "Zoom Out";
+            buttonZoomOut.UseVisualStyleBackColor = true;
+            buttonZoomOut.MouseDown += buttonZoomOut_MouseDown;
+            buttonZoomOut.MouseUp += button_MouseUpStopZooming;
+            // 
+            // tableLayoutPanel1
+            // 
+            tableLayoutPanel1.ColumnCount = 2;
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayoutPanel1.Controls.Add(buttonZoomIn, 0, 0);
+            tableLayoutPanel1.Controls.Add(buttonZoomOut, 1, 0);
+            tableLayoutPanel1.Location = new Point(556, 116);
+            tableLayoutPanel1.Name = "tableLayoutPanel1";
+            tableLayoutPanel1.RowCount = 1;
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel1.Size = new Size(190, 74);
+            tableLayoutPanel1.TabIndex = 13;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(791, 207);
+            ClientSize = new Size(938, 451);
+            Controls.Add(tableLayoutPanel1);
             Controls.Add(buttonStandBy);
             Controls.Add(buttonRight);
             Controls.Add(buttonLeft);
@@ -166,6 +209,7 @@
             FormClosed += Form1_FormClosed;
             Load += Form1_Load;
             KeyPress += Form1_KeyPress;
+            tableLayoutPanel1.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -181,5 +225,8 @@
         private Button buttonLeft;
         private Button buttonRight;
         private Button buttonStandBy;
+        private Button buttonZoomIn;
+        private Button buttonZoomOut;
+        private TableLayoutPanel tableLayoutPanel1;
     }
 }
