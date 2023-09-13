@@ -42,6 +42,11 @@ namespace CamControl
             camControlService.MoveToPosition(Position.StandBy);
         }
 
+        private void buttonDemoStehend_Click(object sender, EventArgs e)
+        {
+            camControlService.MoveToPosition(Position.DemoStehend);
+        }
+
         #endregion
 
 
@@ -111,6 +116,9 @@ namespace CamControl
                 case '5':
                     buttonRednerBildschirm_Click((object)sender, e);
                     break;
+                case '6':
+                    buttonDemoStehend_Click((object)sender, e);
+                    break;
                 default: break;
             }
 
@@ -137,6 +145,7 @@ namespace CamControl
         }
 
         #endregion
+
 
     }
 }

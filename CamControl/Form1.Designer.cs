@@ -41,12 +41,13 @@
             buttonZoomIn = new Button();
             buttonZoomOut = new Button();
             tableLayoutPanel1 = new TableLayoutPanel();
+            buttonDemoStehend = new Button();
             tableLayoutPanel1.SuspendLayout();
             SuspendLayout();
             // 
             // buttonRedner
             // 
-            buttonRedner.Location = new Point(189, 12);
+            buttonRedner.Location = new Point(12, 12);
             buttonRedner.Name = "buttonRedner";
             buttonRedner.Size = new Size(171, 86);
             buttonRedner.TabIndex = 0;
@@ -56,7 +57,7 @@
             // 
             // buttonRednerLeser
             // 
-            buttonRednerLeser.Location = new Point(366, 12);
+            buttonRednerLeser.Location = new Point(189, 12);
             buttonRednerLeser.Name = "buttonRednerLeser";
             buttonRednerLeser.Size = new Size(171, 86);
             buttonRednerLeser.TabIndex = 1;
@@ -66,7 +67,7 @@
             // 
             // buttonTisch
             // 
-            buttonTisch.Location = new Point(12, 104);
+            buttonTisch.Location = new Point(366, 12);
             buttonTisch.Name = "buttonTisch";
             buttonTisch.Size = new Size(171, 86);
             buttonTisch.TabIndex = 2;
@@ -76,7 +77,7 @@
             // 
             // buttonKompletteBuehne
             // 
-            buttonKompletteBuehne.Location = new Point(189, 104);
+            buttonKompletteBuehne.Location = new Point(12, 104);
             buttonKompletteBuehne.Name = "buttonKompletteBuehne";
             buttonKompletteBuehne.Size = new Size(171, 86);
             buttonKompletteBuehne.TabIndex = 3;
@@ -86,7 +87,7 @@
             // 
             // buttonRednerBildschirm
             // 
-            buttonRednerBildschirm.Location = new Point(366, 104);
+            buttonRednerBildschirm.Location = new Point(189, 104);
             buttonRednerBildschirm.Name = "buttonRednerBildschirm";
             buttonRednerBildschirm.Size = new Size(171, 86);
             buttonRednerBildschirm.TabIndex = 4;
@@ -140,11 +141,11 @@
             // 
             // buttonStandBy
             // 
-            buttonStandBy.Location = new Point(12, 12);
+            buttonStandBy.Location = new Point(189, 196);
             buttonStandBy.Name = "buttonStandBy";
             buttonStandBy.Size = new Size(171, 86);
             buttonStandBy.TabIndex = 9;
-            buttonStandBy.Text = "Standby (0)";
+            buttonStandBy.Text = "Standby (9)";
             buttonStandBy.UseVisualStyleBackColor = true;
             buttonStandBy.Click += buttonStandBy_Click;
             // 
@@ -186,11 +187,22 @@
             tableLayoutPanel1.Size = new Size(190, 74);
             tableLayoutPanel1.TabIndex = 13;
             // 
+            // buttonDemoStehend
+            // 
+            buttonDemoStehend.Location = new Point(366, 104);
+            buttonDemoStehend.Name = "buttonDemoStehend";
+            buttonDemoStehend.Size = new Size(171, 86);
+            buttonDemoStehend.TabIndex = 14;
+            buttonDemoStehend.Text = "Demo stehend (6)";
+            buttonDemoStehend.UseVisualStyleBackColor = true;
+            buttonDemoStehend.Click += buttonDemoStehend_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(938, 451);
+            ClientSize = new Size(757, 296);
+            Controls.Add(buttonDemoStehend);
             Controls.Add(tableLayoutPanel1);
             Controls.Add(buttonStandBy);
             Controls.Add(buttonRight);
@@ -228,5 +240,6 @@
         private Button buttonZoomIn;
         private Button buttonZoomOut;
         private TableLayoutPanel tableLayoutPanel1;
+        private Button buttonDemoStehend;
     }
 }
