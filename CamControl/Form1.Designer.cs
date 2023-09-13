@@ -163,6 +163,7 @@
             KeyPreview = true;
             Name = "Form1";
             Text = "CamControl";
+            FormClosed += Form1_FormClosed;
             Load += Form1_Load;
             KeyPress += Form1_KeyPress;
             ResumeLayout(false);

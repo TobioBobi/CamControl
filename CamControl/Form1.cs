@@ -2,42 +2,42 @@ namespace CamControl
 {
     public partial class Form1 : Form
     {
-        HttpClient client;
+        CamControlService camControlService;
 
         public Form1()
         {
             InitializeComponent();
-            client = new HttpClient();
+            camControlService = new CamControlService();
         }
 
         private void buttonRedner_Click(object sender, EventArgs e)
         {
-            client.GetAsync("http://192.168.188.64/cgi-bin/ptzctrl.cgi?ptzcmd&poscall&1");
+            camControlService.MoveToPosition(Position.Redner);
         }
 
         private void buttonRednerLeser_Click(object sender, EventArgs e)
         {
-            client.GetAsync("http://192.168.188.64/cgi-bin/ptzctrl.cgi?ptzcmd&poscall&2");
+            camControlService.MoveToPosition(Position.Redner_Leser);
         }
 
         private void buttonTisch_Click(object sender, EventArgs e)
         {
-            client.GetAsync("http://192.168.188.64/cgi-bin/ptzctrl.cgi?ptzcmd&poscall&3");
+            camControlService.MoveToPosition(Position.Tisch);
         }
 
         private void buttonKompletteBuehne_Click(object sender, EventArgs e)
         {
-            client.GetAsync("http://192.168.188.64/cgi-bin/ptzctrl.cgi?ptzcmd&poscall&4");
+            camControlService.MoveToPosition(Position.BuehneKomplett);
         }
 
         private void buttonRednerBildschirm_Click(object sender, EventArgs e)
         {
-            client.GetAsync("http://192.168.188.64/cgi-bin/ptzctrl.cgi?ptzcmd&poscall&5");
+            camControlService.MoveToPosition(Position.RednerBildschirm);
         }
 
         private void buttonStandBy_Click(object sender, EventArgs e)
         {
-            client.GetAsync("http://192.168.188.64/cgi-bin/ptzctrl.cgi?ptzcmd&poscall&0");
+            camControlService.MoveToPosition(Position.StandBy);
         }
 
         private void Form1_KeyPress(object sender, KeyPressEventArgs e)
@@ -111,7 +111,12 @@ namespace CamControl
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            camControlService.MoveToPosition(Position.BuehneKomplett);
+        }
 
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            camControlService.MoveToPosition(Position.StandBy);
         }
     }
 }
