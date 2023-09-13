@@ -99,7 +99,7 @@
             buttonUp.TabIndex = 5;
             buttonUp.UseVisualStyleBackColor = true;
             buttonUp.MouseDown += buttonUp_MouseDown;
-            buttonUp.MouseUp += buttonUp_MouseUp;
+            buttonUp.MouseUp += button_MouseUpStopDirectionalMovement;
             // 
             // buttonDown
             // 
@@ -110,7 +110,7 @@
             buttonDown.TabIndex = 6;
             buttonDown.UseVisualStyleBackColor = true;
             buttonDown.MouseDown += buttonDown_MouseDown;
-            buttonDown.MouseUp += buttonDown_MouseUp;
+            buttonDown.MouseUp += button_MouseUpStopDirectionalMovement;
             // 
             // buttonLeft
             // 
@@ -121,7 +121,7 @@
             buttonLeft.TabIndex = 7;
             buttonLeft.UseVisualStyleBackColor = true;
             buttonLeft.MouseDown += buttonLeft_MouseDown;
-            buttonLeft.MouseUp += buttonLeft_MouseUp;
+            buttonLeft.MouseUp += button_MouseUpStopDirectionalMovement;
             // 
             // buttonRight
             // 
@@ -132,7 +132,7 @@
             buttonRight.TabIndex = 8;
             buttonRight.UseVisualStyleBackColor = true;
             buttonRight.MouseDown += buttonRight_MouseDown;
-            buttonRight.MouseUp += buttonRight_MouseUp;
+            buttonRight.MouseUp += button_MouseUpStopDirectionalMovement;
             // 
             // buttonStandBy
             // 

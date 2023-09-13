@@ -67,47 +67,34 @@ namespace CamControl
 
         }
 
+        #region Directions
         private void buttonUp_MouseDown(object sender, MouseEventArgs e)
         {
-            MessageBox.Show("mousedown");
-
-        }
-
-        private void buttonUp_MouseUp(object sender, MouseEventArgs e)
-        {
-            MessageBox.Show("mouseUp");
-
-        }
-
-        private void buttonDown_MouseUp(object sender, MouseEventArgs e)
-        {
-
+            camControlService.MoveInDirection(Direction.Up);
         }
 
         private void buttonDown_MouseDown(object sender, MouseEventArgs e)
         {
+            camControlService.MoveInDirection(Direction.Down);
 
         }
-
         private void buttonLeft_MouseDown(object sender, MouseEventArgs e)
         {
+            camControlService.MoveInDirection(Direction.Left);
 
         }
-
-        private void buttonLeft_MouseUp(object sender, MouseEventArgs e)
-        {
-
-        }
-
-        private void buttonRight_MouseUp(object sender, MouseEventArgs e)
-        {
-
-        }
-
         private void buttonRight_MouseDown(object sender, MouseEventArgs e)
         {
+            camControlService.MoveInDirection(Direction.Right);
 
         }
+
+        private void button_MouseUpStopDirectionalMovement(object sender, MouseEventArgs e)
+        {
+            camControlService.StopDirectionalMovement();
+        }
+
+        #endregion
 
         private void Form1_Load(object sender, EventArgs e)
         {

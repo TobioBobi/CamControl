@@ -21,5 +21,15 @@ namespace CamControl
         {
             _httpClient.GetAsync($"cgi-bin/ptzctrl.cgi?ptzcmd&poscall&{(int)position}");
         }
+
+        public void MoveInDirection(Direction direction)
+        {
+            _httpClient.GetAsync($"cgi-bin/ptzctrl.cgi?ptzcmd&{direction.ToString().ToLower()}&10&10");
+        }
+
+        public void StopDirectionalMovement()
+        {
+            _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&ptzstop&10&10");
+        }
     }
 }
