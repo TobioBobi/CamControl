@@ -13,13 +13,19 @@ namespace CamControl
         public CamControlService()
         {
             _httpClient = new HttpClient();
-            //_httpClient.BaseAddress = new Uri("http://localhost:8080/");
+
             _httpClient.BaseAddress = new Uri("http://192.168.188.64/");
+#if DEBUG
+            _httpClient.BaseAddress = new Uri("http://localhost:8080/");
+#endif
         }
 
-        public void MoveToPosition(Position position)
+        public async Task MoveToPosition(Position position)
         {
-            _httpClient.GetAsync($"cgi-bin/ptzctrl.cgi?ptzcmd&poscall&{(int)position}");
+            if (position == Position.StandBy)
+                await UnfocusAsync();
+
+            await _httpClient.GetAsync($"cgi-bin/ptzctrl.cgi?ptzcmd&poscall&{(int)position}");
         }
 
         public void MoveInDirection(Direction direction)
@@ -40,6 +46,13 @@ namespace CamControl
         public void StopZooming()
         {
             _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&zoomstop&5");
+        }
+
+        internal async Task UnfocusAsync()
+        {
+            await _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&focusin&5");
+            await Task.Delay(1000 * 4);
+            await _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&focusstop&5");
         }
     }
 }

@@ -218,7 +218,7 @@
             KeyPreview = true;
             Name = "Form1";
             Text = "CamControl";
-            FormClosed += Form1_FormClosed;
+            FormClosing += Form1_FormClosingAsync;
             Load += Form1_Load;
             KeyPress += Form1_KeyPress;
             tableLayoutPanel1.ResumeLayout(false);

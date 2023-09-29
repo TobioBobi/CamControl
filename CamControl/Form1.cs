@@ -12,39 +12,47 @@ namespace CamControl
 
         #region Positions
 
-        private void buttonRedner_Click(object sender, EventArgs e)
+        private async void buttonRedner_Click(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.Redner);
+            await camControlService.MoveToPosition(Position.Redner);
         }
 
-        private void buttonRednerLeser_Click(object sender, EventArgs e)
+        private async void buttonRednerLeser_Click(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.Redner_Leser);
+            await camControlService.MoveToPosition(Position.Redner_Leser);
         }
 
-        private void buttonTisch_Click(object sender, EventArgs e)
+        private async void buttonTisch_Click(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.Tisch);
+            await camControlService.MoveToPosition(Position.Tisch);
         }
 
-        private void buttonKompletteBuehne_Click(object sender, EventArgs e)
+        private async void buttonKompletteBuehne_Click(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.BuehneKomplett);
+            await camControlService.MoveToPosition(Position.BuehneKomplett);
         }
 
-        private void buttonRednerBildschirm_Click(object sender, EventArgs e)
+        private async void buttonRednerBildschirm_Click(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.RednerBildschirm);
+            await camControlService.MoveToPosition(Position.RednerBildschirm);
         }
 
-        private void buttonStandBy_Click(object sender, EventArgs e)
+        private async void buttonStandBy_Click(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.StandBy);
+            try
+            {
+                buttonStandBy.Enabled = false;
+                await camControlService.MoveToPosition(Position.StandBy);
+            }
+            finally
+            {
+                buttonStandBy.Enabled = true;
+            }
         }
 
-        private void buttonDemoStehend_Click(object sender, EventArgs e)
+        private async void buttonDemoStehend_Click(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.DemoStehend);
+            await camControlService.MoveToPosition(Position.DemoStehend);
         }
 
         #endregion
@@ -84,21 +92,20 @@ namespace CamControl
 
         #region Form
 
-        private void Form1_Load(object sender, EventArgs e)
+        private async void Form1_Load(object sender, EventArgs e)
         {
-            camControlService.MoveToPosition(Position.BuehneKomplett);
+            await camControlService.MoveToPosition(Position.BuehneKomplett);
         }
-
-        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        private async void Form1_FormClosingAsync(object sender, FormClosingEventArgs e)
         {
-            camControlService.MoveToPosition(Position.StandBy);
+            await camControlService.MoveToPosition(Position.StandBy);
         }
 
         private void Form1_KeyPress(object sender, KeyPressEventArgs e)
         {
             switch (e.KeyChar)
             {
-                case '0':
+                case '9':
                     buttonStandBy_Click(sender, e);
                     break;
                 case '1':
@@ -145,6 +152,7 @@ namespace CamControl
         }
 
         #endregion
+
 
 
     }

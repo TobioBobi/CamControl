@@ -19,6 +19,10 @@ namespace CamDummy
                     var requestUrl = context.Request.Url.PathAndQuery.ToLower();
 
                     Console.WriteLine($"Request: {requestUrl}");
+
+                    var response = context.Response;
+                    response.StatusCode = (int)HttpStatusCode.OK;
+                    response.Close();
                 }
             }
         }
