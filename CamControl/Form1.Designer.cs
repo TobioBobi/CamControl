@@ -43,8 +43,10 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             buttonDemoStehend = new Button();
             pictureBoxLoader = new PictureBox();
+            pictureBoxLoaderSmall = new PictureBox();
             tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBoxLoader).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)pictureBoxLoaderSmall).BeginInit();
             SuspendLayout();
             // 
             // buttonRedner
@@ -210,11 +212,23 @@
             pictureBoxLoader.TabStop = false;
             pictureBoxLoader.Visible = false;
             // 
+            // pictureBoxLoaderSmall
+            // 
+            pictureBoxLoaderSmall.Image = Properties.Resources.loader;
+            pictureBoxLoaderSmall.Location = new Point(189, 196);
+            pictureBoxLoaderSmall.Name = "pictureBoxLoaderSmall";
+            pictureBoxLoaderSmall.Size = new Size(171, 86);
+            pictureBoxLoaderSmall.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBoxLoaderSmall.TabIndex = 16;
+            pictureBoxLoaderSmall.TabStop = false;
+            pictureBoxLoaderSmall.Visible = false;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(757, 296);
+            Controls.Add(pictureBoxLoaderSmall);
             Controls.Add(pictureBoxLoader);
             Controls.Add(buttonDemoStehend);
             Controls.Add(tableLayoutPanel1);
@@ -237,6 +251,7 @@
             KeyPress += Form1_KeyPress;
             tableLayoutPanel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)pictureBoxLoader).EndInit();
+            ((System.ComponentModel.ISupportInitialize)pictureBoxLoaderSmall).EndInit();
             ResumeLayout(false);
         }
 
@@ -257,5 +272,6 @@
         private TableLayoutPanel tableLayoutPanel1;
         private Button buttonDemoStehend;
         private PictureBox pictureBoxLoader;
+        private PictureBox pictureBoxLoaderSmall;
     }
 }
