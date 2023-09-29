@@ -3,6 +3,7 @@ namespace CamControl
     public partial class Form1 : Form
     {
         CamControlService camControlService;
+        bool finalClose = false;
 
         public Form1()
         {
@@ -96,7 +97,6 @@ namespace CamControl
         {
             await camControlService.MoveToPosition(Position.BuehneKomplett);
         }
-        bool finalClose = false;
 
         private async void Form1_FormClosingAsync(object sender, FormClosingEventArgs e)
         {
@@ -104,6 +104,7 @@ namespace CamControl
             {
                 if (!finalClose)
                 {
+                    pictureBoxLoader.Visible = true;
                     e.Cancel = true;
                     await camControlService.MoveToPosition(Position.StandBy);
                 }

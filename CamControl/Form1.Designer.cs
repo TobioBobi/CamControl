@@ -42,7 +42,9 @@
             buttonZoomOut = new Button();
             tableLayoutPanel1 = new TableLayoutPanel();
             buttonDemoStehend = new Button();
+            pictureBoxLoader = new PictureBox();
             tableLayoutPanel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)pictureBoxLoader).BeginInit();
             SuspendLayout();
             // 
             // buttonRedner
@@ -197,11 +199,23 @@
             buttonDemoStehend.UseVisualStyleBackColor = true;
             buttonDemoStehend.Click += buttonDemoStehend_Click;
             // 
+            // pictureBoxLoader
+            // 
+            pictureBoxLoader.Image = Properties.Resources.loader;
+            pictureBoxLoader.Location = new Point(12, 12);
+            pictureBoxLoader.Name = "pictureBoxLoader";
+            pictureBoxLoader.Size = new Size(734, 272);
+            pictureBoxLoader.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBoxLoader.TabIndex = 15;
+            pictureBoxLoader.TabStop = false;
+            pictureBoxLoader.Visible = false;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(757, 296);
+            Controls.Add(pictureBoxLoader);
             Controls.Add(buttonDemoStehend);
             Controls.Add(tableLayoutPanel1);
             Controls.Add(buttonStandBy);
@@ -222,6 +236,7 @@
             Load += Form1_Load;
             KeyPress += Form1_KeyPress;
             tableLayoutPanel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)pictureBoxLoader).EndInit();
             ResumeLayout(false);
         }
 
@@ -241,5 +256,6 @@
         private Button buttonZoomOut;
         private TableLayoutPanel tableLayoutPanel1;
         private Button buttonDemoStehend;
+        private PictureBox pictureBoxLoader;
     }
 }

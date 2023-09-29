@@ -51,7 +51,7 @@ namespace CamControl
         internal async Task UnfocusAsync()
         {
             await _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&focusin&5");
-            await Task.Delay(1000 * 4);
+            await Task.Delay(1000 * 5);
             await _httpClient.GetAsync("cgi-bin/ptzctrl.cgi?ptzcmd&focusstop&5");
         }
     }
