@@ -96,9 +96,24 @@ namespace CamControl
         {
             await camControlService.MoveToPosition(Position.BuehneKomplett);
         }
+        bool finalClose = false;
+
         private async void Form1_FormClosingAsync(object sender, FormClosingEventArgs e)
         {
-            await camControlService.MoveToPosition(Position.StandBy);
+            try
+            {
+                if (!finalClose)
+                {
+                    e.Cancel = true;
+                    await camControlService.MoveToPosition(Position.StandBy);
+                }
+            }
+            finally
+            {
+                finalClose = true;
+                Application.Exit();
+            }
+
         }
 
         private void Form1_KeyPress(object sender, KeyPressEventArgs e)
