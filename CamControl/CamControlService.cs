@@ -25,7 +25,10 @@ namespace CamControl
             await _httpClient.GetAsync($"cgi-bin/ptzctrl.cgi?ptzcmd&poscall&{(int)position}");
 
             if (position == Position.StandBy)
+            {
+                await Task.Delay(1000 * 4);
                 await UnfocusAsync();
+            }
         }
 
         public void MoveInDirection(Direction direction)
