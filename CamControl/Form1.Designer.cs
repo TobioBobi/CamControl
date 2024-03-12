@@ -249,6 +249,8 @@
             FormClosing += Form1_FormClosingAsync;
             Load += Form1_Load;
             KeyPress += Form1_KeyPress;
+            KeyUp += Form1_KeyUp;
+            KeyDown += Form1_KeyDown;
             tableLayoutPanel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)pictureBoxLoader).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBoxLoaderSmall).EndInit();

@@ -150,6 +150,83 @@ namespace CamControl
 
         }
 
+        bool keyZoomIsPressed, keyDirectionIsPressed;
+
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Add:
+                    if (!keyZoomIsPressed)
+                    {
+                        keyZoomIsPressed = true;
+                        camControlService.Zoom(Zoom.ZoomIn);
+                    }
+                    break;
+                case Keys.Subtract:
+                    if (!keyZoomIsPressed)
+                    {
+                        keyZoomIsPressed = true;
+                        camControlService.Zoom(Zoom.ZoomOut);
+                    }
+                    break;
+                case Keys.Left:
+                    if (!keyDirectionIsPressed)
+                    {
+                        keyDirectionIsPressed = true;
+                        camControlService.MoveInDirection(Direction.Left);
+                    }
+                    break;
+                case Keys.Right:
+                    if (!keyDirectionIsPressed)
+                    {
+                        keyDirectionIsPressed = true;
+                        camControlService.MoveInDirection(Direction.Right);
+                    }
+                    break;
+                case Keys.Up:
+                    if (!keyDirectionIsPressed)
+                    {
+                        keyDirectionIsPressed = true;
+                        camControlService.MoveInDirection(Direction.Up);
+                    }
+                    break;
+                case Keys.Down:
+                    if (!keyDirectionIsPressed)
+                    {
+                        keyDirectionIsPressed = true;
+                        camControlService.MoveInDirection(Direction.Down);
+                    }
+                    break;
+                default: break;
+
+            }
+        }
+
+        
+
+        private void Form1_KeyUp(object sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Add:
+                case Keys.Subtract:
+                    keyZoomIsPressed = false;
+                    camControlService.StopZooming();
+                    break;
+                case Keys.Right:
+                case Keys.Left:
+                case Keys.Up:
+                case Keys.Down:
+                    keyDirectionIsPressed = false;
+                    camControlService.StopDirectionalMovement();
+                    break;
+                default: break;
+            }
+        }
+
+        
+
         #endregion
 
         #region Zoom
@@ -174,5 +251,7 @@ namespace CamControl
 
 
 
+
+        
     }
 }
