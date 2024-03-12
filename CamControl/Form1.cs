@@ -203,7 +203,52 @@ namespace CamControl
             }
         }
 
-        
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Down || keyData == Keys.Up ||
+                keyData == Keys.Left || keyData == Keys.Right)
+            {
+                switch (keyData)
+                {
+                    case Keys.Left:
+                        if (!keyDirectionIsPressed)
+                        {
+                            keyDirectionIsPressed = true;
+                            camControlService.MoveInDirection(Direction.Left);
+                        }
+                        break;
+                    case Keys.Right:
+                        if (!keyDirectionIsPressed)
+                        {
+                            keyDirectionIsPressed = true;
+                            camControlService.MoveInDirection(Direction.Right);
+                        }
+                        break;
+                    case Keys.Up:
+                        if (!keyDirectionIsPressed)
+                        {
+                            keyDirectionIsPressed = true;
+                            camControlService.MoveInDirection(Direction.Up);
+                        }
+                        break;
+                    case Keys.Down:
+                        if (!keyDirectionIsPressed)
+                        {
+                            keyDirectionIsPressed = true;
+                            camControlService.MoveInDirection(Direction.Down);
+                        }
+                        break;
+                    default: break;
+
+                }
+                return true; // Mark the key as handled
+            }
+
+            // Call the base class method to handle other keys
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+
 
         private void Form1_KeyUp(object sender, KeyEventArgs e)
         {
@@ -225,7 +270,7 @@ namespace CamControl
             }
         }
 
-        
+
 
         #endregion
 
@@ -252,6 +297,6 @@ namespace CamControl
 
 
 
-        
+
     }
 }
