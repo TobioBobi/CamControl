@@ -42,6 +42,7 @@ namespace CamControl
         {
             try
             {
+                pictureBoxLoaderSmall.BringToFront();
                 pictureBoxLoaderSmall.Visible = true;
                 buttonStandBy.Enabled = false;
                 await camControlService.MoveToPosition(Position.StandBy);
@@ -107,6 +108,7 @@ namespace CamControl
                 if (!finalClose)
                 {
                     this.ControlBox = false;
+                    pictureBoxLoader.BringToFront();
                     pictureBoxLoader.Visible = true;
                     e.Cancel = true;
                     await camControlService.MoveToPosition(Position.StandBy);
