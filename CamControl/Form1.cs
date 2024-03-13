@@ -42,6 +42,7 @@ namespace CamControl
         {
             try
             {
+                this.ActiveControl = null;
                 pictureBoxLoaderSmall.BringToFront();
                 pictureBoxLoaderSmall.Visible = true;
                 buttonStandBy.Enabled = false;
@@ -51,6 +52,7 @@ namespace CamControl
             {
                 buttonStandBy.Enabled = true;
                 pictureBoxLoaderSmall.Visible = false;
+                buttonStandBy.Focus();
             }
         }
 
