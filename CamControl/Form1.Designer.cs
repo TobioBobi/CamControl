@@ -40,8 +40,8 @@
             buttonStandBy = new Button();
             buttonZoomIn = new Button();
             buttonZoomOut = new Button();
-            tableLayoutPanel1 = new TableLayoutPanel();
             buttonDemoStehend = new Button();
+            tableLayoutPanel1 = new TableLayoutPanel();
             pictureBoxLoader = new PictureBox();
             pictureBoxLoaderSmall = new PictureBox();
             tableLayoutPanel1.SuspendLayout();
@@ -105,7 +105,7 @@
             buttonUp.Location = new Point(608, 12);
             buttonUp.Name = "buttonUp";
             buttonUp.Size = new Size(86, 46);
-            buttonUp.TabIndex = 5;
+            buttonUp.TabIndex = 8;
             buttonUp.UseVisualStyleBackColor = true;
             buttonUp.MouseDown += buttonUp_MouseDown;
             buttonUp.MouseUp += button_MouseUpStopDirectionalMovement;
@@ -116,7 +116,7 @@
             buttonDown.Location = new Point(608, 64);
             buttonDown.Name = "buttonDown";
             buttonDown.Size = new Size(86, 46);
-            buttonDown.TabIndex = 6;
+            buttonDown.TabIndex = 10;
             buttonDown.UseVisualStyleBackColor = true;
             buttonDown.MouseDown += buttonDown_MouseDown;
             buttonDown.MouseUp += button_MouseUpStopDirectionalMovement;
@@ -138,7 +138,7 @@
             buttonRight.Location = new Point(700, 12);
             buttonRight.Name = "buttonRight";
             buttonRight.Size = new Size(46, 98);
-            buttonRight.TabIndex = 8;
+            buttonRight.TabIndex = 9;
             buttonRight.UseVisualStyleBackColor = true;
             buttonRight.MouseDown += buttonRight_MouseDown;
             buttonRight.MouseUp += button_MouseUpStopDirectionalMovement;
@@ -148,7 +148,7 @@
             buttonStandBy.Location = new Point(189, 196);
             buttonStandBy.Name = "buttonStandBy";
             buttonStandBy.Size = new Size(171, 86);
-            buttonStandBy.TabIndex = 9;
+            buttonStandBy.TabIndex = 6;
             buttonStandBy.Text = "Standby (9)";
             buttonStandBy.UseVisualStyleBackColor = true;
             buttonStandBy.Click += buttonStandBy_Click;
@@ -159,7 +159,7 @@
             buttonZoomIn.Location = new Point(3, 3);
             buttonZoomIn.Name = "buttonZoomIn";
             buttonZoomIn.Size = new Size(89, 68);
-            buttonZoomIn.TabIndex = 10;
+            buttonZoomIn.TabIndex = 11;
             buttonZoomIn.Text = "Zoom In";
             buttonZoomIn.UseVisualStyleBackColor = true;
             buttonZoomIn.MouseDown += buttonZoomIn_MouseDown;
@@ -171,11 +171,41 @@
             buttonZoomOut.Location = new Point(98, 3);
             buttonZoomOut.Name = "buttonZoomOut";
             buttonZoomOut.Size = new Size(89, 68);
-            buttonZoomOut.TabIndex = 11;
+            buttonZoomOut.TabIndex = 12;
             buttonZoomOut.Text = "Zoom Out";
             buttonZoomOut.UseVisualStyleBackColor = true;
             buttonZoomOut.MouseDown += buttonZoomOut_MouseDown;
             buttonZoomOut.MouseUp += button_MouseUpStopZooming;
+            // 
+            // buttonDemoStehend
+            // 
+            buttonDemoStehend.Location = new Point(366, 104);
+            buttonDemoStehend.Name = "buttonDemoStehend";
+            buttonDemoStehend.Size = new Size(171, 86);
+            buttonDemoStehend.TabIndex = 5;
+            buttonDemoStehend.Text = "Demo stehend (6)";
+            buttonDemoStehend.UseVisualStyleBackColor = true;
+            buttonDemoStehend.Click += buttonDemoStehend_Click;
+            // 
+            // pictureBoxLoader
+            // 
+            pictureBoxLoader.Image = Properties.Resources.loader;
+            pictureBoxLoader.Location = new Point(12, 12);
+            pictureBoxLoader.Name = "pictureBoxLoader";
+            pictureBoxLoader.Size = new Size(734, 272);
+            pictureBoxLoader.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBoxLoader.TabStop = false;
+            pictureBoxLoader.Visible = false;
+            // 
+            // pictureBoxLoaderSmall
+            // 
+            pictureBoxLoaderSmall.Image = Properties.Resources.loader;
+            pictureBoxLoaderSmall.Location = new Point(189, 196);
+            pictureBoxLoaderSmall.Name = "pictureBoxLoaderSmall";
+            pictureBoxLoaderSmall.Size = new Size(171, 86);
+            pictureBoxLoaderSmall.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBoxLoaderSmall.TabStop = false;
+            pictureBoxLoaderSmall.Visible = false;
             // 
             // tableLayoutPanel1
             // 
@@ -189,49 +219,13 @@
             tableLayoutPanel1.RowCount = 1;
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tableLayoutPanel1.Size = new Size(190, 74);
-            tableLayoutPanel1.TabIndex = 13;
-            // 
-            // buttonDemoStehend
-            // 
-            buttonDemoStehend.Location = new Point(366, 104);
-            buttonDemoStehend.Name = "buttonDemoStehend";
-            buttonDemoStehend.Size = new Size(171, 86);
-            buttonDemoStehend.TabIndex = 14;
-            buttonDemoStehend.Text = "Demo stehend (6)";
-            buttonDemoStehend.UseVisualStyleBackColor = true;
-            buttonDemoStehend.Click += buttonDemoStehend_Click;
-            // 
-            // pictureBoxLoader
-            // 
-            pictureBoxLoader.Image = Properties.Resources.loader;
-            pictureBoxLoader.Location = new Point(12, 12);
-            pictureBoxLoader.Name = "pictureBoxLoader";
-            pictureBoxLoader.Size = new Size(734, 272);
-            pictureBoxLoader.SizeMode = PictureBoxSizeMode.Zoom;
-            pictureBoxLoader.TabIndex = 15;
-            pictureBoxLoader.TabStop = false;
-            pictureBoxLoader.Visible = false;
-            // 
-            // pictureBoxLoaderSmall
-            // 
-            pictureBoxLoaderSmall.Image = Properties.Resources.loader;
-            pictureBoxLoaderSmall.Location = new Point(189, 196);
-            pictureBoxLoaderSmall.Name = "pictureBoxLoaderSmall";
-            pictureBoxLoaderSmall.Size = new Size(171, 86);
-            pictureBoxLoaderSmall.SizeMode = PictureBoxSizeMode.Zoom;
-            pictureBoxLoaderSmall.TabIndex = 16;
-            pictureBoxLoaderSmall.TabStop = false;
-            pictureBoxLoaderSmall.Visible = false;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(757, 296);
-            Controls.Add(pictureBoxLoaderSmall);
-            Controls.Add(pictureBoxLoader);
             Controls.Add(buttonDemoStehend);
-            Controls.Add(tableLayoutPanel1);
             Controls.Add(buttonStandBy);
             Controls.Add(buttonRight);
             Controls.Add(buttonLeft);
@@ -242,6 +236,9 @@
             Controls.Add(buttonTisch);
             Controls.Add(buttonRednerLeser);
             Controls.Add(buttonRedner);
+            Controls.Add(pictureBoxLoaderSmall);
+            Controls.Add(pictureBoxLoader);
+            Controls.Add(tableLayoutPanel1);
             FormBorderStyle = FormBorderStyle.FixedToolWindow;
             KeyPreview = true;
             Name = "Form1";
@@ -271,8 +268,8 @@
         private Button buttonStandBy;
         private Button buttonZoomIn;
         private Button buttonZoomOut;
-        private TableLayoutPanel tableLayoutPanel1;
         private Button buttonDemoStehend;
+        private TableLayoutPanel tableLayoutPanel1;
         private PictureBox pictureBoxLoader;
         private PictureBox pictureBoxLoaderSmall;
     }
