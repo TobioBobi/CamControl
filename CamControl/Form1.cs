@@ -4,11 +4,55 @@ namespace CamControl
     {
         CamControlService camControlService;
         bool finalClose = false;
+        private readonly HiddenSettingsGesture settingsGesture = new HiddenSettingsGesture();
+        private bool settingsDialogOpen;
 
         public Form1()
         {
             InitializeComponent();
             camControlService = new CamControlService();
+        }
+
+        protected override void WndProc(ref Message message)
+        {
+            const int WmNcLeftButtonDown = 0x00A1;
+            const int WmNcLeftButtonDoubleClick = 0x00A3;
+            const int HtCaption = 2;
+            if ((message.Msg == WmNcLeftButtonDown || message.Msg == WmNcLeftButtonDoubleClick) &&
+                message.WParam.ToInt32() == HtCaption)
+            {
+                int screenX = unchecked((short)(message.LParam.ToInt64() & 0xFFFF));
+                int titleWidth = TextRenderer.MeasureText(Text, SystemFonts.SmallCaptionFont).Width +
+                    (int)(24 * DeviceDpi / 96F);
+                if (screenX >= Left && screenX < Left + titleWidth && !settingsDialogOpen)
+                {
+                    if (settingsGesture.RegisterClick(Environment.TickCount64))
+                        BeginInvoke(new Action(OpenCameraSettings));
+                    // Consume clicks on the title text, including native double-click messages.
+                    return;
+                }
+                settingsGesture.Reset();
+            }
+            base.WndProc(ref message);
+        }
+
+        private void OpenCameraSettings()
+        {
+            if (settingsDialogOpen || finalClose || !ControlBox)
+                return;
+
+            settingsDialogOpen = true;
+            try
+            {
+                using var dialog = new CameraSettingsDialog(camControlService.CameraIp);
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                    camControlService.SetCameraIp(dialog.CameraIp);
+            }
+            finally
+            {
+                settingsDialogOpen = false;
+                settingsGesture.Reset();
+            }
         }
 
         #region Positions
@@ -100,7 +144,18 @@ namespace CamControl
 
         private async void Form1_Load(object sender, EventArgs e)
         {
-            await camControlService.MoveToPosition(Position.BuehneKomplett);
+            try
+            {
+                await camControlService.MoveToPosition(Position.BuehneKomplett);
+            }
+            catch (Exception exception) when (exception is HttpRequestException || exception is TaskCanceledException)
+            {
+                if (!IsDisposed && !Disposing && !finalClose && ControlBox)
+                    MessageBox.Show(this,
+                        "Die Kamera konnte nicht erreicht werden. Bitte Netzwerk und Kamera-Adresse prüfen.\n\n" +
+                        "Zum Ändern der Adresse fünfmal schnell auf „CamControl“ links oben klicken.",
+                        "Kamera nicht erreichbar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private async void Form1_FormClosingAsync(object sender, FormClosingEventArgs e)
@@ -115,6 +170,10 @@ namespace CamControl
                     e.Cancel = true;
                     await camControlService.MoveToPosition(Position.StandBy);
                 }
+            }
+            catch (Exception exception) when (exception is HttpRequestException || exception is TaskCanceledException)
+            {
+                // The application must still close when the configured camera is offline.
             }
             finally
             {

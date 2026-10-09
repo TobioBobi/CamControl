@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../CamControl/CameraSettings.cs" Link="CameraSettings.cs" />
+    <Compile Include="../../CamControl/HiddenSettingsGesture.cs" Link="HiddenSettingsGesture.cs" />
+    <Compile Include="../../CamControl/CamControlService.cs" Link="CamControlService.cs" />
+    <Compile Include="../../CamControl/Position.cs" Link="Position.cs" />
+    <Compile Include="../../CamControl/Direction.cs" Link="Direction.cs" />
+    <Compile Include="../../CamControl/Zoom.cs" Link="Zoom.cs" />
+    <Compile Include="../../CamControl/CameraSettingsDialog.cs" Link="CameraSettingsDialog.cs" />
+  </ItemGroup>
+</Project>
