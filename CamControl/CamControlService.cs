@@ -14,7 +14,7 @@ namespace CamControl
         {
             _httpClient = new HttpClient();
 
-            _httpClient.BaseAddress = new Uri("http://192.168.188.64/");
+            _httpClient.BaseAddress = new Uri("http://192.168.188.24/");
 #if DEBUG
             _httpClient.BaseAddress = new Uri("http://localhost:8080/");
 #endif
