@@ -2,12 +2,18 @@ namespace CamControl
 {
     internal static class CameraCommandRunner
     {
-        public static async Task<bool> RunAsync(Func<Task> command, Action<string> reportError)
+        public static async Task<bool> RunAsync(Func<Task> command, Action<string> reportError,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 await command();
                 return true;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Deliberate cancellation is not a network timeout.
+                return false;
             }
             catch (OperationCanceledException)
             {

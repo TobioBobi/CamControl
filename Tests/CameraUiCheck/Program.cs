@@ -21,7 +21,7 @@ internal static class Program
             checks++;
         }
         Task Run(Func<Task> command, string action) =>
-            (Task)execute.Invoke(form, new object[] { command, action })!;
+            (Task)execute.Invoke(form, new object[] { new Func<CancellationToken, Task>(_ => command()), action, CancellationToken.None })!;
         void PumpUntil(Task task)
         {
             var deadline = DateTime.UtcNow.AddSeconds(5);
@@ -32,6 +32,18 @@ internal static class Program
             }
             Check(task.IsCompleted, "UI command did not finish");
             task.GetAwaiter().GetResult();
+            Application.DoEvents();
+        }
+
+        void PumpUntilCondition(Func<bool> condition)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!condition() && DateTime.UtcNow < deadline)
+            {
+                Application.DoEvents();
+                Thread.Sleep(1);
+            }
+            Check(condition(), "UI lifecycle did not finish");
         }
 
         PumpUntil(Run(() => Task.FromException(new HttpRequestException("test", null, HttpStatusCode.Forbidden)), "Position"));
@@ -84,9 +96,107 @@ internal static class Program
             type.GetMethod("Form1_KeyUp", flags)!.Invoke(form, new object[] { form, new KeyEventArgs(key) });
         }
 
+        var keyDown = type.GetMethod("Form1_KeyDown", flags)!;
+        var keyUp = type.GetMethod("Form1_KeyUp", flags)!;
+        var deactivate = type.GetMethod("OnDeactivate", flags)!;
+        var activate = type.GetMethod("OnActivated", flags)!;
+        var stopTaskField = type.GetField("stopControlTask", flags)!;
+        var positionType = type.Assembly.GetType("CamControl.Position")!;
+        var movePosition = type.GetMethod("MoveToPositionAsync", flags)!;
+        var prepareSettings = type.GetMethod("PrepareCameraSettingsAsync", flags)!;
+        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        bool AllStopsSince(int index) => new[] { "ptzstop", "zoomstop", "focusstop" }
+            .All(stop => handler.Requests.Skip(index).Any(uri => uri.Query.Contains(stop)));
+        bool Pressed(string field) => (bool)type.GetField(field, flags)!.GetValue(form)!;
+
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Add) });
+        int before = handler.Requests.Count;
+        deactivate.Invoke(form, new object[] { EventArgs.Empty });
+        PumpUntilCondition(() => stopTaskField.GetValue(form) == null);
+        Check(AllStopsSince(before), "Focus loss did not stop all camera channels");
+        Check(!Pressed("keyDirectionIsPressed") && !Pressed("keyZoomIsPressed"), "Focus loss retained pressed keys");
+        before = handler.Requests.Count;
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        Check(handler.Requests.Count == before, "Inactive window started movement");
+        activate.Invoke(form, new object[] { EventArgs.Empty });
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        Check(handler.Requests.Count == before + 1, "Direction could not restart after focus loss");
+        keyUp.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+
+        // Releasing a key cancels an unanswered start and sends a stop promptly.
+        handler.Respond = async (uri, token) =>
+        {
+            if (uri.Query.Contains("&up&"))
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        };
+        label.Text = "";
+        before = handler.Requests.Count;
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        keyUp.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        PumpUntilCondition(() => handler.Requests.Skip(before).Any(uri => uri.Query.Contains("ptzstop")));
+        Check(label.Text.Length == 0, "Key release cancellation was reported as timeout");
+        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+
+        // Lost mouse capture must stop even if no MouseUp is delivered.
+        type.GetMethod("buttonUp_MouseDown", flags)!.Invoke(form,
+            new object[] { form, new MouseEventArgs(MouseButtons.Left, 1, 0, 0, 0) });
+        before = handler.Requests.Count;
+        type.GetMethod("CameraButton_MouseCaptureChanged", flags)!.Invoke(form,
+            new object[] { type.GetField("buttonUp", flags)!.GetValue(form)!, EventArgs.Empty });
+        PumpUntilCondition(() => stopTaskField.GetValue(form) == null);
+        Check(AllStopsSince(before) && !Pressed("mouseDirectionIsPressed"), "Lost mouse capture did not stop/reset movement");
+
+        // Reactivation cannot restart motion while a stop response is pending.
+        var slowStop = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.Respond = (uri, _) => uri.Query.Contains("zoomstop")
+            ? slowStop.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        before = handler.Requests.Count;
+        deactivate.Invoke(form, new object[] { EventArgs.Empty });
+        activate.Invoke(form, new object[] { EventArgs.Empty });
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        Check(handler.Requests.Count == before + 3 && !((Button)type.GetField("buttonUp", flags)!.GetValue(form)!).Enabled,
+            "Reactivation allowed movement before pending stop completed");
+        Task sharedStop = (Task)type.GetMethod("StopCameraControlAsync", flags)!.Invoke(form, null)!;
+        Check(handler.Requests.Count == before + 3, "Concurrent lifecycle events duplicated stop requests");
+        slowStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+        PumpUntil(sharedStop);
+        Check(((Button)type.GetField("buttonUp", flags)!.GetValue(form)!).Enabled,
+            "Controls stayed disabled after stop acknowledgement");
+        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+
+        // Presets cannot overlap, and settings cancel standby before opening.
+        Task standby = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "StandBy") })!;
+        Check(!standby.IsCompleted && !(bool)((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled,
+            "Standby did not block overlapping commands");
+        before = handler.Requests.Count;
+        PumpUntil((Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "Redner") })!);
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        Check(handler.Requests.Count == before, "A second preset or manual movement overlapped standby");
+        PumpUntil((Task)prepareSettings.Invoke(form, null)!);
+        PumpUntil(standby);
+        Check(AllStopsSince(before) && handler.Requests.Skip(before).All(uri => !uri.Query.Contains("focusin")),
+            "Settings did not cancel and stop standby before delayed focus");
+        before = handler.Requests.Count;
+        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
+        Check(handler.Requests.Count == before, "Movement started while settings were open");
+        type.GetField("settingsDialogOpen", flags)!.SetValue(form, false);
+        activate.Invoke(form, new object[] { EventArgs.Empty });
+        Check(((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled,
+            "Controls did not recover after cancelled standby");
+
+        // Close during another standby; all stops must be attempted even on failure.
+        Task closingStandby = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "StandBy") })!;
+        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        before = handler.Requests.Count;
         var closing = new FormClosingEventArgs(CloseReason.UserClosing, false);
         type.GetMethod("Form1_FormClosingAsync", flags)!.Invoke(form, new object[] { form, closing });
+        PumpUntilCondition(() => (bool)type.GetField("finalClose", flags)!.GetValue(form)!);
+        PumpUntil(closingStandby);
         Check((bool)type.GetField("finalClose", flags)!.GetValue(form)!, "Camera error prevented closing");
+        Check(AllStopsSince(before) && handler.Requests.Skip(before).All(uri => !uri.Query.Contains("poscall") && !uri.Query.Contains("focusin")),
+            "Closing sent motion after failed stop or left delayed focus running");
         var finalClosing = new FormClosingEventArgs(CloseReason.UserClosing, false);
         type.GetMethod("Form1_FormClosingAsync", flags)!.Invoke(form, new object[] { form, finalClosing });
         Check(!finalClosing.Cancel, "Final close was cancelled");
@@ -95,7 +205,13 @@ internal static class Program
 
     private sealed class FailingHandler : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        public List<Uri> Requests { get; } = new();
+        public Func<Uri, CancellationToken, Task<HttpResponseMessage>> Respond { get; set; } =
+            (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request.RequestUri!);
+            return Respond(request.RequestUri!, cancellationToken);
+        }
     }
 }

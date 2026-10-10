@@ -130,6 +130,96 @@ Check(await CameraCommandRunner.RunAsync(() => service.MoveInDirection(Direction
     "Service did not recover after errors");
 Check(recoveryErrors.Count == 0 && successContent.Disposed, "Successful response leaked or raised an error");
 
+// Cancellation must remove pending starts before the final stop commands.
+using var sequencingHandler = new RecordingHandler();
+using var sequencingClient = new HttpClient(sequencingHandler);
+var sequencingService = new CamControlService(sequencingClient, "192.168.188.24");
+using (var cancellation = new CancellationTokenSource())
+{
+    sequencingHandler.Respond = async token =>
+    {
+        if (sequencingHandler.Requests.Last().Query.Contains("&up&"))
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+        return new HttpResponseMessage(HttpStatusCode.OK);
+    };
+    var cancellationErrors = new List<string>();
+    Task<bool> moving = CameraCommandRunner.RunAsync(
+        () => sequencingService.MoveInDirection(Direction.Up, cancellation.Token), cancellationErrors.Add, cancellation.Token);
+    Task<bool> queuedZoom = CameraCommandRunner.RunAsync(
+        () => sequencingService.Zoom(Zoom.ZoomIn, cancellation.Token), cancellationErrors.Add, cancellation.Token);
+    Check(sequencingHandler.Requests.Count == 1, "Queued zoom overlapped a pending movement");
+    cancellation.Cancel();
+    await sequencingService.StopAll();
+    Check(!await moving && !await queuedZoom && cancellationErrors.Count == 0,
+        "Intentional stop was reported as a network timeout");
+    Check(sequencingHandler.Requests.Count == 4 &&
+        sequencingHandler.Requests.Skip(1).All(uri => uri.Query.Contains("stop")),
+        "A cancelled start was sent after stopping");
+}
+
+// A stop during the standby wait must prevent the delayed focus start.
+sequencingHandler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+using (var cancellation = new CancellationTokenSource())
+{
+    int before = sequencingHandler.Requests.Count;
+    var errors = new List<string>();
+    Task<bool> sequence = CameraCommandRunner.RunAsync(
+        () => sequencingService.MoveToPosition(Position.StandBy, cancellation.Token), errors.Add, cancellation.Token);
+    Check(sequencingHandler.Requests.Count == before + 1, "Standby did not begin");
+    cancellation.Cancel();
+    await sequencingService.StopAll();
+    Check(!await sequence && errors.Count == 0, "Standby cancellation raised an error");
+    Check(sequencingHandler.Requests.Skip(before).All(uri => !uri.Query.Contains("focusin")),
+        "Cancelled standby still started focus");
+}
+
+// Cancellation during active focus must also end the sequence and stop focus.
+var focusStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+sequencingHandler.Respond = _ =>
+{
+    if (sequencingHandler.Requests.Last().Query.Contains("focusin"))
+        focusStarted.TrySetResult();
+    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+};
+using (var cancellation = new CancellationTokenSource())
+{
+    int before = sequencingHandler.Requests.Count;
+    var errors = new List<string>();
+    Task<bool> sequence = CameraCommandRunner.RunAsync(
+        () => sequencingService.MoveToPosition(Position.StandBy, cancellation.Token), errors.Add, cancellation.Token);
+    await focusStarted.Task.WaitAsync(TimeSpan.FromSeconds(6));
+    cancellation.Cancel();
+    await sequencingService.StopAll();
+    Check(!await sequence && errors.Count == 0, "Active focus did not cancel cleanly");
+    Check(sequencingHandler.Requests.Skip(before).Count(uri => uri.Query.Contains("focusin")) == 1 &&
+        sequencingHandler.Requests.Skip(before).Count(uri => uri.Query.Contains("focusstop")) == 1,
+        "Active focus did not receive exactly one final stop");
+}
+
+// All stop channels are attempted even if the PTZ stop fails.
+int stopsBefore = sequencingHandler.Requests.Count;
+sequencingHandler.Respond = _ => Task.FromResult(new HttpResponseMessage(
+    sequencingHandler.Requests.Last().Query.Contains("ptzstop") ? HttpStatusCode.InternalServerError : HttpStatusCode.OK));
+var stopErrors = new List<string>();
+Check(!await CameraCommandRunner.RunAsync(() => sequencingService.StopAll(), stopErrors.Add), "Failed PTZ stop was ignored");
+Check(sequencingHandler.Requests.Skip(stopsBefore).Count() == 3 &&
+    sequencingHandler.Requests.Skip(stopsBefore).Any(uri => uri.Query.Contains("zoomstop")) &&
+    sequencingHandler.Requests.Skip(stopsBefore).Any(uri => uri.Query.Contains("focusstop")),
+    "One failed stop prevented the other stops");
+
+// New starts must wait for every stop response, not only the first response.
+var delayedStop = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+sequencingHandler.Respond = _ => sequencingHandler.Requests.Last().Query.Contains("zoomstop")
+    ? delayedStop.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+stopsBefore = sequencingHandler.Requests.Count;
+Task allStops = sequencingService.StopAll();
+Task restart = sequencingService.MoveInDirection(Direction.Down);
+Check(sequencingHandler.Requests.Count == stopsBefore + 3 && !restart.IsCompleted,
+    "Movement restarted before all stops completed");
+delayedStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+await Task.WhenAll(allStops, restart);
+Check(sequencingHandler.Requests.Last().Query.Contains("&down&"), "Movement did not resume after stopping");
+
 // Construct WinForms controls after the asynchronous checks: this console test
 // does not run a message loop for the WinForms synchronization context.
 using var dialog = new CameraSettingsDialog("192.168.188.24");

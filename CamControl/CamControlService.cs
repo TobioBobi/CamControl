@@ -9,6 +9,7 @@ namespace CamControl
     internal class CamControlService
     {
         private readonly HttpClient _httpClient;
+        private readonly SemaphoreSlim commandGate = new(1, 1);
         private Uri cameraAddress = null!;
         public string CameraIp { get; private set; } = CameraSettings.DefaultCameraIp;
 
@@ -34,49 +35,73 @@ namespace CamControl
 #endif
         }
 
-        public async Task MoveToPosition(Position position)
+        public Task MoveToPosition(Position position, CancellationToken cancellationToken = default)
         {
-            var targetAddress = cameraAddress;
-            await SendCommandAsync(targetAddress, $"poscall&{(int)position}");
-
-            if (position == Position.StandBy)
+            return ExecuteSerializedAsync(async targetAddress =>
             {
-                await Task.Delay(1000 * 4);
-                await UnfocusAsync(targetAddress);
+                await SendCommandAsync(targetAddress, $"poscall&{(int)position}", cancellationToken);
+                if (position == Position.StandBy)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
+                    await SendCommandAsync(targetAddress, "focusin&5", cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                    await SendCommandAsync(targetAddress, "focusstop&5", cancellationToken);
+                }
+            }, cancellationToken);
+        }
+
+        public Task MoveInDirection(Direction direction, CancellationToken cancellationToken = default)
+        {
+            return ExecuteSerializedAsync(target => SendCommandAsync(target,
+                $"{direction.ToString().ToLowerInvariant()}&10&10", cancellationToken), cancellationToken);
+        }
+
+        public Task StopDirectionalMovement(CancellationToken cancellationToken = default)
+        {
+            return ExecuteSerializedAsync(target => SendCommandAsync(target, "ptzstop&10&10", cancellationToken), cancellationToken);
+        }
+
+        public Task Zoom(Zoom zoom, CancellationToken cancellationToken = default)
+        {
+            return ExecuteSerializedAsync(target => SendCommandAsync(target,
+                $"{zoom.ToString().ToLowerInvariant()}&5", cancellationToken), cancellationToken);
+
+        }
+        public Task StopZooming(CancellationToken cancellationToken = default)
+        {
+            return ExecuteSerializedAsync(target => SendCommandAsync(target, "zoomstop&5", cancellationToken), cancellationToken);
+        }
+
+        public Task StopAll()
+        {
+            // Attempt every stop even if one fails. Hold the gate until all
+            // responses complete so a new start cannot overtake these stops.
+            return ExecuteSerializedAsync(target => Task.WhenAll(
+                SendCommandAsync(target, "ptzstop&10&10", CancellationToken.None),
+                SendCommandAsync(target, "zoomstop&5", CancellationToken.None),
+                SendCommandAsync(target, "focusstop&5", CancellationToken.None)), CancellationToken.None);
+        }
+
+        private async Task ExecuteSerializedAsync(Func<Uri, Task> command, CancellationToken cancellationToken)
+        {
+            // Queued commands belong to the camera selected when requested.
+            var target = cameraAddress;
+            await commandGate.WaitAsync(cancellationToken);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await command(target);
+            }
+            finally
+            {
+                commandGate.Release();
             }
         }
 
-        public Task MoveInDirection(Direction direction)
-        {
-            return SendCommandAsync(cameraAddress, $"{direction.ToString().ToLowerInvariant()}&10&10");
-        }
-
-        public Task StopDirectionalMovement()
-        {
-            return SendCommandAsync(cameraAddress, "ptzstop&10&10");
-        }
-
-        public Task Zoom(Zoom zoom)
-        {
-            return SendCommandAsync(cameraAddress, $"{zoom.ToString().ToLowerInvariant()}&5");
-
-        }
-        public Task StopZooming()
-        {
-            return SendCommandAsync(cameraAddress, "zoomstop&5");
-        }
-
-        private async Task UnfocusAsync(Uri targetAddress)
-        {
-            await SendCommandAsync(targetAddress, "focusin&5");
-            await Task.Delay(1000 * 5);
-            await SendCommandAsync(targetAddress, "focusstop&5");
-        }
-
-        private async Task SendCommandAsync(Uri targetAddress, string command)
+        private async Task SendCommandAsync(Uri targetAddress, string command, CancellationToken cancellationToken)
         {
             using var response = await _httpClient.GetAsync(
-                new Uri(targetAddress, $"cgi-bin/ptzctrl.cgi?ptzcmd&{command}"));
+                new Uri(targetAddress, $"cgi-bin/ptzctrl.cgi?ptzcmd&{command}"), cancellationToken);
             response.EnsureSuccessStatusCode();
         }
     }

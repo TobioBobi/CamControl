@@ -14,4 +14,6 @@ dialog controls, address changes after the first request, and the destination of
 an already running standby sequence. They also cover HTTP 400/403/500 errors,
 network failures and timeouts for position, standby, movement, zoom and stop
 commands, failed standby focus commands, response disposal and recovery after
-errors. The standby checks take about thirteen seconds in total.
+errors. Cancellation checks cover pending and queued starts, both standby waits,
+all stop channels being attempted despite a failure, and new commands waiting
+for all stop responses. The standby checks take about seventeen seconds in total.

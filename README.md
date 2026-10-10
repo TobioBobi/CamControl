@@ -31,5 +31,13 @@ configured camera IP and can move a real camera when started or closed.
 
 ## Running a build
 
+Manual movement and zoom stop on key/mouse release, loss of mouse capture,
+window deactivation, settings opening and application closing. Pending commands
+and standby delays are cancelled before the lifecycle stop commands are sent.
+Camera controls are disabled during a preset sequence or while stopping.
+Closing attempts standby only after movement, zoom and focus stops succeed.
+Network failures can prevent the camera from receiving or confirming a stop;
+an unconfirmed stop is shown as an error while the app is open.
+
 Framework-dependent builds require the .NET 10 Desktop Runtime on the target
 Windows PC. MSIX packaging and self-contained distribution are not configured yet.
