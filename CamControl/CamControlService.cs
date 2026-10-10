@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace CamControl
 {
-    internal class CamControlService
+    internal class CamControlService : IDisposable
     {
         private readonly HttpClient _httpClient;
+        private readonly bool ownsClient;
         private readonly SemaphoreSlim directionGate = new(1, 1);
         private readonly SemaphoreSlim zoomGate = new(1, 1);
         private Uri cameraAddress = null!;
@@ -16,6 +17,7 @@ namespace CamControl
 
         public CamControlService() : this(new HttpClient { Timeout = TimeSpan.FromSeconds(10) }, CameraSettings.Load())
         {
+            ownsClient = true;
         }
 
         internal CamControlService(HttpClient httpClient, string cameraIp)
@@ -113,6 +115,12 @@ namespace CamControl
             using var response = await _httpClient.GetAsync(
                 new Uri(targetAddress, $"cgi-bin/ptzctrl.cgi?ptzcmd&{command}"), cancellationToken);
             response.EnsureSuccessStatusCode();
+        }
+
+        public void Dispose()
+        {
+            if (ownsClient)
+                _httpClient.Dispose();
         }
     }
 }

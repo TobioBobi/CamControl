@@ -5,6 +5,11 @@ namespace CamControl
         CamControlService camControlService;
         bool finalClose;
         private readonly Button settingsButton;
+        private readonly Label modeLabel;
+        private readonly DemoCamera demoCamera = new();
+        private readonly DemoCameraView demoView;
+        private HttpClient? demoClient;
+        internal bool IsDemoMode { get; private set; }
         private bool settingsDialogOpen;
         private readonly Label cameraErrorLabel;
         private int cameraErrorVersion;
@@ -18,7 +23,9 @@ namespace CamControl
         private bool keyZoomIsPressed, keyDirectionIsPressed;
         private bool mouseZoomIsPressed, mouseDirectionIsPressed;
 
-        public Form1()
+        public Form1() : this(false) { }
+
+        internal Form1(bool useDemo)
         {
             InitializeComponent();
             camControlService = new CamControlService();
@@ -27,6 +34,8 @@ namespace CamControl
                 control.Top += headerHeight;
             ClientSize = new Size(ClientSize.Width, ClientSize.Height + headerHeight);
             var header = new Panel { Dock = DockStyle.Top, Height = headerHeight };
+            modeLabel = new Label { AutoSize = true, Text = "Kameramodus", Location = new Point(12, 12), ForeColor = Color.DimGray };
+            header.Controls.Add(modeLabel);
             settingsButton = new Button
             {
                 Name = "settingsButton",
@@ -58,8 +67,44 @@ namespace CamControl
             };
             ClientSize = new Size(ClientSize.Width, ClientSize.Height + cameraErrorLabel.Height);
             Controls.Add(cameraErrorLabel);
+            demoView = new DemoCameraView(demoCamera)
+            {
+                Visible = false, Location = new Point(12, ClientSize.Height - cameraErrorLabel.Height),
+                Size = new Size(ClientSize.Width - 24, (int)Math.Round(180 * DeviceDpi / 96F)),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            Controls.Add(demoView);
+            if (useDemo) SetDemoMode(true);
             foreach (var button in new[] { buttonUp, buttonDown, buttonLeft, buttonRight, buttonZoomIn, buttonZoomOut })
                 button.MouseCaptureChanged += CameraButton_MouseCaptureChanged;
+        }
+
+        // Call only before startup commands or after settings has cancelled all
+        // pending work and awaited StopAll on the previous service.
+        private void SetDemoMode(bool enabled)
+        {
+            if (IsDemoMode == enabled) return;
+            string ip = camControlService.CameraIp;
+            camControlService.Dispose();
+            demoClient?.Dispose();
+            demoClient = null;
+            if (enabled)
+            {
+                demoCamera.Apply("?ptzcmd&poscall&4");
+                demoClient = new HttpClient(new DemoCameraHandler(demoCamera));
+                camControlService = new CamControlService(demoClient, ip);
+            }
+            else
+            {
+                camControlService = new CamControlService();
+                camControlService.SetCameraIp(ip);
+            }
+            IsDemoMode = enabled;
+            ClientSize = new Size(ClientSize.Width, ClientSize.Height + (enabled ? 1 : -1) * (demoView.Height + 12));
+            demoView.Visible = enabled;
+            modeLabel.Text = enabled ? "DEMO-MODUS · Keine Kamera verbunden" : "Kameramodus";
+            modeLabel.ForeColor = enabled ? Color.DarkBlue : Color.DimGray;
+            Text = enabled ? "CamControl – Demo" : "CamControl";
         }
 
         private bool CanControlCamera => !IsDisposed && !Disposing && !finalClose && ControlBox &&
@@ -173,9 +218,13 @@ namespace CamControl
             {
                 if (!await PrepareCameraSettingsAsync())
                     return;
-                using var dialog = new CameraSettingsDialog(camControlService.CameraIp);
+                using var dialog = new CameraSettingsDialog(camControlService.CameraIp, demoModeActive: IsDemoMode);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
                     camControlService.SetCameraIp(dialog.CameraIp);
+                    if (dialog.RequestedDemoMode is { } useDemo)
+                        SetDemoMode(useDemo);
+                }
             }
             finally
             {
@@ -230,7 +279,7 @@ namespace CamControl
             try
             {
                 // Do not send another motion command if stopping failed.
-                if (await StopCameraControlAsync())
+                if (await StopCameraControlAsync() && !IsDemoMode)
                     await CameraCommandRunner.RunAsync(() => camControlService.MoveToPosition(Position.StandBy), _ => { });
             }
             finally
@@ -249,6 +298,8 @@ namespace CamControl
             directionCancellation.Dispose();
             zoomCancellation.Cancel();
             zoomCancellation.Dispose();
+            camControlService.Dispose();
+            demoClient?.Dispose();
             base.OnFormClosed(e);
         }
 

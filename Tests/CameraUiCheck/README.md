@@ -18,3 +18,5 @@ and presets cancelled during preparation by focus loss or settings opening.
 No camera commands are sent over the network.
 The checks also verify visible settings access separated from camera controls,
 updated error hints, and availability during presets without duplicate dialogs.
+Demo checks exercise the real form's movement, zoom and preset handlers, focus
+loss and switching between modes without contacting real hardware.

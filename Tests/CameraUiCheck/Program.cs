@@ -52,6 +52,36 @@ internal static class Program
             Check(condition(), "UI lifecycle did not finish");
         }
 
+        using (var demoForm = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!)
+        {
+            _ = demoForm.Handle;
+            Check(demoForm.Text.Contains("Demo") &&
+                (bool)type.GetProperty("IsDemoMode", flags)!.GetValue(demoForm)!, "Demo entry was not marked");
+            var demo = type.GetField("demoCamera", flags)!.GetValue(demoForm)!;
+            object DemoState() => demo.GetType().GetProperty("State")!.GetValue(demo)!;
+            bool DemoFlag(string name) => (bool)DemoState().GetType().GetProperty(name)!.GetValue(DemoState())!;
+            var directionType = type.Assembly.GetType("CamControl.Direction")!;
+            var zoomType = type.Assembly.GetType("CamControl.Zoom")!;
+            PumpUntil((Task)type.GetMethod("StartDirectionAsync", flags)!.Invoke(demoForm,
+                new object[] { Enum.Parse(directionType, "Up"), true })!);
+            PumpUntil((Task)type.GetMethod("StartZoomAsync", flags)!.Invoke(demoForm,
+                new object[] { Enum.Parse(zoomType, "ZoomIn"), true })!);
+            Check(DemoFlag("Moving") && DemoFlag("Zooming"), "Actual UI did not drive demo channels");
+            type.GetMethod("OnDeactivate", flags)!.Invoke(demoForm, new object[] { EventArgs.Empty });
+            PumpUntilCondition(() => type.GetField("stopControlTask", flags)!.GetValue(demoForm) == null);
+            Check(!DemoFlag("Moving") && !DemoFlag("Zooming") && !DemoFlag("Focusing"), "Demo ignored focus-loss stops");
+            type.GetMethod("OnActivated", flags)!.Invoke(demoForm, new object[] { EventArgs.Empty });
+            type.GetMethod("buttonRedner_Click", flags)!.Invoke(demoForm, new object[] { demoForm, EventArgs.Empty });
+            Check((string)DemoState().GetType().GetProperty("Action")!.GetValue(DemoState())! == "Redner",
+                "Preset button did not reach the demo handler");
+            int demoHeight = demoForm.ClientSize.Height;
+            PumpUntil((Task)type.GetMethod("PrepareCameraSettingsAsync", flags)!.Invoke(demoForm, null)!);
+            type.GetMethod("SetDemoMode", flags)!.Invoke(demoForm, new object[] { false });
+            Check(!demoForm.Text.Contains("Demo") && demoForm.ClientSize.Height < demoHeight, "Leaving demo retained its view or label");
+            type.GetMethod("SetDemoMode", flags)!.Invoke(demoForm, new object[] { true });
+            Check(demoForm.ClientSize.Height == demoHeight, "Repeated demo entry accumulated window height");
+        }
+
         PumpUntil(Run(() => Task.FromException(new HttpRequestException("test", null, HttpStatusCode.Forbidden)), "Position"));
         Check(label.Text.Contains("HTTP 403"), "HTTP error not displayed");
         Check(label.Text.Contains("Einstellungen") && !label.Text.Contains("fünfmal"), "Error hints reference hidden access");

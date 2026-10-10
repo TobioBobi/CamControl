@@ -35,6 +35,22 @@ configured camera IP and can move a real camera when started or closed.
 
 ## Running a build
 
+Without a saved camera address, startup offers camera setup or an integrated
+demo. To try the demo regardless of existing settings, start the Release build
+with `--demo`, or choose Settings > Demo-Modus > Demo starten. The demo is only
+active for that session and preserves the saved camera IP. Its internal HTTP
+handler cannot send network requests. Both camera control modes share the
+command and lifecycle logic.
+
+The demo displays a schematic stage, the camera frame and a cropped preview.
+Presets, held movement/zoom buttons and keyboard controls update the simulation.
+This is not live video. The camera's real protocol still needs hardware testing.
+See [the certification test instructions](docs/store-testing.md).
+
+```powershell
+dotnet run --project CamControl/CamControl.csproj -c Release -- --demo
+```
+
 The visible Settings button opens a read-only configuration dialog. Choose
 "Konfiguration bearbeiten" to change the camera IP; only "Speichern" applies
 and persists the change. Cancel or closing the dialog discards the edits.

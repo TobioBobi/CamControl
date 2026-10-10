@@ -19,3 +19,6 @@ all stop channels being attempted despite a failure, and new commands waiting
 for all stop responses. Movement and zoom are checked as independent channels;
 cancelled presets must release every acquired gate. The standby checks take
 about seventeen seconds in total.
+Demo checks drive the simulation through the production HTTP command service,
+verify preset framing and movement/zoom stops, reject unknown commands, and
+ensure entering or cancelling demo mode preserves camera configuration.

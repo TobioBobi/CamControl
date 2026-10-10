@@ -6,11 +6,13 @@ namespace CamControl
         private readonly Button edit, save, cancel;
         private readonly Label hint;
         private readonly TabControl pages;
+        private readonly Button demoAction;
         private readonly string? settingsPath;
         private bool editing;
         public string CameraIp { get; private set; }
+        public bool? RequestedDemoMode { get; private set; }
 
-        public CameraSettingsDialog(string cameraIp, string? settingsPath = null)
+        public CameraSettingsDialog(string cameraIp, string? settingsPath = null, bool demoModeActive = false)
         {
             CameraIp = cameraIp;
             this.settingsPath = settingsPath;
@@ -41,6 +43,36 @@ namespace CamControl
             pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill };
             pages.TabPages.Add(CreateCameraPage());
             pages.TabPages.Add(CreateHelpPage());
+            var demoPage = new TabPage("Demo-Modus") { Padding = new Padding(16) };
+            var demoLayout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            demoLayout.Controls.Add(new Label
+            {
+                Text = demoModeActive
+                    ? "Demo-Modus aktiv. Es werden keine Befehle an eine echte Kamera gesendet. Zum Wechseln die Kamera-Adresse prüfen und speichern."
+                    : "Ohne Kamera ausprobieren: Eine schematische Bühne zeigt Bewegung, Zoom und Presets. Die gespeicherte Kamera-Adresse bleibt erhalten.",
+                AutoSize = true, MaximumSize = new Size(490, 0)
+            });
+            demoAction = new Button
+            {
+                Name = "demoAction", AutoSize = true, Margin = new Padding(0, 16, 0, 0),
+                Text = demoModeActive ? "Kamera einrichten und Demo beenden" : "Demo starten"
+            };
+            demoAction.Click += (_, _) =>
+            {
+                if (demoModeActive)
+                {
+                    RequestedDemoMode = false;
+                    Edit_Click(null, EventArgs.Empty);
+                }
+                else
+                {
+                    RequestedDemoMode = true;
+                    DialogResult = DialogResult.OK;
+                }
+            };
+            demoLayout.Controls.Add(demoAction);
+            demoPage.Controls.Add(demoLayout);
+            pages.TabPages.Add(demoPage);
 
             edit = new Button { Name = "editConfiguration", Text = "Konfiguration bearbeiten", AutoSize = true, TabIndex = 0 };
             save = new Button { Name = "saveConfiguration", Text = "Speichern", AutoSize = true, Enabled = false, TabIndex = 1 };
@@ -83,6 +115,7 @@ namespace CamControl
         {
             pages.SelectedIndex = 0;
             editing = true;
+            demoAction.Enabled = false;
             address.ReadOnly = false;
             address.TabStop = true;
             edit.Enabled = false;

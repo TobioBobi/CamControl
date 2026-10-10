@@ -23,19 +23,24 @@ namespace CamControl
         }
 
         public static string Load(string? path = null)
+            => TryLoad(path, out var ip) ? ip : DefaultCameraIp;
+
+        public static bool TryLoad(string? path, out string ip)
         {
+            ip = DefaultCameraIp;
             try
             {
                 var settings = JsonSerializer.Deserialize<StoredSettings>(File.ReadAllText(path ?? FilePath));
-                if (settings?.CameraIp != null && TryNormalizeIp(settings.CameraIp, out var ip))
-                    return ip;
+                if (settings?.CameraIp != null && TryNormalizeIp(settings.CameraIp, out ip))
+                    return true;
             }
             catch (Exception exception) when (exception is IOException ||
                 exception is UnauthorizedAccessException || exception is JsonException)
             {
                 // A missing, unreadable or damaged settings file must not prevent startup.
             }
-            return DefaultCameraIp;
+            ip = DefaultCameraIp;
+            return false;
         }
 
         public static void Save(string ip, string? path = null)

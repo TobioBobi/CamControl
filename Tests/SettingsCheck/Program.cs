@@ -14,9 +14,11 @@ Check(CameraSettings.TryNormalizeIp(" 192.168.188.024 ", out var normalized) && 
 
 var testPath = Path.Combine(AppContext.BaseDirectory, "test-settings.json");
 File.Delete(testPath);
+Check(!CameraSettings.TryLoad(testPath, out _), "Missing configuration bypassed first-run choice");
 Check(CameraSettings.Load(testPath) == CameraSettings.DefaultCameraIp, "Missing settings fallback failed");
 CameraSettings.Save("192.168.188.25", testPath);
 Check(CameraSettings.Load(testPath) == "192.168.188.25", "Saved settings did not survive reload");
+Check(CameraSettings.TryLoad(testPath, out var configuredIp) && configuredIp == "192.168.188.25", "Saved configuration was not recognized");
 CameraSettings.Save("192.168.188.26", testPath);
 Check(CameraSettings.Load(testPath) == "192.168.188.26", "Replacing settings failed");
 File.WriteAllText(testPath, "broken json");
@@ -29,6 +31,44 @@ Check(rejected, "Invalid settings saved");
 File.Delete(testPath);
 
 using var handler = new RecordingHandler();
+var demoCamera = new DemoCamera();
+using (var demoClient = new HttpClient(new DemoCameraHandler(demoCamera)))
+{
+    var demoService = new CamControlService(demoClient, "192.168.188.24");
+    foreach (var preset in Enum.GetValues<Position>())
+    {
+        if (preset == Position.StandBy) continue;
+        await demoService.MoveToPosition(preset);
+        Check(!demoCamera.State.Moving && !demoCamera.State.Zooming && demoCamera.State.Frame.Left >= 0 &&
+            demoCamera.State.Frame.Right <= 1, "Demo preset was not contained/stopped: " + preset);
+    }
+    await demoService.MoveToPosition(Position.BuehneKomplett);
+    await demoService.Zoom(Zoom.ZoomIn);
+    demoCamera.Advance(TimeSpan.FromSeconds(1));
+    await demoService.StopZooming();
+    float zoom = demoCamera.State.Zoom;
+    demoCamera.Advance(TimeSpan.FromSeconds(1));
+    Check(zoom > 1 && demoCamera.State.Zoom == zoom, "Demo zoom did not start/stop");
+    foreach (var direction in Enum.GetValues<Direction>())
+    {
+        var before = demoCamera.State;
+        await demoService.MoveInDirection(direction);
+        demoCamera.Advance(TimeSpan.FromMilliseconds(200));
+        await demoService.StopDirectionalMovement();
+        var after = demoCamera.State;
+        Check((after.X != before.X || after.Y != before.Y) && !after.Moving, "Demo direction did not move/stop: " + direction);
+        demoCamera.Advance(TimeSpan.FromSeconds(1));
+        Check(demoCamera.State.X == after.X && demoCamera.State.Y == after.Y, "Stopped demo drifted");
+    }
+    demoCamera.Apply("?ptzcmd&focusin&5");
+    await demoService.MoveInDirection(Direction.Right);
+    await demoService.Zoom(Zoom.ZoomIn);
+    await demoService.StopAll();
+    Check(!demoCamera.State.Moving && !demoCamera.State.Zooming && !demoCamera.State.Focusing, "Demo lifecycle stop left a channel active");
+    using var rejectedDemoResponse = await demoClient.GetAsync("http://example.invalid/unsupported");
+    Check(rejectedDemoResponse.StatusCode == HttpStatusCode.BadRequest, "Demo handler accepted an unknown endpoint");
+    Check(!demoCamera.Apply("?ptzcmd&poscall&999"), "Demo accepted an unsupported preset");
+}
 using var client = new HttpClient(handler);
 var service = new CamControlService(client, "192.168.188.24");
 await service.MoveToPosition(Position.BuehneKomplett);
@@ -279,6 +319,24 @@ using (var cancelledDialog = new CameraSettingsDialog("192.168.188.25", testPath
         "Cancel applied or persisted the changed IP");
 }
 File.Delete(testPath);
+
+using (var demoDialog = new CameraSettingsDialog("192.168.188.25", testPath))
+{
+    var demoButton = Descendants(demoDialog).OfType<Button>().Single(button => button.Name == "demoAction");
+    typeof(Button).GetMethod("OnClick", dialogFlags)!.Invoke(demoButton, new object[] { EventArgs.Empty });
+    Check(demoDialog.RequestedDemoMode == true && demoDialog.DialogResult == DialogResult.OK &&
+        !File.Exists(testPath) && demoDialog.CameraIp == "192.168.188.25", "Demo entry changed saved camera configuration");
+}
+using (var demoDialog = new CameraSettingsDialog("192.168.188.25", testPath, demoModeActive: true))
+{
+    var demoButton = Descendants(demoDialog).OfType<Button>().Single(button => button.Name == "demoAction");
+    typeof(Button).GetMethod("OnClick", dialogFlags)!.Invoke(demoButton, new object[] { EventArgs.Empty });
+    Check(demoDialog.RequestedDemoMode == false && demoDialog.DialogResult != DialogResult.OK &&
+        !Descendants(demoDialog).OfType<TextBox>().Single().ReadOnly && !File.Exists(testPath),
+        "Leaving demo did not require deliberate configuration saving");
+    demoDialog.DialogResult = DialogResult.Cancel;
+    Check(!File.Exists(testPath), "Cancelling demo exit saved the camera IP");
+}
 
 Console.WriteLine($"Passed {checks} checks: settings, camera commands, HTTP errors, timeouts, response disposal and recovery.");
 
