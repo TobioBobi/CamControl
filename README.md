@@ -18,6 +18,10 @@ The checks use fake HTTP handlers; they do not contact a real camera or show
 a window. See [the settings and service tests](Tests/SettingsCheck/README.md)
 and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
+GitHub Actions builds Debug and Release on Windows with .NET 10 and runs both
+check programs on each push or pull request to `master`. The workflow can also
+be started manually. Signing and MSIX packaging will be added separately.
+
 For local camera simulation, run CamDummy and start CamControl in Debug mode
 in another terminal:
 
