@@ -1,6 +1,6 @@
 # Settings checks
 
-Run on Windows with the .NET SDK:
+Run on Windows with the .NET 10 SDK:
 
 ```powershell
 dotnet run --project Tests/SettingsCheck/SettingsCheck.csproj -c Release
