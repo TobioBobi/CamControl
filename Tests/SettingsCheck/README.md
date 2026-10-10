@@ -11,4 +11,7 @@ The checks use a fake HTTP handler and a temporary settings file in the build
 directory. They do not send camera commands or change the user's saved settings.
 They cover IPv4 validation, persistence and fallback, the hidden click gesture,
 dialog controls, address changes after the first request, and the destination of
-an already running standby sequence. The standby checks take about nine seconds.
+an already running standby sequence. They also cover HTTP 400/403/500 errors,
+network failures and timeouts for position, standby, movement, zoom and stop
+commands, failed standby focus commands, response disposal and recovery after
+errors. The standby checks take about thirteen seconds in total.

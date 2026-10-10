@@ -6,11 +6,44 @@ namespace CamControl
         bool finalClose = false;
         private readonly HiddenSettingsGesture settingsGesture = new HiddenSettingsGesture();
         private bool settingsDialogOpen;
+        private readonly Label cameraErrorLabel;
+        private int cameraErrorVersion;
 
         public Form1()
         {
             InitializeComponent();
             camControlService = new CamControlService();
+            cameraErrorLabel = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Height = 80,
+                Padding = new Padding(12, 4, 12, 4),
+                ForeColor = Color.DarkRed,
+                AutoEllipsis = true,
+                AccessibleName = "Kamera-Fehlermeldung"
+            };
+            ClientSize = new Size(ClientSize.Width, ClientSize.Height + cameraErrorLabel.Height);
+            Controls.Add(cameraErrorLabel);
+        }
+
+        private async Task ExecuteCameraCommandAsync(Func<Task> command, string action)
+        {
+            if (IsDisposed || Disposing || finalClose || !ControlBox)
+                return;
+
+            int errorVersionAtStart = cameraErrorVersion;
+            bool succeeded = await CameraCommandRunner.RunAsync(command, error =>
+            {
+                if (!IsDisposed && !Disposing && !finalClose && ControlBox)
+                {
+                    cameraErrorVersion++;
+                    cameraErrorLabel.Text = $"{action}: {error}\nAdresse ändern: fünfmal schnell auf „CamControl“ links oben klicken.";
+                }
+            });
+            // An older successful request must not hide a newer command failure.
+            if (succeeded && errorVersionAtStart == cameraErrorVersion &&
+                !IsDisposed && !Disposing && !finalClose && ControlBox)
+                cameraErrorLabel.Text = string.Empty;
         }
 
         protected override void WndProc(ref Message message)
@@ -59,50 +92,56 @@ namespace CamControl
 
         private async void buttonRedner_Click(object sender, EventArgs e)
         {
-            await camControlService.MoveToPosition(Position.Redner);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.Redner), "Position anfahren");
         }
 
         private async void buttonRednerLeser_Click(object sender, EventArgs e)
         {
-            await camControlService.MoveToPosition(Position.Redner_Leser);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.Redner_Leser), "Position anfahren");
         }
 
         private async void buttonTisch_Click(object sender, EventArgs e)
         {
-            await camControlService.MoveToPosition(Position.Tisch);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.Tisch), "Position anfahren");
         }
 
         private async void buttonKompletteBuehne_Click(object sender, EventArgs e)
         {
-            await camControlService.MoveToPosition(Position.BuehneKomplett);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.BuehneKomplett), "Position anfahren");
         }
 
         private async void buttonRednerBildschirm_Click(object sender, EventArgs e)
         {
-            await camControlService.MoveToPosition(Position.RednerBildschirm);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.RednerBildschirm), "Position anfahren");
         }
 
         private async void buttonStandBy_Click(object sender, EventArgs e)
         {
+            if (!buttonStandBy.Enabled || finalClose || !ControlBox)
+                return;
             try
             {
                 this.ActiveControl = null;
                 pictureBoxLoaderSmall.BringToFront();
                 pictureBoxLoaderSmall.Visible = true;
                 buttonStandBy.Enabled = false;
-                await camControlService.MoveToPosition(Position.StandBy);
+                await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.StandBy), "Position anfahren");
             }
             finally
             {
-                buttonStandBy.Enabled = true;
-                pictureBoxLoaderSmall.Visible = false;
-                buttonStandBy.Focus();
+                if (!IsDisposed && !Disposing && !finalClose)
+                {
+                    buttonStandBy.Enabled = true;
+                    pictureBoxLoaderSmall.Visible = false;
+                    if (ControlBox)
+                        buttonStandBy.Focus();
+                }
             }
         }
 
         private async void buttonDemoStehend_Click(object sender, EventArgs e)
         {
-            await camControlService.MoveToPosition(Position.DemoStehend);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.DemoStehend), "Position anfahren");
         }
 
         #endregion
@@ -110,30 +149,30 @@ namespace CamControl
 
 
         #region Directions
-        private void buttonUp_MouseDown(object sender, MouseEventArgs e)
+        private async void buttonUp_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.MoveInDirection(Direction.Up);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Up), "Kamera bewegen");
         }
 
-        private void buttonDown_MouseDown(object sender, MouseEventArgs e)
+        private async void buttonDown_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.MoveInDirection(Direction.Down);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Down), "Kamera bewegen");
 
         }
-        private void buttonLeft_MouseDown(object sender, MouseEventArgs e)
+        private async void buttonLeft_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.MoveInDirection(Direction.Left);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Left), "Kamera bewegen");
 
         }
-        private void buttonRight_MouseDown(object sender, MouseEventArgs e)
+        private async void buttonRight_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.MoveInDirection(Direction.Right);
+            await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Right), "Kamera bewegen");
 
         }
 
-        private void button_MouseUpStopDirectionalMovement(object sender, MouseEventArgs e)
+        private async void button_MouseUpStopDirectionalMovement(object sender, MouseEventArgs e)
         {
-            camControlService.StopDirectionalMovement();
+            await ExecuteCameraCommandAsync(() => camControlService.StopDirectionalMovement(), "Bewegungsstopp nicht bestätigt");
         }
 
 
@@ -144,36 +183,23 @@ namespace CamControl
 
         private async void Form1_Load(object sender, EventArgs e)
         {
-            try
-            {
-                await camControlService.MoveToPosition(Position.BuehneKomplett);
-            }
-            catch (Exception exception) when (exception is HttpRequestException || exception is TaskCanceledException)
-            {
-                if (!IsDisposed && !Disposing && !finalClose && ControlBox)
-                    MessageBox.Show(this,
-                        "Die Kamera konnte nicht erreicht werden. Bitte Netzwerk und Kamera-Adresse prüfen.\n\n" +
-                        "Zum Ändern der Adresse fünfmal schnell auf „CamControl“ links oben klicken.",
-                        "Kamera nicht erreichbar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+            await ExecuteCameraCommandAsync(() => camControlService.MoveToPosition(Position.BuehneKomplett), "Startposition anfahren");
         }
 
         private async void Form1_FormClosingAsync(object sender, FormClosingEventArgs e)
         {
+            if (finalClose)
+                return;
+            e.Cancel = true;
+            if (!ControlBox)
+                return;
             try
             {
-                if (!finalClose)
-                {
-                    this.ControlBox = false;
-                    pictureBoxLoader.BringToFront();
-                    pictureBoxLoader.Visible = true;
-                    e.Cancel = true;
-                    await camControlService.MoveToPosition(Position.StandBy);
-                }
-            }
-            catch (Exception exception) when (exception is HttpRequestException || exception is TaskCanceledException)
-            {
-                // The application must still close when the configured camera is offline.
+                this.ControlBox = false;
+                pictureBoxLoader.BringToFront();
+                pictureBoxLoader.Visible = true;
+                // Closing must complete even if the camera rejects standby or is offline.
+                await CameraCommandRunner.RunAsync(() => camControlService.MoveToPosition(Position.StandBy), _ => { });
             }
             finally
             {
@@ -215,7 +241,7 @@ namespace CamControl
 
         bool keyZoomIsPressed, keyDirectionIsPressed;
 
-        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        private async void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             switch (e.KeyCode)
             {
@@ -223,42 +249,42 @@ namespace CamControl
                     if (!keyZoomIsPressed)
                     {
                         keyZoomIsPressed = true;
-                        camControlService.Zoom(Zoom.ZoomIn);
+                        await ExecuteCameraCommandAsync(() => camControlService.Zoom(Zoom.ZoomIn), "Kamera zoomen");
                     }
                     break;
                 case Keys.Subtract:
                     if (!keyZoomIsPressed)
                     {
                         keyZoomIsPressed = true;
-                        camControlService.Zoom(Zoom.ZoomOut);
+                        await ExecuteCameraCommandAsync(() => camControlService.Zoom(Zoom.ZoomOut), "Kamera zoomen");
                     }
                     break;
                 case Keys.Left:
                     if (!keyDirectionIsPressed)
                     {
                         keyDirectionIsPressed = true;
-                        camControlService.MoveInDirection(Direction.Left);
+                        await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Left), "Kamera bewegen");
                     }
                     break;
                 case Keys.Right:
                     if (!keyDirectionIsPressed)
                     {
                         keyDirectionIsPressed = true;
-                        camControlService.MoveInDirection(Direction.Right);
+                        await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Right), "Kamera bewegen");
                     }
                     break;
                 case Keys.Up:
                     if (!keyDirectionIsPressed)
                     {
                         keyDirectionIsPressed = true;
-                        camControlService.MoveInDirection(Direction.Up);
+                        await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Up), "Kamera bewegen");
                     }
                     break;
                 case Keys.Down:
                     if (!keyDirectionIsPressed)
                     {
                         keyDirectionIsPressed = true;
-                        camControlService.MoveInDirection(Direction.Down);
+                        await ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Down), "Kamera bewegen");
                     }
                     break;
                 default: break;
@@ -277,28 +303,28 @@ namespace CamControl
                         if (!keyDirectionIsPressed)
                         {
                             keyDirectionIsPressed = true;
-                            camControlService.MoveInDirection(Direction.Left);
+                            _ = ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Left), "Kamera bewegen");
                         }
                         break;
                     case Keys.Right:
                         if (!keyDirectionIsPressed)
                         {
                             keyDirectionIsPressed = true;
-                            camControlService.MoveInDirection(Direction.Right);
+                            _ = ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Right), "Kamera bewegen");
                         }
                         break;
                     case Keys.Up:
                         if (!keyDirectionIsPressed)
                         {
                             keyDirectionIsPressed = true;
-                            camControlService.MoveInDirection(Direction.Up);
+                            _ = ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Up), "Kamera bewegen");
                         }
                         break;
                     case Keys.Down:
                         if (!keyDirectionIsPressed)
                         {
                             keyDirectionIsPressed = true;
-                            camControlService.MoveInDirection(Direction.Down);
+                            _ = ExecuteCameraCommandAsync(() => camControlService.MoveInDirection(Direction.Down), "Kamera bewegen");
                         }
                         break;
                     default: break;
@@ -313,21 +339,21 @@ namespace CamControl
 
 
 
-        private void Form1_KeyUp(object sender, KeyEventArgs e)
+        private async void Form1_KeyUp(object sender, KeyEventArgs e)
         {
             switch (e.KeyCode)
             {
                 case Keys.Add:
                 case Keys.Subtract:
                     keyZoomIsPressed = false;
-                    camControlService.StopZooming();
+                    await ExecuteCameraCommandAsync(() => camControlService.StopZooming(), "Zoomstopp nicht bestätigt");
                     break;
                 case Keys.Right:
                 case Keys.Left:
                 case Keys.Up:
                 case Keys.Down:
                     keyDirectionIsPressed = false;
-                    camControlService.StopDirectionalMovement();
+                    await ExecuteCameraCommandAsync(() => camControlService.StopDirectionalMovement(), "Bewegungsstopp nicht bestätigt");
                     break;
                 default: break;
             }
@@ -339,20 +365,20 @@ namespace CamControl
 
         #region Zoom
 
-        private void buttonZoomOut_MouseDown(object sender, MouseEventArgs e)
+        private async void buttonZoomOut_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.Zoom(Zoom.ZoomOut);
+            await ExecuteCameraCommandAsync(() => camControlService.Zoom(Zoom.ZoomOut), "Kamera zoomen");
         }
 
-        private void buttonZoomIn_MouseDown(object sender, MouseEventArgs e)
+        private async void buttonZoomIn_MouseDown(object sender, MouseEventArgs e)
         {
-            camControlService.Zoom(Zoom.ZoomIn);
+            await ExecuteCameraCommandAsync(() => camControlService.Zoom(Zoom.ZoomIn), "Kamera zoomen");
 
         }
 
-        private void button_MouseUpStopZooming(object sender, MouseEventArgs e)
+        private async void button_MouseUpStopZooming(object sender, MouseEventArgs e)
         {
-            camControlService.StopZooming();
+            await ExecuteCameraCommandAsync(() => camControlService.StopZooming(), "Zoomstopp nicht bestätigt");
         }
 
         #endregion

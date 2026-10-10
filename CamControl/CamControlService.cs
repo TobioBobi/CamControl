@@ -8,7 +8,7 @@ namespace CamControl
 {
     internal class CamControlService
     {
-        HttpClient _httpClient;
+        private readonly HttpClient _httpClient;
         private Uri cameraAddress = null!;
         public string CameraIp { get; private set; } = CameraSettings.DefaultCameraIp;
 
@@ -37,7 +37,7 @@ namespace CamControl
         public async Task MoveToPosition(Position position)
         {
             var targetAddress = cameraAddress;
-            await _httpClient.GetAsync(new Uri(targetAddress, $"cgi-bin/ptzctrl.cgi?ptzcmd&poscall&{(int)position}"));
+            await SendCommandAsync(targetAddress, $"poscall&{(int)position}");
 
             if (position == Position.StandBy)
             {
@@ -46,31 +46,38 @@ namespace CamControl
             }
         }
 
-        public void MoveInDirection(Direction direction)
+        public Task MoveInDirection(Direction direction)
         {
-            _httpClient.GetAsync(new Uri(cameraAddress, $"cgi-bin/ptzctrl.cgi?ptzcmd&{direction.ToString().ToLower()}&10&10"));
+            return SendCommandAsync(cameraAddress, $"{direction.ToString().ToLowerInvariant()}&10&10");
         }
 
-        public void StopDirectionalMovement()
+        public Task StopDirectionalMovement()
         {
-            _httpClient.GetAsync(new Uri(cameraAddress, "cgi-bin/ptzctrl.cgi?ptzcmd&ptzstop&10&10"));
+            return SendCommandAsync(cameraAddress, "ptzstop&10&10");
         }
 
-        public void Zoom(Zoom zoom)
+        public Task Zoom(Zoom zoom)
         {
-            _httpClient.GetAsync(new Uri(cameraAddress, $"cgi-bin/ptzctrl.cgi?ptzcmd&{zoom.ToString().ToLower()}&5"));
+            return SendCommandAsync(cameraAddress, $"{zoom.ToString().ToLowerInvariant()}&5");
 
         }
-        public void StopZooming()
+        public Task StopZooming()
         {
-            _httpClient.GetAsync(new Uri(cameraAddress, "cgi-bin/ptzctrl.cgi?ptzcmd&zoomstop&5"));
+            return SendCommandAsync(cameraAddress, "zoomstop&5");
         }
 
         private async Task UnfocusAsync(Uri targetAddress)
         {
-            await _httpClient.GetAsync(new Uri(targetAddress, "cgi-bin/ptzctrl.cgi?ptzcmd&focusin&5"));
+            await SendCommandAsync(targetAddress, "focusin&5");
             await Task.Delay(1000 * 5);
-            await _httpClient.GetAsync(new Uri(targetAddress, "cgi-bin/ptzctrl.cgi?ptzcmd&focusstop&5"));
+            await SendCommandAsync(targetAddress, "focusstop&5");
+        }
+
+        private async Task SendCommandAsync(Uri targetAddress, string command)
+        {
+            using var response = await _httpClient.GetAsync(
+                new Uri(targetAddress, $"cgi-bin/ptzctrl.cgi?ptzcmd&{command}"));
+            response.EnsureSuccessStatusCode();
         }
     }
 }

@@ -11,10 +11,12 @@ Visual Studio 2026 with the .NET desktop development workload.
 ```powershell
 dotnet build CamControl.sln -c Release
 dotnet run --project Tests/SettingsCheck/SettingsCheck.csproj -c Release
+dotnet run --project Tests/CameraUiCheck/CameraUiCheck.csproj -c Release
 ```
 
-The settings checks use a fake HTTP handler; they do not contact a real camera.
-See [the test instructions](Tests/SettingsCheck/README.md) for coverage.
+The checks use fake HTTP handlers; they do not contact a real camera or show
+a window. See [the settings and service tests](Tests/SettingsCheck/README.md)
+and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
 For local camera simulation, run CamDummy and start CamControl in Debug mode
 in another terminal:

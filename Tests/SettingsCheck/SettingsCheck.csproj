@@ -10,6 +10,7 @@
     <Compile Include="../../CamControl/CameraSettings.cs" Link="CameraSettings.cs" />
     <Compile Include="../../CamControl/HiddenSettingsGesture.cs" Link="HiddenSettingsGesture.cs" />
     <Compile Include="../../CamControl/CamControlService.cs" Link="CamControlService.cs" />
+    <Compile Include="../../CamControl/CameraCommandRunner.cs" Link="CameraCommandRunner.cs" />
     <Compile Include="../../CamControl/Position.cs" Link="Position.cs" />
     <Compile Include="../../CamControl/Direction.cs" Link="Direction.cs" />
     <Compile Include="../../CamControl/Zoom.cs" Link="Zoom.cs" />
