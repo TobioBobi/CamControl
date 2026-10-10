@@ -4,7 +4,7 @@ namespace CamControl
     {
         CamControlService camControlService;
         bool finalClose;
-        private readonly HiddenSettingsGesture settingsGesture = new();
+        private readonly Button settingsButton;
         private bool settingsDialogOpen;
         private readonly Label cameraErrorLabel;
         private int cameraErrorVersion;
@@ -22,6 +22,31 @@ namespace CamControl
         {
             InitializeComponent();
             camControlService = new CamControlService();
+            int headerHeight = (int)Math.Round(44 * DeviceDpi / 96F);
+            foreach (Control control in Controls)
+                control.Top += headerHeight;
+            ClientSize = new Size(ClientSize.Width, ClientSize.Height + headerHeight);
+            var header = new Panel { Dock = DockStyle.Top, Height = headerHeight };
+            settingsButton = new Button
+            {
+                Name = "settingsButton",
+                Text = "⚙ Einstellungen",
+                AccessibleName = "Einstellungen öffnen",
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                TabIndex = 0,
+                UseVisualStyleBackColor = true
+            };
+            header.Controls.Add(settingsButton);
+            Controls.Add(header);
+            header.SizeChanged += (_, _) => settingsButton.Location = new Point(
+                header.ClientSize.Width - settingsButton.Width - 12, (header.Height - settingsButton.Height) / 2);
+            settingsButton.SizeChanged += (_, _) => settingsButton.Location = new Point(
+                header.ClientSize.Width - settingsButton.Width - 12, (header.Height - settingsButton.Height) / 2);
+            settingsButton.Location = new Point(header.ClientSize.Width - settingsButton.Width - 12,
+                (header.Height - settingsButton.Height) / 2);
+            settingsButton.Click += (_, _) => OpenCameraSettings();
             cameraErrorLabel = new Label
             {
                 Dock = DockStyle.Bottom,
@@ -46,6 +71,7 @@ namespace CamControl
                 return;
             foreach (var button in Controls.OfType<Button>().Concat(tableLayoutPanel1.Controls.OfType<Button>()))
                 button.Enabled = CanControlCamera && !positionInProgress;
+            settingsButton.Enabled = !finalClose && ControlBox && !settingsDialogOpen;
         }
 
         private void ReportCameraError(string action, string error)
@@ -53,7 +79,7 @@ namespace CamControl
             if (IsDisposed || Disposing || finalClose || !ControlBox)
                 return;
             cameraErrorVersion++;
-            cameraErrorLabel.Text = $"{action}: {error}\nAdresse ändern: fünfmal schnell auf „CamControl“ links oben klicken.";
+            cameraErrorLabel.Text = $"{action}: {error}\nAdresse ändern: „Einstellungen“ → „Konfiguration bearbeiten“.";
         }
 
         private async Task ExecuteCameraCommandAsync(Func<CancellationToken, Task> command, string action,
@@ -139,26 +165,6 @@ namespace CamControl
             }
         }
 
-        protected override void WndProc(ref Message message)
-        {
-            const int WmNcLeftButtonDown = 0x00A1, WmNcLeftButtonDoubleClick = 0x00A3, HtCaption = 2;
-            if ((message.Msg == WmNcLeftButtonDown || message.Msg == WmNcLeftButtonDoubleClick) &&
-                message.WParam.ToInt32() == HtCaption)
-            {
-                int screenX = unchecked((short)(message.LParam.ToInt64() & 0xFFFF));
-                int titleWidth = TextRenderer.MeasureText(Text, SystemFonts.SmallCaptionFont).Width +
-                    (int)(24 * DeviceDpi / 96F);
-                if (screenX >= Left && screenX < Left + titleWidth && !settingsDialogOpen)
-                {
-                    if (settingsGesture.RegisterClick(Environment.TickCount64))
-                        BeginInvoke(new Action(OpenCameraSettings));
-                    return;
-                }
-                settingsGesture.Reset();
-            }
-            base.WndProc(ref message);
-        }
-
         private async void OpenCameraSettings()
         {
             if (settingsDialogOpen || finalClose || !ControlBox)
@@ -174,7 +180,6 @@ namespace CamControl
             finally
             {
                 settingsDialogOpen = false;
-                settingsGesture.Reset();
                 UpdateCameraControls();
             }
         }

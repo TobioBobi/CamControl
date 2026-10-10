@@ -16,3 +16,5 @@ blocked overlapping presets, settings preparation, and closing during standby.
 Regression checks cover stops while the other channel has an unanswered start,
 and presets cancelled during preparation by focus loss or settings opening.
 No camera commands are sent over the network.
+The checks also verify visible settings access separated from camera controls,
+updated error hints, and availability during presets without duplicate dialogs.

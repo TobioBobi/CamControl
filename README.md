@@ -35,6 +35,16 @@ configured camera IP and can move a real camera when started or closed.
 
 ## Running a build
 
+The visible Settings button opens a read-only configuration dialog. Choose
+"Konfiguration bearbeiten" to change the camera IP; only "Speichern" applies
+and persists the change. Cancel or closing the dialog discards the edits.
+Opening settings cancels pending camera commands and attempts all stops first.
+
+The dialog uses separate pages so camera preset management and button labels
+can be added later. Future preset management should also save the camera's
+current position on the camera itself, after its REST command is verified.
+Preset editing and saving are not implemented yet.
+
 Manual movement and zoom stop on key/mouse release, loss of mouse capture,
 window deactivation, settings opening and application closing. Pending commands
 and standby delays are cancelled before the lifecycle stop commands are sent.

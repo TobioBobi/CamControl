@@ -28,15 +28,6 @@ try { CameraSettings.Save("bad address", testPath); } catch (ArgumentException) 
 Check(rejected, "Invalid settings saved");
 File.Delete(testPath);
 
-var gesture = new HiddenSettingsGesture();
-for (int index = 0; index < 4; index++) Check(!gesture.RegisterClick(index * 150), "Dialog opened before fifth click");
-Check(gesture.RegisterClick(600), "Five fast clicks did not open dialog");
-Check(!gesture.RegisterClick(750), "Gesture did not reset after opening");
-gesture.Reset();
-for (int index = 0; index < 10; index++) Check(!gesture.RegisterClick(index * 1000), "Slow clicks opened dialog");
-gesture.Reset();
-for (int index = 0; index < 5; index++) Check(!gesture.RegisterClick(index * 790), "Clicks outside total window opened dialog");
-
 using var handler = new RecordingHandler();
 using var client = new HttpClient(handler);
 var service = new CamControlService(client, "192.168.188.24");
@@ -247,10 +238,37 @@ await zoomIn;
 
 // Construct WinForms controls after the asynchronous checks: this console test
 // does not run a message loop for the WinForms synchronization context.
-using var dialog = new CameraSettingsDialog("192.168.188.24");
-Check(dialog.AcceptButton is Button save && save.Text == "Speichern", "Save button missing");
+using var dialog = new CameraSettingsDialog("192.168.188.24", testPath);
+IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>()
+    .SelectMany(child => new[] { child }.Concat(Descendants(child)));
+var dialogControls = Descendants(dialog).ToArray();
+var address = dialogControls.OfType<TextBox>().Single();
+var save = dialogControls.OfType<Button>().Single(button => button.Text == "Speichern");
+Check(dialog.AcceptButton == null && !save.Enabled && address.ReadOnly,
+    "Opening the dialog allowed accidental changes");
 Check(dialog.CancelButton is Button cancel && cancel.DialogResult == DialogResult.Cancel, "Cancel button missing");
-Check(dialog.Controls.OfType<TextBox>().Single().Text == "192.168.188.24", "Dialog did not show active IP");
+Check(address.Text == "192.168.188.24", "Dialog did not show active IP");
+var dialogFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
+Check(!File.Exists(testPath), "View mode persisted settings");
+typeof(CameraSettingsDialog).GetMethod("Edit_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
+Check(!address.ReadOnly && save.Enabled && dialog.AcceptButton == save &&
+    ((Button)dialog.CancelButton!).Text == "Abbrechen", "Edit mode was not explicitly enabled");
+address.Text = "192.168.188.025";
+Check(dialog.CameraIp == "192.168.188.24" && !File.Exists(testPath), "Editing applied unsaved changes");
+typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
+Check(dialog.DialogResult == DialogResult.OK && dialog.CameraIp == "192.168.188.25" &&
+    CameraSettings.Load(testPath) == "192.168.188.25", "Save did not persist and return the normalized IP");
+using (var cancelledDialog = new CameraSettingsDialog("192.168.188.25", testPath))
+{
+    typeof(CameraSettingsDialog).GetMethod("Edit_Click", dialogFlags)!.Invoke(cancelledDialog, new object?[] { null, EventArgs.Empty });
+    Descendants(cancelledDialog).OfType<TextBox>().Single().Text = "192.168.188.26";
+    cancelledDialog.DialogResult = DialogResult.Cancel;
+    cancelledDialog.Close();
+    Check(cancelledDialog.CameraIp == "192.168.188.25" && CameraSettings.Load(testPath) == "192.168.188.25",
+        "Cancel applied or persisted the changed IP");
+}
+File.Delete(testPath);
 
 Console.WriteLine($"Passed {checks} checks: settings, camera commands, HTTP errors, timeouts, response disposal and recovery.");
 

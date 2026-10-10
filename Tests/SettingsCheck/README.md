@@ -9,8 +9,8 @@ dotnet run --project Tests/SettingsCheck/SettingsCheck.csproj -c Release
 Use Release: Debug intentionally routes requests to the existing camera dummy.
 The checks use a fake HTTP handler and a temporary settings file in the build
 directory. They do not send camera commands or change the user's saved settings.
-They cover IPv4 validation, persistence and fallback, the hidden click gesture,
-dialog controls, address changes after the first request, and the destination of
+They cover IPv4 validation, persistence and fallback, explicit edit mode,
+saving and discarding dialog edits, address changes after the first request, and the destination of
 an already running standby sequence. They also cover HTTP 400/403/500 errors,
 network failures and timeouts for position, standby, movement, zoom and stop
 commands, failed standby focus commands, response disposal and recovery after

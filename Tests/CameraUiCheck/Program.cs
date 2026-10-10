@@ -14,12 +14,18 @@ internal static class Program
         const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
         var execute = type.GetMethod("ExecuteCameraCommandAsync", flags)!;
         var label = (Label)type.GetField("cameraErrorLabel", flags)!.GetValue(form)!;
+        var settingsButton = (Button)type.GetField("settingsButton", flags)!.GetValue(form)!;
         int checks = 0;
         void Check(bool ok, string name)
         {
             if (!ok) throw new Exception(name);
             checks++;
         }
+        Check(settingsButton.Text.Contains("Einstellungen") && settingsButton.Enabled,
+            "Visible settings access missing");
+        Check(settingsButton.Parent is Panel { Dock: DockStyle.Top } &&
+            ((Button)type.GetField("buttonRedner", flags)!.GetValue(form)!).Top >= settingsButton.Parent.Bottom,
+            "Settings access overlaps camera controls");
         Task Run(Func<Task> command, string action) =>
             (Task)execute.Invoke(form, new object[] { new Func<CancellationToken, Task>(_ => command()), action, CancellationToken.None })!;
         void PumpUntil(Task task)
@@ -48,6 +54,7 @@ internal static class Program
 
         PumpUntil(Run(() => Task.FromException(new HttpRequestException("test", null, HttpStatusCode.Forbidden)), "Position"));
         Check(label.Text.Contains("HTTP 403"), "HTTP error not displayed");
+        Check(label.Text.Contains("Einstellungen") && !label.Text.Contains("fünfmal"), "Error hints reference hidden access");
         Check(form.Controls.OfType<Button>().All(button => button.Enabled), "Controls disabled after error");
         PumpUntil(Run(() => Task.FromException(new TaskCanceledException()), "Zoom"));
         Check(label.Text.Contains("nicht rechtzeitig"), "Timeout not displayed");
@@ -232,6 +239,7 @@ internal static class Program
 
         // Presets cannot overlap, and settings cancel standby before opening.
         Task standby = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "StandBy") })!;
+        Check(settingsButton.Enabled, "Settings unavailable during a preset");
         Check(!standby.IsCompleted && !(bool)((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled,
             "Standby did not block overlapping commands");
         before = handler.Requests.Count;
@@ -239,6 +247,7 @@ internal static class Program
         keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
         Check(handler.Requests.Count == before, "A second preset or manual movement overlapped standby");
         PumpUntil((Task)prepareSettings.Invoke(form, null)!);
+        Check(!settingsButton.Enabled, "Settings button allowed duplicate dialogs");
         PumpUntil(standby);
         Check(AllStopsSince(before) && handler.Requests.Skip(before).All(uri => !uri.Query.Contains("focusin")),
             "Settings did not cancel and stop standby before delayed focus");
