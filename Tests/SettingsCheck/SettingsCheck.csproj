@@ -14,5 +14,6 @@
     <Compile Include="../../CamControl/Direction.cs" Link="Direction.cs" />
     <Compile Include="../../CamControl/Zoom.cs" Link="Zoom.cs" />
     <Compile Include="../../CamControl/CameraSettingsDialog.cs" Link="CameraSettingsDialog.cs" />
+    <Compile Include="../../CamControl/CameraHelp.cs" Link="CameraHelp.cs" />
   </ItemGroup>
 </Project>

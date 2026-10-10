@@ -243,6 +243,9 @@ IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control
     .SelectMany(child => new[] { child }.Concat(Descendants(child)));
 var dialogControls = Descendants(dialog).ToArray();
 var address = dialogControls.OfType<TextBox>().Single();
+var help = dialogControls.OfType<RichTextBox>().Single();
+Check(help.ReadOnly && help.ScrollBars == RichTextBoxScrollBars.Vertical,
+    "Help could be edited or was not scrollable");
 var save = dialogControls.OfType<Button>().Single(button => button.Text == "Speichern");
 Check(dialog.AcceptButton == null && !save.Enabled && address.ReadOnly,
     "Opening the dialog allowed accidental changes");
@@ -251,10 +254,17 @@ Check(address.Text == "192.168.188.24", "Dialog did not show active IP");
 var dialogFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
 typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
 Check(!File.Exists(testPath), "View mode persisted settings");
+var pages = dialogControls.OfType<TabControl>().Single();
+pages.SelectedIndex = 1;
 typeof(CameraSettingsDialog).GetMethod("Edit_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
 Check(!address.ReadOnly && save.Enabled && dialog.AcceptButton == save &&
-    ((Button)dialog.CancelButton!).Text == "Abbrechen", "Edit mode was not explicitly enabled");
+    ((Button)dialog.CancelButton!).Text == "Abbrechen" && pages.SelectedIndex == 0,
+    "Edit mode was not explicitly enabled on the camera page");
 address.Text = "192.168.188.025";
+pages.SelectedIndex = 1;
+Check(pages.SelectedTab!.Text == "Hilfe & Voraussetzungen" &&
+    address.Text == "192.168.188.025" && !File.Exists(testPath),
+    "Reading help applied or discarded unsaved configuration changes");
 Check(dialog.CameraIp == "192.168.188.24" && !File.Exists(testPath), "Editing applied unsaved changes");
 typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
 Check(dialog.DialogResult == DialogResult.OK && dialog.CameraIp == "192.168.188.25" &&

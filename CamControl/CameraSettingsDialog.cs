@@ -5,6 +5,7 @@ namespace CamControl
         private readonly TextBox address;
         private readonly Button edit, save, cancel;
         private readonly Label hint;
+        private readonly TabControl pages;
         private readonly string? settingsPath;
         private bool editing;
         public string CameraIp { get; private set; }
@@ -21,7 +22,7 @@ namespace CamControl
             ShowInTaskbar = false;
             AutoScaleMode = AutoScaleMode.Font;
             AutoScaleDimensions = new SizeF(7F, 15F);
-            ClientSize = new Size(540, 280);
+            ClientSize = new Size(600, 420);
             Padding = new Padding(16);
 
             address = new TextBox
@@ -37,8 +38,9 @@ namespace CamControl
             };
             // Add future pages for camera presets and button labels here once
             // the camera's preset-save API is known. All pages share edit/save/cancel.
-            var pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill };
+            pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill };
             pages.TabPages.Add(CreateCameraPage());
+            pages.TabPages.Add(CreateHelpPage());
 
             edit = new Button { Name = "editConfiguration", Text = "Konfiguration bearbeiten", AutoSize = true, TabIndex = 0 };
             save = new Button { Name = "saveConfiguration", Text = "Speichern", AutoSize = true, Enabled = false, TabIndex = 1 };
@@ -79,6 +81,7 @@ namespace CamControl
 
         private void Edit_Click(object? sender, EventArgs e)
         {
+            pages.SelectedIndex = 0;
             editing = true;
             address.ReadOnly = false;
             address.TabStop = true;
@@ -89,6 +92,21 @@ namespace CamControl
             AcceptButton = save;
             address.Focus();
             address.SelectAll();
+        }
+
+        private static TabPage CreateHelpPage()
+        {
+            var page = new TabPage("Hilfe & Voraussetzungen") { Padding = new Padding(8) };
+            var help = new RichTextBox
+            {
+                Name = "cameraHelp", Text = CameraHelp.Text,
+                Dock = DockStyle.Fill, ReadOnly = true, BorderStyle = BorderStyle.None,
+                BackColor = SystemColors.Window, DetectUrls = false,
+                ScrollBars = RichTextBoxScrollBars.Vertical, WordWrap = true,
+                AccessibleName = "Hilfe und Voraussetzungen", TabStop = true
+            };
+            page.Controls.Add(help);
+            return page;
         }
 
         private void Save_Click(object? sender, EventArgs e)

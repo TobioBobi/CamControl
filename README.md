@@ -39,6 +39,10 @@ The visible Settings button opens a read-only configuration dialog. Choose
 "Konfiguration bearbeiten" to change the camera IP; only "Speichern" applies
 and persists the change. Cancel or closing the dialog discards the edits.
 Opening settings cancels pending camera commands and attempts all stops first.
+The "Hilfe & Voraussetzungen" page explains network and runtime requirements,
+current camera compatibility limits, setup, preset numbers, keyboard/mouse
+controls, startup/standby behavior and troubleshooting. The confirmed camera
+model list and the preset-save API still need to be verified on the camera.
 
 The dialog uses separate pages so camera preset management and button labels
 can be added later. Future preset management should also save the camera's
