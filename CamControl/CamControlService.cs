@@ -9,7 +9,8 @@ namespace CamControl
     internal class CamControlService
     {
         private readonly HttpClient _httpClient;
-        private readonly SemaphoreSlim commandGate = new(1, 1);
+        private readonly SemaphoreSlim directionGate = new(1, 1);
+        private readonly SemaphoreSlim zoomGate = new(1, 1);
         private Uri cameraAddress = null!;
         public string CameraIp { get; private set; } = CameraSettings.DefaultCameraIp;
 
@@ -47,54 +48,63 @@ namespace CamControl
                     await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                     await SendCommandAsync(targetAddress, "focusstop&5", cancellationToken);
                 }
-            }, cancellationToken);
+            }, cancellationToken, directionGate, zoomGate);
         }
 
         public Task MoveInDirection(Direction direction, CancellationToken cancellationToken = default)
         {
             return ExecuteSerializedAsync(target => SendCommandAsync(target,
-                $"{direction.ToString().ToLowerInvariant()}&10&10", cancellationToken), cancellationToken);
+                $"{direction.ToString().ToLowerInvariant()}&10&10", cancellationToken), cancellationToken, directionGate);
         }
 
         public Task StopDirectionalMovement(CancellationToken cancellationToken = default)
         {
-            return ExecuteSerializedAsync(target => SendCommandAsync(target, "ptzstop&10&10", cancellationToken), cancellationToken);
+            return ExecuteSerializedAsync(target => SendCommandAsync(target, "ptzstop&10&10", cancellationToken), cancellationToken, directionGate);
         }
 
         public Task Zoom(Zoom zoom, CancellationToken cancellationToken = default)
         {
             return ExecuteSerializedAsync(target => SendCommandAsync(target,
-                $"{zoom.ToString().ToLowerInvariant()}&5", cancellationToken), cancellationToken);
+                $"{zoom.ToString().ToLowerInvariant()}&5", cancellationToken), cancellationToken, zoomGate);
 
         }
         public Task StopZooming(CancellationToken cancellationToken = default)
         {
-            return ExecuteSerializedAsync(target => SendCommandAsync(target, "zoomstop&5", cancellationToken), cancellationToken);
+            return ExecuteSerializedAsync(target => SendCommandAsync(target, "zoomstop&5", cancellationToken), cancellationToken, zoomGate);
         }
 
         public Task StopAll()
         {
-            // Attempt every stop even if one fails. Hold the gate until all
+            // Attempt every stop even if one fails. Hold both gates until all
             // responses complete so a new start cannot overtake these stops.
             return ExecuteSerializedAsync(target => Task.WhenAll(
                 SendCommandAsync(target, "ptzstop&10&10", CancellationToken.None),
                 SendCommandAsync(target, "zoomstop&5", CancellationToken.None),
-                SendCommandAsync(target, "focusstop&5", CancellationToken.None)), CancellationToken.None);
+                SendCommandAsync(target, "focusstop&5", CancellationToken.None)), CancellationToken.None, directionGate, zoomGate);
         }
 
-        private async Task ExecuteSerializedAsync(Func<Uri, Task> command, CancellationToken cancellationToken)
+        private async Task ExecuteSerializedAsync(Func<Uri, Task> command, CancellationToken cancellationToken,
+            params SemaphoreSlim[] gates)
         {
             // Queued commands belong to the camera selected when requested.
             var target = cameraAddress;
-            await commandGate.WaitAsync(cancellationToken);
+            // Separate channels keep a slow zoom response from delaying a PTZ
+            // stop (and vice versa). Presets and StopAll acquire both in this order.
+            int acquired = 0;
             try
             {
+                foreach (var gate in gates)
+                {
+                    await gate.WaitAsync(cancellationToken);
+                    acquired++;
+                }
                 cancellationToken.ThrowIfCancellationRequested();
                 await command(target);
             }
             finally
             {
-                commandGate.Release();
+                while (acquired > 0)
+                    gates[--acquired].Release();
             }
         }
 

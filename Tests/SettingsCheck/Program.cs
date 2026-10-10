@@ -145,15 +145,17 @@ using (var cancellation = new CancellationTokenSource())
     var cancellationErrors = new List<string>();
     Task<bool> moving = CameraCommandRunner.RunAsync(
         () => sequencingService.MoveInDirection(Direction.Up, cancellation.Token), cancellationErrors.Add, cancellation.Token);
-    Task<bool> queuedZoom = CameraCommandRunner.RunAsync(
+    Task<bool> parallelZoom = CameraCommandRunner.RunAsync(
         () => sequencingService.Zoom(Zoom.ZoomIn, cancellation.Token), cancellationErrors.Add, cancellation.Token);
-    Check(sequencingHandler.Requests.Count == 1, "Queued zoom overlapped a pending movement");
+    Task<bool> queuedDirection = CameraCommandRunner.RunAsync(
+        () => sequencingService.MoveInDirection(Direction.Down, cancellation.Token), cancellationErrors.Add, cancellation.Token);
+    Check(sequencingHandler.Requests.Count == 2, "Channels were not independent or queued direction overlapped movement");
     cancellation.Cancel();
     await sequencingService.StopAll();
-    Check(!await moving && !await queuedZoom && cancellationErrors.Count == 0,
+    Check(!await moving && await parallelZoom && !await queuedDirection && cancellationErrors.Count == 0,
         "Intentional stop was reported as a network timeout");
-    Check(sequencingHandler.Requests.Count == 4 &&
-        sequencingHandler.Requests.Skip(1).All(uri => uri.Query.Contains("stop")),
+    Check(sequencingHandler.Requests.Count == 5 &&
+        sequencingHandler.Requests.Skip(2).All(uri => uri.Query.Contains("stop")),
         "A cancelled start was sent after stopping");
 }
 
@@ -214,11 +216,34 @@ sequencingHandler.Respond = _ => sequencingHandler.Requests.Last().Query.Contain
 stopsBefore = sequencingHandler.Requests.Count;
 Task allStops = sequencingService.StopAll();
 Task restart = sequencingService.MoveInDirection(Direction.Down);
-Check(sequencingHandler.Requests.Count == stopsBefore + 3 && !restart.IsCompleted,
-    "Movement restarted before all stops completed");
+Task restartZoom = sequencingService.Zoom(Zoom.ZoomOut);
+Check(sequencingHandler.Requests.Count == stopsBefore + 3 && !restart.IsCompleted && !restartZoom.IsCompleted,
+    "A channel restarted before all stops completed");
 delayedStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
-await Task.WhenAll(allStops, restart);
-Check(sequencingHandler.Requests.Last().Query.Contains("&down&"), "Movement did not resume after stopping");
+await Task.WhenAll(allStops, restart, restartZoom);
+Check(sequencingHandler.Requests.Skip(stopsBefore + 3).Any(uri => uri.Query.Contains("&down&")) &&
+    sequencingHandler.Requests.Skip(stopsBefore + 3).Any(uri => uri.Query.Contains("zoomout")),
+    "Both channels did not resume after stopping");
+
+// Cancelling a preset waiting for zoom must release its acquired direction gate.
+var pendingZoom = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+sequencingHandler.Respond = _ => sequencingHandler.Requests.Last().Query.Contains("zoomin")
+    ? pendingZoom.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+Task zoomIn = sequencingService.Zoom(Zoom.ZoomIn);
+using (var cancellation = new CancellationTokenSource())
+{
+    int before = sequencingHandler.Requests.Count;
+    Task preset = sequencingService.MoveToPosition(Position.Redner, cancellation.Token);
+    Check(!preset.IsCompleted && sequencingHandler.Requests.Count == before, "Preset overlapped pending zoom");
+    cancellation.Cancel();
+    try { await preset; throw new Exception("Waiting preset ignored cancellation"); }
+    catch (OperationCanceledException) { checks++; }
+    await sequencingService.StopDirectionalMovement().WaitAsync(TimeSpan.FromSeconds(2));
+    Check(sequencingHandler.Requests.Last().Query.Contains("ptzstop") && !zoomIn.IsCompleted,
+        "Cancelled preset leaked the direction gate");
+}
+pendingZoom.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+await zoomIn;
 
 // Construct WinForms controls after the asynchronous checks: this console test
 // does not run a message loop for the WinForms synchronization context.

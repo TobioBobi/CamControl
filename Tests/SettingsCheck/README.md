@@ -16,4 +16,6 @@ network failures and timeouts for position, standby, movement, zoom and stop
 commands, failed standby focus commands, response disposal and recovery after
 errors. Cancellation checks cover pending and queued starts, both standby waits,
 all stop channels being attempted despite a failure, and new commands waiting
-for all stop responses. The standby checks take about seventeen seconds in total.
+for all stop responses. Movement and zoom are checked as independent channels;
+cancelled presets must release every acquired gate. The standby checks take
+about seventeen seconds in total.

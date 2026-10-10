@@ -139,6 +139,34 @@ internal static class Program
         Check(label.Text.Length == 0, "Key release cancellation was reported as timeout");
         handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
 
+        // A pending response on the other channel must not delay a release stop.
+        foreach (var scenario in new[]
+        {
+            (First: Keys.Up, Other: Keys.Add, Pending: "zoomin", Stop: "ptzstop", Release: "StopDirectionAsync"),
+            (First: Keys.Add, Other: Keys.Up, Pending: "&up&", Stop: "zoomstop", Release: "StopZoomAsync")
+        })
+        {
+            var otherReply = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+            handler.Respond = (uri, _) => uri.Query.Contains(scenario.Pending)
+                ? otherReply.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            keyDown.Invoke(form, new object[] { form, new KeyEventArgs(scenario.First) });
+            keyDown.Invoke(form, new object[] { form, new KeyEventArgs(scenario.Other) });
+            before = handler.Requests.Count;
+            Task release = (Task)type.GetMethod(scenario.Release, flags)!.Invoke(form, null)!;
+            PumpUntil(release);
+            Check(!otherReply.Task.IsCompleted && handler.Requests.Skip(before).Any(uri => uri.Query.Contains(scenario.Stop)),
+                "Release stop waited for the other channel: " + scenario.Stop);
+            // The released channel can restart without overtaking its stop.
+            before = handler.Requests.Count;
+            keyDown.Invoke(form, new object[] { form, new KeyEventArgs(scenario.First) });
+            Check(handler.Requests.Count == before + 1, "Released channel could not restart independently");
+            PumpUntil((Task)type.GetMethod(scenario.Release, flags)!.Invoke(form, null)!);
+            otherReply.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+            Application.DoEvents();
+            keyUp.Invoke(form, new object[] { form, new KeyEventArgs(scenario.Other) });
+        }
+        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+
         // Lost mouse capture must stop even if no MouseUp is delivered.
         type.GetMethod("buttonUp_MouseDown", flags)!.Invoke(form,
             new object[] { form, new MouseEventArgs(MouseButtons.Left, 1, 0, 0, 0) });
@@ -165,6 +193,42 @@ internal static class Program
         Check(((Button)type.GetField("buttonUp", flags)!.GetValue(form)!).Enabled,
             "Controls stayed disabled after stop acknowledgement");
         handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+
+        // Cancel a preset while its preparatory stops are still pending.
+        foreach (bool openSettings in new[] { false, true })
+        {
+            var preparationReply = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+            handler.Respond = (uri, _) => uri.Query.Contains("zoomstop")
+                ? preparationReply.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            before = handler.Requests.Count;
+            Task waitingPreset = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "Redner") })!;
+            Check(!waitingPreset.IsCompleted, "Preset did not wait for preparation");
+            Task? settingsPreparation = null;
+            if (openSettings)
+                settingsPreparation = (Task)prepareSettings.Invoke(form, null)!;
+            else
+            {
+                deactivate.Invoke(form, new object[] { EventArgs.Empty });
+                activate.Invoke(form, new object[] { EventArgs.Empty });
+            }
+            preparationReply.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+            PumpUntil(waitingPreset);
+            if (settingsPreparation != null)
+            {
+                PumpUntil(settingsPreparation);
+                type.GetField("settingsDialogOpen", flags)!.SetValue(form, false);
+                activate.Invoke(form, new object[] { EventArgs.Empty });
+            }
+            Check(handler.Requests.Skip(before).All(uri => !uri.Query.Contains("poscall")),
+                "Cancelled preset started after preparation: settings=" + openSettings);
+            Check(((Button)type.GetField("buttonRedner", flags)!.GetValue(form)!).Enabled,
+                "Cancelled preparation left controls disabled");
+            handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            before = handler.Requests.Count;
+            PumpUntil((Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "Redner") })!);
+            Check(handler.Requests.Skip(before).Any(uri => uri.Query.Contains("poscall")),
+                "New preset could not start after cancelled preparation");
+        }
 
         // Presets cannot overlap, and settings cancel standby before opening.
         Task standby = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "StandBy") })!;

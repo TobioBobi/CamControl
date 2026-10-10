@@ -13,4 +13,6 @@ recovery, closing while the camera fails, and that an older successful request
 does not clear a newer error. They also cover focus loss, reactivation during a
 pending stop, lost mouse capture, release before a start response arrives,
 blocked overlapping presets, settings preparation, and closing during standby.
+Regression checks cover stops while the other channel has an unanswered start,
+and presets cancelled during preparation by focus loss or settings opening.
 No camera commands are sent over the network.

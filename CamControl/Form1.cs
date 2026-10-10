@@ -13,6 +13,7 @@ namespace CamControl
         private CancellationTokenSource zoomCancellation = new();
         private Task<bool>? stopControlTask;
         private bool positionInProgress;
+        private CancellationTokenSource? positionCancellation;
         private bool cameraWindowActive = true;
         private bool keyZoomIsPressed, keyDirectionIsPressed;
         private bool mouseZoomIsPressed, mouseDirectionIsPressed;
@@ -70,7 +71,14 @@ namespace CamControl
                 cameraErrorLabel.Text = string.Empty;
         }
 
-        private async Task<bool> StopCameraControlAsync()
+        private Task<bool> StopCameraControlAsync()
+        {
+            // Cancel the entire preset, including its preparatory stop wait.
+            positionCancellation?.Cancel();
+            return StopManualControlAsync();
+        }
+
+        private async Task<bool> StopManualControlAsync()
         {
             // Reset before awaiting: a missing KeyUp/MouseUp must not leave a
             // pressed flag behind. Concurrent lifecycle events share one stop.
@@ -102,6 +110,8 @@ namespace CamControl
         {
             if (!CanControlCamera || positionInProgress)
                 return;
+            using var cancellation = new CancellationTokenSource();
+            positionCancellation = cancellation;
             positionInProgress = true;
             UpdateCameraControls();
             if (position == Position.StandBy)
@@ -113,11 +123,13 @@ namespace CamControl
             try
             {
                 // Stop manual motion and cancel queued starts before a preset.
-                if (await StopCameraControlAsync())
-                    await ExecuteCameraCommandAsync(token => camControlService.MoveToPosition(position, token), "Position anfahren");
+                if (await StopManualControlAsync() && !cancellation.IsCancellationRequested)
+                    await ExecuteCameraCommandAsync(token => camControlService.MoveToPosition(position, token),
+                        "Position anfahren", cancellation.Token);
             }
             finally
             {
+                positionCancellation = null;
                 positionInProgress = false;
                 if (!IsDisposed && !Disposing)
                 {
@@ -225,6 +237,7 @@ namespace CamControl
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            positionCancellation?.Cancel();
             controlCancellation.Cancel();
             controlCancellation.Dispose();
             directionCancellation.Cancel();
