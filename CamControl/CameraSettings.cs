@@ -48,6 +48,10 @@ namespace CamControl
             if (!TryNormalizeIp(ip, out var normalizedIp))
                 throw new ArgumentException("Ungültige IPv4-Adresse.", nameof(ip));
 
+            // Persist no automatic motion before the first real IP is saved;
+            // otherwise the next startup would mistake a fresh setup for legacy.
+            if (path == null && !TryLoad(null, out _) && !File.Exists(AutomaticPositions.FilePath))
+                AutomaticPositions.Save(new());
             path ??= FilePath;
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
             var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";

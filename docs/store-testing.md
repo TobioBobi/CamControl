@@ -14,15 +14,14 @@ demo selection is not saved across restarts. The window clearly labels demo mode
 
 ## Check functionality
 
-1. Click each position button or press 1–6. The blue frame on the stage and the
+1. Click each position button or press 1–6 or 9. The blue frame on the stage and the
    cropped camera preview should change to that preset.
 2. Hold a direction arrow or an arrow key. The frame should move. Release it;
    movement should stop. Zoom in first if more room to move is needed.
 3. Hold Zoom In/Out or number-pad plus/minus. The frame and zoom value change;
    releasing the control stops the zoom.
 4. During movement/zoom, switch to another window. Both channels should stop.
-5. Start Standby (9). The view changes and a timed focus sequence is simulated.
-   Buttons are blocked during this sequence. Open settings to cancel it.
+5. Call preset 9. It behaves like all other presets: no timed focus sequence.
 6. Review the read-only camera configuration and the help page. Editing requires
    **Konfiguration bearbeiten**. Cancel a changed IP and verify it is not saved.
 7. Open **Einstellungen > Buttons & Presets > Bearbeiten …** for one button.
@@ -31,7 +30,11 @@ demo selection is not saved across restarts. The window clearly labels demo mode
    Move elsewhere and use **Gespeicherte Position anfahren** to verify recall.
    Close settings: the renamed main button recalls the new position too.
    Restart demo to restore defaults; real camera configuration is unchanged.
-8. Close the demo. It stops simulated channels and exits without a standby delay.
+8. Scroll down in **Buttons & Presets** to **Automatische Positionen**.
+   Choose startup/exit positions (or **Keine Position**); save enables on change.
+   Switch out of demo and back to verify the startup choice in the same session.
+   Close demo: it stops all channels, calls the selected exit preset if any,
+   and exits without a focus sequence. Demo selections do not change real settings.
 
 To leave demo mode, open **Einstellungen > Demo-Modus > Kamera einrichten und
 Demo beenden**, review/edit the IP, then save. This deliberately activates camera
@@ -39,7 +42,7 @@ control; physical hardware is required to verify the real commands.
 
 ## Current limitations
 
-- Preset numbers 1–6 and 9 remain fixed. Names and positions for 1–6 are editable;
+- Preset numbers 1–6 and 9 remain fixed. All seven names and positions are editable;
   saving to a physical camera uses `posset` and still requires hardware validation.
 - “Demo stehend” is the name of preset 6, separate from the hardware-free mode.
 - The model list remains to be confirmed. The app currently targets the HTTP

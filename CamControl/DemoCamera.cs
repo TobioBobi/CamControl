@@ -42,7 +42,7 @@ namespace CamControl
                 switch (parts[1])
                 {
                     case "posset":
-                        if (parts.Length != 3 || !int.TryParse(parts[2], out int saveNumber) || saveNumber < 1 || saveNumber > 6)
+                        if (parts.Length != 3 || !int.TryParse(parts[2], out int saveNumber) || !Enum.IsDefined((Position)saveNumber))
                             return false;
                         savedPresets[saveNumber] = (x, y, zoom, $"Eigenes Preset {saveNumber}");
                         lastAction = $"Preset {saveNumber} gespeichert";

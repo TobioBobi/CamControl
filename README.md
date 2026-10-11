@@ -60,11 +60,11 @@ current camera compatibility limits, setup, preset numbers, keyboard/mouse
 controls, startup/standby behavior and troubleshooting. The confirmed camera
 model list and the preset-save API still need to be verified on the camera.
 
-Settings > **Buttons & Presets** lists the six position buttons. **Bearbeiten …**
+Settings > **Buttons & Presets** lists all seven position buttons. **Bearbeiten …**
 opens a separate editor with held direction/zoom controls, preset recall, and
 confirmed position saving using `ptzcmd&posset&N`. Names are saved independently
 in `%LOCALAPPDATA%/CamControl/buttons.json`; renaming sends no preset-save command.
-Preset numbers 1–6 remain fixed and standby (9) cannot be overwritten here.
+Preset numbers 1–6 and 9 remain fixed; all seven positions are editable.
 The camera stores physical positions. Demo names and saved positions stay in
 memory for the session and do not change the real configuration. Closing an
 editor discards an unsaved name, but does not undo camera motion or saved presets.
@@ -73,11 +73,20 @@ with the actual camera. A successful HTTP response is not independent readback.
 
 Manual movement and zoom stop on key/mouse release, loss of mouse capture,
 window deactivation, settings opening and application closing. Pending commands
-and standby delays are cancelled before the lifecycle stop commands are sent.
+are cancelled before the lifecycle stop commands are sent.
 Camera controls are disabled during a preset sequence or while stopping.
-Closing attempts standby only after movement, zoom and focus stops succeed.
+Closing calls the selected exit preset only after all stop commands succeed.
 Network failures can prevent the camera from receiving or confirming a stop;
 an unconfirmed stop is shown as an error while the app is open.
 
 Framework-dependent builds require the .NET 10 Desktop Runtime on the target
 Windows PC. MSIX packaging and self-contained distribution are not configured yet.
+
+Automatic startup and exit presets are configured in **Buttons & Presets >
+Automatische Positionen** and applied with **Automatik speichern**. Save becomes
+enabled only when a selection differs from its saved value. Each selection
+allows None or one of the seven buttons. New installations default to no motion;
+existing camera configurations without automation settings migrate to start 4,
+exit 9. Choices persist in `automatic-positions.json`. Demo choices remain in
+memory for the session. Preset 9 is ordinary: no timed focus sequence or loading
+animation remains. HTTP completion does not confirm arrival at the physical target.

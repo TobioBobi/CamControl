@@ -11,6 +11,8 @@ namespace CamControl
         private HttpClient? demoClient;
         private Dictionary<int, string> presetNames = PresetSettings.Load();
         private readonly Dictionary<int, string> demoPresetNames = PresetSettings.Defaults();
+        private AutomaticPositions automaticPositions = AutomaticPositions.Load();
+        private AutomaticPositions demoAutomaticPositions = new();
         internal bool IsDemoMode { get; private set; }
         private bool settingsDialogOpen;
         private readonly Label cameraErrorLabel;
@@ -93,7 +95,7 @@ namespace CamControl
             demoClient = null;
             if (enabled)
             {
-                demoCamera.Apply("?ptzcmd&poscall&4");
+                demoCamera.Apply($"?ptzcmd&poscall&{demoAutomaticPositions.StartPreset ?? 4}");
                 demoClient = new HttpClient(new DemoCameraHandler(demoCamera));
                 camControlService = new CamControlService(demoClient, ip);
             }
@@ -114,11 +116,12 @@ namespace CamControl
         private void RefreshPresetLabels()
         {
             var names = IsDemoMode ? demoPresetNames : presetNames;
-            var buttons = new[] { buttonRedner, buttonRednerLeser, buttonTisch, buttonKompletteBuehne, buttonRednerBildschirm, buttonDemoStehend };
+            var buttons = new[] { buttonRedner, buttonRednerLeser, buttonTisch, buttonKompletteBuehne, buttonRednerBildschirm, buttonDemoStehend, buttonStandBy };
+            var numbers = new[] { 1, 2, 3, 4, 5, 6, 9 };
             for (int i = 0; i < buttons.Length; i++)
             {
-                buttons[i].Text = $"{names[i + 1]} ({i + 1})";
-                buttons[i].AccessibleName = names[i + 1];
+                buttons[i].Text = $"{names[numbers[i]]} ({numbers[i]})";
+                buttons[i].AccessibleName = names[numbers[i]];
             }
         }
 
@@ -212,12 +215,6 @@ namespace CamControl
             positionCancellation = cancellation;
             positionInProgress = true;
             UpdateCameraControls();
-            if (position == Position.StandBy)
-            {
-                ActiveControl = null;
-                pictureBoxLoaderSmall.BringToFront();
-                pictureBoxLoaderSmall.Visible = true;
-            }
             try
             {
                 // Stop manual motion and cancel queued starts before a preset.
@@ -231,7 +228,6 @@ namespace CamControl
                 positionInProgress = false;
                 if (!IsDisposed && !Disposing)
                 {
-                    pictureBoxLoaderSmall.Visible = false;
                     UpdateCameraControls();
                 }
             }
@@ -250,6 +246,11 @@ namespace CamControl
                     service: camControlService, presetNames: IsDemoMode ? demoPresetNames : presetNames,
                     savePresetName: SavePresetName, demo: IsDemoMode ? demoCamera : null);
                 dialog.PresetStopFailed += error => ReportCameraError("Kamerastopp beim Schließen des Preset-Editors nicht bestätigt", error);
+                dialog.ConfigureAutomaticPositions(IsDemoMode ? demoAutomaticPositions : automaticPositions, value =>
+                {
+                    if (IsDemoMode) demoAutomaticPositions = value;
+                    else { AutomaticPositions.Save(value); automaticPositions = value; }
+                });
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     camControlService.SetCameraIp(dialog.CameraIp);
@@ -295,7 +296,11 @@ namespace CamControl
                 await StopCameraControlAsync();
         }
 
-        private async void Form1_Load(object sender, EventArgs e) => await MoveToPositionAsync(Position.BuehneKomplett);
+        private async void Form1_Load(object sender, EventArgs e)
+        {
+            if ((IsDemoMode ? demoAutomaticPositions : automaticPositions).StartPreset is { } number)
+                await MoveToPositionAsync((Position)number);
+        }
 
         private async void Form1_FormClosingAsync(object sender, FormClosingEventArgs e)
         {
@@ -306,13 +311,11 @@ namespace CamControl
                 return;
             ControlBox = false;
             UpdateCameraControls();
-            pictureBoxLoader.BringToFront();
-            pictureBoxLoader.Visible = true;
             try
             {
                 // Do not send another motion command if stopping failed.
-                if (await StopCameraControlAsync() && !IsDemoMode)
-                    await CameraCommandRunner.RunAsync(() => camControlService.MoveToPosition(Position.StandBy), _ => { });
+                if (await StopCameraControlAsync() && (IsDemoMode ? demoAutomaticPositions : automaticPositions).ExitPreset is { } number)
+                    await CameraCommandRunner.RunAsync(() => camControlService.MoveToPosition((Position)number), _ => { });
             }
             finally
             {

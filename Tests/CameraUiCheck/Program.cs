@@ -230,6 +230,36 @@ internal static class Program
         }
 
         PumpUntil(Run(() => Task.FromException(new HttpRequestException("test", null, HttpStatusCode.Forbidden)), "Position"));
+        var automaticType = type.Assembly.GetType("CamControl.AutomaticPositions")!;
+        foreach (var exitCase in new[] { (Number: (int?)null, Stop: true), (Number: (int?)6, Stop: true),
+            (Number: (int?)9, Stop: true), (Number: (int?)6, Stop: false) })
+        {
+            int? exitNumber = exitCase.Number;
+            using var automaticForm = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!;
+            _ = automaticForm.Handle;
+            using var automaticHandler = new FailingHandler { Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)) };
+            using var automaticClient = new HttpClient(automaticHandler);
+            var automaticServiceType = type.Assembly.GetType("CamControl.CamControlService")!;
+            var automaticService = Activator.CreateInstance(automaticServiceType, flags, null, new object[] { automaticClient, "192.168.188.24" }, null)!;
+            type.GetField("camControlService", flags)!.SetValue(automaticForm, automaticService);
+            object automaticChoices = Activator.CreateInstance(automaticType, true)!;
+            type.GetField("demoAutomaticPositions", flags)!.SetValue(automaticForm, automaticChoices);
+            type.GetMethod("Form1_Load", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
+            Check(automaticHandler.Requests.Count == 0, "None startup selection still moved camera");
+            automaticType.GetProperty("StartPreset")!.SetValue(automaticChoices, 2);
+            type.GetMethod("Form1_Load", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
+            Check(automaticHandler.Requests.Last().Query == "?ptzcmd&poscall&2", "Startup ignored selected preset");
+            automaticHandler.Requests.Clear();
+            if (!exitCase.Stop) automaticHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            automaticType.GetProperty("ExitPreset")!.SetValue(automaticChoices, exitNumber);
+            type.GetMethod("Form1_FormClosingAsync", flags)!.Invoke(automaticForm,
+                new object[] { automaticForm, new FormClosingEventArgs(CloseReason.UserClosing, false) });
+            PumpUntilCondition(() => (bool)type.GetField("finalClose", flags)!.GetValue(automaticForm)!);
+            Check(automaticHandler.Requests.Count == (exitNumber.HasValue && exitCase.Stop ? 4 : 3), "Exit selection sent unexpected commands");
+            Check(automaticHandler.Requests.Take(3).All(uri => uri.Query.Contains("stop")), "Exit preset ran before all stops");
+            if (exitNumber.HasValue && exitCase.Stop) Check(automaticHandler.Requests.Last().Query == $"?ptzcmd&poscall&{exitNumber}", "Exit ignored selected preset");
+            Check(automaticHandler.Requests.All(uri => !uri.Query.Contains("focusin")), "Normal presets still sent special focus motion");
+        }
         Check(label.Text.Contains("HTTP 403"), "HTTP error not displayed");
         Check(label.Text.Contains("Einstellungen") && !label.Text.Contains("fünfmal"), "Error hints reference hidden access");
         Check(form.Controls.OfType<Button>().All(button => button.Enabled), "Controls disabled after error");
@@ -261,7 +291,6 @@ internal static class Program
             Check(label.Text.Contains("HTTP 500"), name + " did not display failure");
         }
         Check(((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled, "Standby button remained disabled");
-        Check(!((PictureBox)type.GetField("pictureBoxLoaderSmall", flags)!.GetValue(form)!).Visible, "Standby loader remained visible");
         foreach (var key in new[] { Keys.Add, Keys.Subtract, Keys.Up, Keys.Down, Keys.Left, Keys.Right })
         {
             foreach (var name in new[] { "Form1_KeyDown", "Form1_KeyUp" })
@@ -415,6 +444,11 @@ internal static class Program
         }
 
         // Presets cannot overlap, and settings cancel standby before opening.
+        handler.Respond = async (uri, token) =>
+        {
+            if (uri.Query.Contains("poscall")) await Task.Delay(Timeout.Infinite, token);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        };
         Task standby = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "StandBy") })!;
         Check(settingsButton.Enabled, "Settings unavailable during a preset");
         Check(!standby.IsCompleted && !(bool)((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled,

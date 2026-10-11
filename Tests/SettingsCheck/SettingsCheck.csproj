@@ -18,6 +18,7 @@
     <Compile Include="../../CamControl/DemoCamera.cs" Link="DemoCamera.cs" />
     <Compile Include="../../CamControl/DemoCameraView.cs" Link="DemoCameraView.cs" />
     <Compile Include="../../CamControl/PresetSettings.cs" Link="PresetSettings.cs" />
+    <Compile Include="../../CamControl/AutomaticPositions.cs" Link="AutomaticPositions.cs" />
     <Compile Include="../../CamControl/PresetEditorDialog.cs" Link="PresetEditorDialog.cs" />
   </ItemGroup>
 </Project>

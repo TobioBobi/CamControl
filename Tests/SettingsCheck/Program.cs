@@ -32,15 +32,35 @@ File.Delete(testPath);
 
 using var handler = new RecordingHandler();
 var namesPath = Path.Combine(AppContext.BaseDirectory, "test-buttons.json");
+var automaticPath = Path.Combine(AppContext.BaseDirectory, "test-automatic-positions.json");
+File.Delete(automaticPath);
+var freshAutomatic = AutomaticPositions.Load(automaticPath, existingInstallation: false);
+Check(freshAutomatic.StartPreset == null && freshAutomatic.ExitPreset == null, "Fresh setup unexpectedly enabled automatic motion");
+var migratedAutomatic = AutomaticPositions.Load(automaticPath, existingInstallation: true);
+Check(migratedAutomatic.StartPreset == 4 && migratedAutomatic.ExitPreset == 9, "Existing installation lost its automatic positions");
+AutomaticPositions.Save(new() { StartPreset = 2, ExitPreset = 6 }, automaticPath);
+var reloadedAutomatic = AutomaticPositions.Load(automaticPath, false);
+Check(reloadedAutomatic.StartPreset == 2 && reloadedAutomatic.ExitPreset == 6, "Automatic choices did not survive restart");
+AutomaticPositions.Save(new(), automaticPath);
+Check(AutomaticPositions.Load(automaticPath, true).StartPreset == null && AutomaticPositions.Load(automaticPath, true).ExitPreset == null,
+    "Saved none selection reverted to legacy behavior");
+File.WriteAllText(automaticPath, "broken");
+Check(AutomaticPositions.Load(automaticPath, true).StartPreset == null, "Damaged automation enabled legacy movement");
+File.WriteAllText(automaticPath, "{\"StartPreset\":7,\"ExitPreset\":9}");
+Check(AutomaticPositions.Load(automaticPath, false).StartPreset == null && AutomaticPositions.Load(automaticPath, false).ExitPreset == 9,
+    "Invalid automatic preset accepted or valid preset discarded");
+try { AutomaticPositions.Save(new() { ExitPreset = 8 }, automaticPath); throw new Exception("Invalid automatic preset saved"); }
+catch (ArgumentException) { checks++; }
+File.Delete(automaticPath);
 File.Delete(namesPath);
 var names = PresetSettings.Load(namesPath);
-Check(names.Count == 6 && names[1] == "Redner", "Missing button settings lost defaults");
+Check(names.Count == 7 && names[1] == "Redner", "Missing button settings lost defaults");
 names[1] = "  Bühne links  ";
 PresetSettings.Save(names, namesPath);
 Check(PresetSettings.Load(namesPath)[1] == "Bühne links", "Button name did not survive restart");
 File.WriteAllText(namesPath, "{\"1\":\"\",\"2\":\"Lesepult\",\"9\":\"Wrong\"}");
 var loadedNames = PresetSettings.Load(namesPath);
-Check(loadedNames[1] == "Redner" && loadedNames[2] == "Lesepult" && !loadedNames.ContainsKey(9), "Invalid names or standby mapping accepted");
+Check(loadedNames[1] == "Redner" && loadedNames[2] == "Lesepult" && loadedNames[9] == "Wrong", "Invalid names or standby mapping accepted");
 File.WriteAllText(namesPath, "broken json");
 Check(PresetSettings.Load(namesPath)[1] == "Redner", "Damaged button file prevented fallback");
 foreach (var invalidName in new[] { "", "   ", new string('x', 33), "a\nb" })
@@ -56,7 +76,6 @@ using (var demoClient = new HttpClient(new DemoCameraHandler(demoCamera)))
     var demoService = new CamControlService(demoClient, "192.168.188.24");
     foreach (var preset in Enum.GetValues<Position>())
     {
-        if (preset == Position.StandBy) continue;
         await demoService.MoveToPosition(preset);
         Check(!demoCamera.State.Moving && !demoCamera.State.Zooming && demoCamera.State.Frame.Left >= 0 &&
             demoCamera.State.Frame.Right <= 1, "Demo preset was not contained/stopped: " + preset);
@@ -98,14 +117,19 @@ using (var demoClient = new HttpClient(new DemoCameraHandler(demoCamera)))
     Check(demoCamera.State.X == savedPosition.X && demoCamera.State.Y == savedPosition.Y &&
         demoCamera.State.Zoom == savedPosition.Zoom, "Demo did not recall a custom position and zoom");
     await demoService.SavePosition(Position.Redner);
-    Check(!demoCamera.Apply("?ptzcmd&posset&9"), "Demo overwrote standby");
+    var ninthPosition = demoCamera.State;
+    await demoService.SavePosition(Position.StandBy);
+    await demoService.MoveToPosition(Position.Tisch);
+    await demoService.MoveToPosition(Position.StandBy);
+    Check(demoCamera.State.X == ninthPosition.X && demoCamera.State.Y == ninthPosition.Y && demoCamera.State.Zoom == ninthPosition.Zoom,
+        "Demo could not save/recall preset 9");
 }
 using var client = new HttpClient(handler);
 var service = new CamControlService(client, "192.168.188.24");
 await service.SavePosition(Position.Redner);
 Check(handler.Requests.Last().Query == "?ptzcmd&posset&1", "Preset save URL differs from documented command");
 handler.Requests.Clear();
-try { await service.SavePosition(Position.StandBy); throw new Exception("Standby save accepted"); }
+try { await service.SavePosition((Position)7); throw new Exception("Invalid preset save accepted"); }
 catch (ArgumentOutOfRangeException) { checks++; }
 await service.MoveToPosition(Position.BuehneKomplett);
 service.SetCameraIp("192.168.188.25");
@@ -125,7 +149,7 @@ var firstStandbyRequest = handler.Requests.Count;
 var standby = service.MoveToPosition(Position.StandBy);
 service.SetCameraIp("192.168.188.26");
 await standby;
-Check(handler.Requests.Skip(firstStandbyRequest).Count() == 3, "Standby command sequence incomplete");
+Check(handler.Requests.Skip(firstStandbyRequest).Count() == 1, "Preset 9 must send only one position command");
 Check(handler.Requests.Skip(firstStandbyRequest).All(uri => uri.Host == "192.168.188.25"),
     "Pending standby sequence switched to a different camera");
 await service.MoveToPosition(Position.BuehneKomplett);
@@ -164,16 +188,6 @@ foreach (var command in commands)
             command.Name + " reported wrong network error");
     }
 }
-
-// A failed focus command must not continue the standby sequence.
-int standbyRequestCount = handler.Requests.Count;
-handler.Respond = _ => Task.FromResult(new HttpResponseMessage(
-    handler.Requests.Count == standbyRequestCount + 1 ? HttpStatusCode.OK : HttpStatusCode.BadRequest));
-var standbyErrors = new List<string>();
-Check(!await CameraCommandRunner.RunAsync(() => service.MoveToPosition(Position.StandBy), standbyErrors.Add),
-    "Standby focus error was ignored");
-Check(handler.Requests.Count == standbyRequestCount + 2 && standbyErrors.Count == 1,
-    "Standby continued after focus failure");
 
 // Exercise an actual HttpClient timeout, including asynchronously delivered cancellation.
 using var timeoutHandler = new RecordingHandler
@@ -225,45 +239,6 @@ using (var cancellation = new CancellationTokenSource())
     Check(sequencingHandler.Requests.Count == 5 &&
         sequencingHandler.Requests.Skip(2).All(uri => uri.Query.Contains("stop")),
         "A cancelled start was sent after stopping");
-}
-
-// A stop during the standby wait must prevent the delayed focus start.
-sequencingHandler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-using (var cancellation = new CancellationTokenSource())
-{
-    int before = sequencingHandler.Requests.Count;
-    var errors = new List<string>();
-    Task<bool> sequence = CameraCommandRunner.RunAsync(
-        () => sequencingService.MoveToPosition(Position.StandBy, cancellation.Token), errors.Add, cancellation.Token);
-    Check(sequencingHandler.Requests.Count == before + 1, "Standby did not begin");
-    cancellation.Cancel();
-    await sequencingService.StopAll();
-    Check(!await sequence && errors.Count == 0, "Standby cancellation raised an error");
-    Check(sequencingHandler.Requests.Skip(before).All(uri => !uri.Query.Contains("focusin")),
-        "Cancelled standby still started focus");
-}
-
-// Cancellation during active focus must also end the sequence and stop focus.
-var focusStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-sequencingHandler.Respond = _ =>
-{
-    if (sequencingHandler.Requests.Last().Query.Contains("focusin"))
-        focusStarted.TrySetResult();
-    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-};
-using (var cancellation = new CancellationTokenSource())
-{
-    int before = sequencingHandler.Requests.Count;
-    var errors = new List<string>();
-    Task<bool> sequence = CameraCommandRunner.RunAsync(
-        () => sequencingService.MoveToPosition(Position.StandBy, cancellation.Token), errors.Add, cancellation.Token);
-    await focusStarted.Task.WaitAsync(TimeSpan.FromSeconds(6));
-    cancellation.Cancel();
-    await sequencingService.StopAll();
-    Check(!await sequence && errors.Count == 0, "Active focus did not cancel cleanly");
-    Check(sequencingHandler.Requests.Skip(before).Count(uri => uri.Query.Contains("focusin")) == 1 &&
-        sequencingHandler.Requests.Skip(before).Count(uri => uri.Query.Contains("focusstop")) == 1,
-        "Active focus did not receive exactly one final stop");
 }
 
 // All stop channels are attempted even if the PTZ stop fails.
@@ -375,6 +350,31 @@ using (var demoDialog = new CameraSettingsDialog("192.168.188.25", testPath, dem
     Check(!File.Exists(testPath), "Cancelling demo exit saved the camera IP");
 }
 
+using (var automaticDialog = new CameraSettingsDialog("192.168.188.25", testPath, true,
+    service, PresetSettings.Defaults(), (_, _) => { }, demoCamera))
+{
+    AutomaticPositions? savedChoices = null;
+    automaticDialog.ConfigureAutomaticPositions(new(), value => savedChoices = value);
+    var automaticControls = Descendants(automaticDialog).ToArray();
+    var selectors = automaticControls.OfType<ComboBox>().ToArray();
+    var saveAutomatic = automaticControls.OfType<Button>().Single(button => button.Name == "saveAutomaticPositions");
+    Check(selectors.Length == 2 && selectors.All(combo => combo.Enabled && combo.Items.Count == 8 && combo.SelectedIndex == 0) && !saveAutomatic.Enabled,
+        "Initial automatic selections were not editable or save was enabled without changes");
+    selectors.Single(combo => combo.Name == "startPreset").SelectedIndex = 3;
+    Check(saveAutomatic.Enabled, "Changing startup selection did not enable save");
+    selectors.Single(combo => combo.Name == "startPreset").SelectedIndex = 0;
+    Check(!saveAutomatic.Enabled, "Reverting to saved selections left save enabled");
+    selectors.Single(combo => combo.Name == "startPreset").SelectedIndex = 3;
+    selectors.Single(combo => combo.Name == "exitPreset").SelectedIndex = 7;
+    Check(savedChoices == null, "Automatic selections applied before explicit save");
+    typeof(Button).GetMethod("OnClick", dialogFlags)!.Invoke(saveAutomatic, new object[] { EventArgs.Empty });
+    Check(savedChoices?.StartPreset == 3 && savedChoices.ExitPreset == 9 && selectors.All(combo => combo.Enabled) && !saveAutomatic.Enabled,
+        "Automatic selections did not save correct fixed preset numbers");
+    typeof(CameraSettingsDialog).GetMethod("RefreshAutomaticChoices", dialogFlags)!.Invoke(automaticDialog, null);
+    Check(!saveAutomatic.Enabled, "Refreshing names falsely marked automatic choices changed");
+    selectors.Single(combo => combo.Name == "exitPreset").SelectedIndex = 0;
+    Check(saveAutomatic.Enabled, "Changing exit selection after saving did not enable save");
+}
 Console.WriteLine($"Passed {checks} checks: settings, camera commands, HTTP errors, timeouts, response disposal and recovery.");
 
 sealed class RecordingHandler : HttpMessageHandler

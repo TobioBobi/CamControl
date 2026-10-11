@@ -19,7 +19,7 @@ namespace CamControl
 
             Im Demo-Modus zeigt die linke Bühne den blauen Bildausschnitt, rechts steht das simulierte Kamerabild. Die gleichen Buttons und Tastenkürzel steuern Bewegung, Zoom und vorbereitete Presets. Es werden keine Kamerabefehle über das Netzwerk gesendet. Die schematische Darstellung ist kein Live-Video.
 
-            Zum Beenden unter „Demo-Modus“ die Kamera einrichten und die Adresse speichern. Dies aktiviert wieder den Kamerabetrieb. Im Demo-Modus schließt die App nach den Stopps ohne zusätzliche Standbyfahrt.
+            Zum Beenden unter „Demo-Modus“ die Kamera einrichten und die Adresse speichern. Dies aktiviert wieder den Kamerabetrieb. Eigene Start- und Abschlusspositionen der Demo gelten nur für die Sitzung.
 
             Positionen aufrufen
             Die großen Buttons rufen die in der Kamera gespeicherten Positionen auf. Die folgenden Namen sind die Vorgaben; eigene Namen können in den Einstellungen gespeichert werden. Die Nummern und Tastenkürzel bleiben gleich.
@@ -40,7 +40,7 @@ namespace CamControl
 
             Zum Einrichten einer Position die Kamera mit den Pfeil- und Zoombuttons ausrichten. „Gespeicherte Position anfahren“ lädt die bisherige Position. „Aktuelle Kameraposition … speichern“ überschreibt nach einer Bestätigung das betreffende Kamera-Preset. Die App stoppt zuvor die Bewegung. Ein erfolgreich gesendeter Speicherbefehl bestätigt noch nicht unabhängig die Speicherung; zum Prüfen die Position erneut anfahren.
 
-            Ausgeführte Kamerabewegungen und gespeicherte Positionen werden beim Schließen nicht rückgängig gemacht. Standby (Preset 9) bleibt separat und kann hier nicht überschrieben werden. Echte Buttonnamen werden lokal für den nächsten Start gespeichert; die Positionen speichert die Kamera. Im Demo-Modus gelten eigene Namen und Positionen nur für die laufende Sitzung und verändern keine echte Kamera-Konfiguration.
+            Ausgeführte Kamerabewegungen und gespeicherte Positionen werden beim Schließen nicht rückgängig gemacht. Alle sieben Buttons, einschließlich Preset 9, sind gleichwertig und können benannt und gespeichert werden. Echte Buttonnamen werden lokal für den nächsten Start gespeichert; die Positionen speichert die Kamera. Im Demo-Modus gelten eigene Namen und Positionen nur für die laufende Sitzung und verändern keine echte Kamera-Konfiguration.
 
             Ein Fensterwechsel bricht wartende Preset-Aktionen ab und versucht alle Kanäle zu stoppen. Bereits an die Kamera übertragene Befehle lassen sich dadurch nicht rückgängig machen. Wird beim Schließen des Preset-Editors ein Stopp nicht bestätigt, bleibt die Fehlermeldung im Hauptfenster sichtbar.
 
@@ -49,8 +49,10 @@ namespace CamControl
 
             Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, Bewegung, Zoom und Fokus zu stoppen. Während eines Preset-Ablaufs oder eines vollständigen Stopps sind die Kamerabuttons gesperrt.
 
-            Start, Standby und Schließen
-            Nach der ersten Einrichtung beziehungsweise beim Start mit gespeicherter Kamera-Adresse ruft die App die Position „komplette Bühne“ (Preset 4) auf. Standby ruft Preset 9 auf und führt anschließend eine Fokusfahrt aus: nach vier Sekunden wird der Fokus fünf Sekunden lang verändert und dann gestoppt. Im Kamerabetrieb versucht die App beim Schließen zuerst alle Kanäle zu stoppen und führt Standby nur nach bestätigten Stopps aus. Das Schließen kann deshalb einige Sekunden dauern.
+            Automatische Positionen beim Start und Beenden
+            Unter „Buttons & Presets“ nach unten zu „Automatische Positionen“ scrollen. Für Start und Beenden jeweils „Keine Position“ oder einen der sieben Buttons auswählen. Erst „Automatik speichern“ übernimmt die Auswahl; Schließen verwirft ungespeicherte Änderungen. Neue Einrichtungen haben keine automatische Fahrt. Bestehende Einrichtungen behalten zunächst Preset 4 beim Start und Preset 9 beim Beenden.
+
+            Beim Beenden versucht die App zuerst alle Kanäle zu stoppen und fährt nur nach bestätigten Stopps das ausgewählte Abschluss-Preset an. „Standby“ ist lediglich der vorgegebene Name von Preset 9; es gibt keine besondere Fokusfahrt oder Warteanimation mehr. Die App wartet auf die HTTP-Antwort, kann aber ohne Positionsrückmeldung nicht bestätigen, wann die Kamera ihr Ziel erreicht hat. Im Demo-Modus lässt sich die Abschlussfahrt an der Simulation ausprobieren; eine gespeicherte Startposition wird beim nächsten Einstieg in den Demo-Modus angefahren.
 
             Wenn keine Verbindung zustande kommt
             Die Meldung im Hauptfenster unterscheidet Verbindungsfehler, Zeitüberschreitung und abgelehnte HTTP-Befehle. Prüfen, ob die Kamera eingeschaltet und erreichbar ist, die IPv4-Adresse stimmt und ihre HTTP-Steuerung zu CamControl passt. Anschließend kann der gewünschte Befehl erneut ausgelöst werden.

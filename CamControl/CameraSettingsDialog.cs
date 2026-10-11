@@ -10,6 +10,10 @@ namespace CamControl
         private readonly string? settingsPath;
         private bool editing;
         private TabPage? presetsPage;
+        private readonly FlowLayoutPanel presetLayout;
+        private readonly Dictionary<int, string>? presetNames;
+        private ComboBox[] automaticSelectors = Array.Empty<ComboBox>();
+        private bool refreshingAutomaticChoices;
         public string CameraIp { get; private set; }
         public bool? RequestedDemoMode { get; private set; }
         internal event Action<string>? PresetStopFailed;
@@ -20,6 +24,7 @@ namespace CamControl
         {
             CameraIp = cameraIp;
             this.settingsPath = settingsPath;
+            this.presetNames = presetNames;
             Text = "Einstellungen";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
@@ -76,7 +81,7 @@ namespace CamControl
             demoPage.Controls.Add(demoLayout);
             pages.TabPages.Add(demoPage);
             presetsPage = new TabPage("Buttons & Presets") { Padding = new Padding(12) };
-            var presetLayout = new FlowLayoutPanel
+            presetLayout = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true
             };
@@ -84,10 +89,10 @@ namespace CamControl
             {
                 AutoSize = true, MaximumSize = new Size(500, 0),
                 Text = service == null ? "Bitte zuerst die Kamera einrichten oder den Demo-Modus starten."
-                    : "„Bearbeiten …“ öffnet die Steuerung und das gezielte Speichern. Standby bleibt separat."
+                    : "„Bearbeiten …“ öffnet die Steuerung und das gezielte Speichern für jeden Button."
             });
             if (service != null && presetNames != null && savePresetName != null)
-                foreach (int number in Enumerable.Range(1, 6))
+                foreach (int number in new[] { 1, 2, 3, 4, 5, 6, 9 })
                 {
                     var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 8, 0, 0) };
                     var label = new Label { Text = $"{number}: {presetNames[number]}", Width = 330, Height = 30, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft };
@@ -95,7 +100,7 @@ namespace CamControl
                     button.Click += (_, _) =>
                     {
                         using var editor = new PresetEditorDialog(service, (Position)number, presetNames[number],
-                            value => { savePresetName(number, value); label.Text = $"{number}: {presetNames[number]}"; }, demo);
+                            value => { savePresetName(number, value); label.Text = $"{number}: {presetNames[number]}"; RefreshAutomaticChoices(); }, demo);
                         editor.CloseStopFailed += error => PresetStopFailed?.Invoke(error);
                         editor.ShowDialog(this);
                     };
@@ -126,6 +131,77 @@ namespace CamControl
             CancelButton = cancel;
             // Enter cannot unlock editing or save while viewing the configuration.
             AcceptButton = null;
+        }
+
+        internal void ConfigureAutomaticPositions(AutomaticPositions current, Action<AutomaticPositions> saveChoices)
+        {
+            var group = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 18, 0, 0) };
+            group.Controls.Add(new Label { AutoSize = true, Text = "Automatische Positionen (optional)" });
+            var start = new ComboBox { Name = "startPreset", DropDownStyle = ComboBoxStyle.DropDownList, Width = 440 };
+            var exit = new ComboBox { Name = "exitPreset", DropDownStyle = ComboBoxStyle.DropDownList, Width = 440 };
+            group.Controls.Add(new Label { AutoSize = true, Text = "Beim Start automatisch anfahren:" });
+            group.Controls.Add(start);
+            group.Controls.Add(new Label { AutoSize = true, Text = "Beim Beenden automatisch anfahren:" });
+            group.Controls.Add(exit);
+            automaticSelectors = new[] { start, exit };
+            RefreshAutomaticChoices();
+            start.SelectedItem = start.Items.Cast<PresetChoice>().Single(item => item.Number == current.StartPreset);
+            exit.SelectedItem = exit.Items.Cast<PresetChoice>().Single(item => item.Number == current.ExitPreset);
+            var saveAutomatic = new Button { Name = "saveAutomaticPositions", Text = "Automatik speichern", AutoSize = true, Enabled = false };
+            var feedback = new Label { AutoSize = true, MaximumSize = new Size(470, 0) };
+            int? savedStart = current.StartPreset, savedExit = current.ExitPreset;
+            bool HasChanges() => (start.SelectedItem as PresetChoice)?.Number != savedStart ||
+                (exit.SelectedItem as PresetChoice)?.Number != savedExit;
+            void SelectionChanged(object? sender, EventArgs e)
+            {
+                if (refreshingAutomaticChoices) return;
+                saveAutomatic.Enabled = HasChanges();
+                feedback.ForeColor = SystemColors.ControlText;
+                feedback.Text = saveAutomatic.Enabled ? "Auswahl geändert. Erst „Automatik speichern“ übernimmt sie." : "";
+            }
+            start.SelectedIndexChanged += SelectionChanged;
+            exit.SelectedIndexChanged += SelectionChanged;
+            saveAutomatic.Click += (_, _) =>
+            {
+                if (!HasChanges()) return;
+                try
+                {
+                    saveChoices(new() { StartPreset = ((PresetChoice)start.SelectedItem!).Number, ExitPreset = ((PresetChoice)exit.SelectedItem!).Number });
+                    savedStart = ((PresetChoice)start.SelectedItem!).Number;
+                    savedExit = ((PresetChoice)exit.SelectedItem!).Number;
+                    saveAutomatic.Enabled = false;
+                    feedback.ForeColor = Color.DarkGreen;
+                    feedback.Text = "Auswahl gespeichert. Ungespeicherte Änderungen werden beim Schließen verworfen.";
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                { feedback.ForeColor = Color.DarkRed; feedback.Text = "Auswahl konnte nicht gespeichert werden: " + e.Message; }
+            };
+            group.Controls.Add(saveAutomatic);
+            group.Controls.Add(feedback);
+            presetLayout.Controls.Add(group);
+        }
+
+        private sealed record PresetChoice(int? Number, string Caption)
+        {
+            public override string ToString() => Caption;
+        }
+
+        private void RefreshAutomaticChoices()
+        {
+            refreshingAutomaticChoices = true;
+            try
+            {
+                foreach (var selector in automaticSelectors)
+                {
+                    int? selected = (selector.SelectedItem as PresetChoice)?.Number;
+                    selector.Items.Clear();
+                    selector.Items.Add(new PresetChoice(null, "Keine Position"));
+                    foreach (int number in new[] { 1, 2, 3, 4, 5, 6, 9 })
+                        selector.Items.Add(new PresetChoice(number, $"{presetNames![number]} (Preset {number})"));
+                    selector.SelectedItem = selector.Items.Cast<PresetChoice>().Single(item => item.Number == selected);
+                }
+            }
+            finally { refreshingAutomaticChoices = false; }
         }
 
         private TabPage CreateCameraPage()

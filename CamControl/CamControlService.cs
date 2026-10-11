@@ -43,19 +43,12 @@ namespace CamControl
             return ExecuteSerializedAsync(async targetAddress =>
             {
                 await SendCommandAsync(targetAddress, $"poscall&{(int)position}", cancellationToken);
-                if (position == Position.StandBy)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
-                    await SendCommandAsync(targetAddress, "focusin&5", cancellationToken);
-                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-                    await SendCommandAsync(targetAddress, "focusstop&5", cancellationToken);
-                }
             }, cancellationToken, directionGate, zoomGate);
         }
 
         public Task SavePosition(Position position, CancellationToken cancellationToken = default)
         {
-            if ((int)position < 1 || (int)position > 6)
+            if (!Enum.IsDefined(position))
                 throw new ArgumentOutOfRangeException(nameof(position));
             return ExecuteSerializedAsync(target => SendCommandAsync(target,
                 $"posset&{(int)position}", cancellationToken), cancellationToken, directionGate, zoomGate);

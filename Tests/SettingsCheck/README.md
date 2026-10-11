@@ -1,7 +1,7 @@
 # Settings checks
 
 Preset checks cover name validation and persistence, documented `posset` URLs,
-HTTP/network failures when saving, standby protection, and recall of a custom
+HTTP/network failures when saving, seven configurable positions, and recall of a custom
 demo position including its zoom. Temporary files do not change user settings.
 
 Run on Windows with the .NET 10 SDK:
@@ -15,14 +15,15 @@ The checks use a fake HTTP handler and a temporary settings file in the build
 directory. They do not send camera commands or change the user's saved settings.
 They cover IPv4 validation, persistence and fallback, explicit edit mode,
 saving and discarding dialog edits, address changes after the first request, and the destination of
-an already running standby sequence. They also cover HTTP 400/403/500 errors,
+an already running preset request. They also cover HTTP 400/403/500 errors,
 network failures and timeouts for position, standby, movement, zoom and stop
-commands, failed standby focus commands, response disposal and recovery after
-errors. Cancellation checks cover pending and queued starts, both standby waits,
+commands, response disposal and recovery after
+errors. Cancellation checks cover pending and queued starts,
 all stop channels being attempted despite a failure, and new commands waiting
 for all stop responses. Movement and zoom are checked as independent channels;
-cancelled presets must release every acquired gate. The standby checks take
-about seventeen seconds in total.
+cancelled presets must release every acquired gate. Automatic-position checks
+cover new-install defaults, migration, persistence, damaged settings, fixed
+preset validation and save enabled only for changed selections.
 Demo checks drive the simulation through the production HTTP command service,
 verify preset framing and movement/zoom stops, reject unknown commands, and
 ensure entering or cancelling demo mode preserves camera configuration.

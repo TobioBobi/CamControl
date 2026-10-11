@@ -8,7 +8,7 @@ internal static class PresetSettings
     public static Dictionary<int, string> Defaults() => new()
     {
         [1] = "Redner", [2] = "Redner + Leser", [3] = "Tisch", [4] = "Komplette Bühne",
-        [5] = "Redner + Bildschirm", [6] = "Demo stehend"
+        [5] = "Redner + Bildschirm", [6] = "Demo stehend", [9] = "Standby"
     };
 
     public static Dictionary<int, string> Load(string? path = null)

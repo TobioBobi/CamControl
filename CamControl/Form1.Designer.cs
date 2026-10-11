@@ -1,4 +1,4 @@
-﻿namespace CamControl
+namespace CamControl
 {
     partial class Form1
     {
@@ -42,11 +42,7 @@
             buttonZoomOut = new Button();
             buttonDemoStehend = new Button();
             tableLayoutPanel1 = new TableLayoutPanel();
-            pictureBoxLoader = new PictureBox();
-            pictureBoxLoaderSmall = new PictureBox();
             tableLayoutPanel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)pictureBoxLoader).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBoxLoaderSmall).BeginInit();
             SuspendLayout();
             // 
             // buttonRedner
@@ -187,26 +183,6 @@
             buttonDemoStehend.UseVisualStyleBackColor = true;
             buttonDemoStehend.Click += buttonDemoStehend_Click;
             // 
-            // pictureBoxLoader
-            // 
-            pictureBoxLoader.Image = Properties.Resources.loader;
-            pictureBoxLoader.Location = new Point(12, 12);
-            pictureBoxLoader.Name = "pictureBoxLoader";
-            pictureBoxLoader.Size = new Size(734, 272);
-            pictureBoxLoader.SizeMode = PictureBoxSizeMode.Zoom;
-            pictureBoxLoader.TabStop = false;
-            pictureBoxLoader.Visible = false;
-            // 
-            // pictureBoxLoaderSmall
-            // 
-            pictureBoxLoaderSmall.Image = Properties.Resources.loader;
-            pictureBoxLoaderSmall.Location = new Point(189, 196);
-            pictureBoxLoaderSmall.Name = "pictureBoxLoaderSmall";
-            pictureBoxLoaderSmall.Size = new Size(171, 86);
-            pictureBoxLoaderSmall.SizeMode = PictureBoxSizeMode.Zoom;
-            pictureBoxLoaderSmall.TabStop = false;
-            pictureBoxLoaderSmall.Visible = false;
-            // 
             // tableLayoutPanel1
             // 
             tableLayoutPanel1.ColumnCount = 2;
@@ -236,8 +212,6 @@
             Controls.Add(buttonTisch);
             Controls.Add(buttonRednerLeser);
             Controls.Add(buttonRedner);
-            Controls.Add(pictureBoxLoaderSmall);
-            Controls.Add(pictureBoxLoader);
             Controls.Add(tableLayoutPanel1);
             FormBorderStyle = FormBorderStyle.FixedToolWindow;
             KeyPreview = true;
@@ -249,8 +223,6 @@
             KeyUp += Form1_KeyUp;
             KeyDown += Form1_KeyDown;
             tableLayoutPanel1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)pictureBoxLoader).EndInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBoxLoaderSmall).EndInit();
             ResumeLayout(false);
         }
 
@@ -270,7 +242,5 @@
         private Button buttonZoomOut;
         private Button buttonDemoStehend;
         private TableLayoutPanel tableLayoutPanel1;
-        private PictureBox pictureBoxLoader;
-        private PictureBox pictureBoxLoaderSmall;
     }
 }
