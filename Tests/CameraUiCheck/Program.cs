@@ -148,6 +148,69 @@ internal static class Program
             using var saveClient = new HttpClient(saveHandler);
             var fakeService = Activator.CreateInstance(demoService.GetType(), flags, null,
                 new object[] { saveClient, "192.168.188.24" }, null)!;
+            foreach (bool saving in new[] { false, true })
+            {
+                using var waitingEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                    null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner", new Action<string>(_ => { }), null! }, null)!;
+                _ = waitingEditor.Handle;
+                saveHandler.Requests.Clear();
+                var waitingStop = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+                saveHandler.Respond = (uri, _) => uri.Query.Contains("ptzstop") ? waitingStop.Task
+                    : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+                Task waitingOperation = (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(waitingEditor, new object[] { saving })!;
+                Check(!waitingOperation.IsCompleted, "Preset preparation did not wait for stop");
+                presetType.GetMethod("OnDeactivate", flags)!.Invoke(waitingEditor, new object[] { EventArgs.Empty });
+                presetType.GetMethod("OnActivated", flags)!.Invoke(waitingEditor, new object[] { EventArgs.Empty });
+                waitingStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+                PumpUntil(waitingOperation);
+                PumpUntilCondition(() => presetType.GetField("stopping", flags)!.GetValue(waitingEditor) == null);
+                Check(saveHandler.Requests.All(uri => !uri.Query.Contains("poscall") && !uri.Query.Contains("posset")),
+                    "Focus loss/return resumed a cancelled preset action");
+                saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+                PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(waitingEditor, new object[] { saving })!);
+                Check(saveHandler.Requests.Last().Query.Contains(saving ? "posset" : "poscall"), "New preset action did not recover after cancellation");
+
+                CancellationToken pendingPresetToken = default;
+                saveHandler.Respond = async (uri, token) =>
+                {
+                    if (uri.Query.Contains(saving ? "posset" : "poscall"))
+                    {
+                        pendingPresetToken = token;
+                        await Task.Delay(Timeout.Infinite, token);
+                    }
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                };
+                Task pendingPreset = (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(waitingEditor, new object[] { saving })!;
+                presetType.GetMethod("OnDeactivate", flags)!.Invoke(waitingEditor, new object[] { EventArgs.Empty });
+                PumpUntil(pendingPreset);
+                PumpUntilCondition(() => presetType.GetField("stopping", flags)!.GetValue(waitingEditor) == null);
+                Check(pendingPresetToken.IsCancellationRequested, "Focus loss did not cancel an in-flight preset request");
+            }
+            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            using (var closeErrorEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner", new Action<string>(_ => { }), null! }, null)!)
+            {
+                string? forwardedStopError = null;
+                presetType.GetEvent("CloseStopFailed", flags)!.GetAddMethod(true)!.Invoke(closeErrorEditor,
+                    new object[] { new Action<string>(error => forwardedStopError = error) });
+                closeErrorEditor.StartPosition = FormStartPosition.Manual;
+                closeErrorEditor.Location = new Point(-32000, -32000);
+                bool closeTimedOut = false;
+                using var closeWatchdog = new System.Windows.Forms.Timer { Interval = 2000 };
+                closeWatchdog.Tick += (_, _) =>
+                {
+                    closeTimedOut = true;
+                    closeWatchdog.Stop();
+                    presetType.GetField("finalClose", flags)!.SetValue(closeErrorEditor, true);
+                    closeErrorEditor.Close();
+                };
+                closeErrorEditor.Shown += (_, _) => { closeWatchdog.Start(); ((Button)closeErrorEditor.CancelButton!).PerformClick(); };
+                closeErrorEditor.ShowDialog();
+                closeWatchdog.Stop();
+                Check(!closeTimedOut && !closeErrorEditor.Visible, "Failed stop prevented closing the modal editor");
+                Check(forwardedStopError?.Contains("HTTP 500") == true, "Closing lost the failed stop error instead of forwarding it");
+            }
+            saveHandler.Requests.Clear();
             using var failedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
                 null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner",
                     new Action<string>(_ => throw new IOException("Test write failure")), null! }, null)!;

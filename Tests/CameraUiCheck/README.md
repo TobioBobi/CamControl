@@ -4,6 +4,9 @@ Preset editor checks cover independent renaming, stop-before-save, custom demo
 recall, focus-loss/close stops, rejected save commands and local write failures.
 An offscreen modal dialog also verifies that one Close click after saving a
 demo preset exits the dialog when stop requests complete synchronously.
+Regression checks cancel recall/save during preparatory stops and in-flight
+requests on focus loss, allow fresh actions after cancellation, and preserve
+failed-stop errors through the modal editor's close event.
 
 Run on Windows with the .NET 10 SDK:
 

@@ -249,6 +249,7 @@ namespace CamControl
                 using var dialog = new CameraSettingsDialog(camControlService.CameraIp, demoModeActive: IsDemoMode,
                     service: camControlService, presetNames: IsDemoMode ? demoPresetNames : presetNames,
                     savePresetName: SavePresetName, demo: IsDemoMode ? demoCamera : null);
+                dialog.PresetStopFailed += error => ReportCameraError("Kamerastopp beim Schließen des Preset-Editors nicht bestätigt", error);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     camControlService.SetCameraIp(dialog.CameraIp);

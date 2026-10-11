@@ -12,6 +12,7 @@ namespace CamControl
         private TabPage? presetsPage;
         public string CameraIp { get; private set; }
         public bool? RequestedDemoMode { get; private set; }
+        internal event Action<string>? PresetStopFailed;
 
         public CameraSettingsDialog(string cameraIp, string? settingsPath = null, bool demoModeActive = false,
             CamControlService? service = null, Dictionary<int, string>? presetNames = null,
@@ -95,6 +96,7 @@ namespace CamControl
                     {
                         using var editor = new PresetEditorDialog(service, (Position)number, presetNames[number],
                             value => { savePresetName(number, value); label.Text = $"{number}: {presetNames[number]}"; }, demo);
+                        editor.CloseStopFailed += error => PresetStopFailed?.Invoke(error);
                         editor.ShowDialog(this);
                     };
                     row.Controls.AddRange(new Control[] { label, button });

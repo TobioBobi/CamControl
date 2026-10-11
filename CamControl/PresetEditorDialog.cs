@@ -10,7 +10,8 @@ internal sealed class PresetEditorDialog : Form
     private readonly FlowLayoutPanel movement;
     private readonly Button recall, store, rename;
     private CancellationTokenSource motionCancellation = new();
-    private readonly CancellationTokenSource lifetime = new();
+    private CancellationTokenSource? positionCancellation;
+    internal event Action<string>? CloseStopFailed;
     private Task<bool>? stopping;
     private bool busy, closing, finalClose, motionHeld, active = true;
     private string savedName;
@@ -143,23 +144,25 @@ internal sealed class PresetEditorDialog : Form
 
     private async Task RunPositionAsync(bool save)
     {
-        if (busy || closing) return;
+        if (busy || closing || !active || resourcesDisposed) return;
+        using var cancellation = new CancellationTokenSource();
+        positionCancellation = cancellation;
         busy = true;
         UpdateActions();
         try
         {
-            if (!await StopAsync() || closing || !active) return;
-            var token = lifetime.Token;
+            if (!await StopAsync() || cancellation.IsCancellationRequested || closing || !active) return;
+            var token = cancellation.Token;
             bool success = await CameraCommandRunner.RunAsync(() => save
                 ? service.SavePosition(position, token) : service.MoveToPosition(position, token), ReportError, token);
-            if (success && !closing)
+            if (success && !closing && !token.IsCancellationRequested)
             {
                 status.ForeColor = Color.DarkGreen;
                 status.Text = save ? "Speicherbefehl erfolgreich gesendet. Mit „Gespeicherte Position anfahren“ prüfen."
                     : "Positionsbefehl erfolgreich gesendet.";
             }
         }
-        finally { busy = false; if (!IsDisposed) UpdateActions(); }
+        finally { positionCancellation = null; busy = false; if (!IsDisposed) UpdateActions(); }
     }
 
     private void SaveName()
@@ -180,6 +183,7 @@ internal sealed class PresetEditorDialog : Form
     {
         base.OnDeactivate(e);
         active = false;
+        positionCancellation?.Cancel();
         await StopAsync();
     }
 
@@ -230,9 +234,10 @@ internal sealed class PresetEditorDialog : Form
         e.Cancel = true;
         if (closing) return;
         closing = true;
-        lifetime.Cancel();
+        positionCancellation?.Cancel();
         UpdateActions();
-        await StopAsync();
+        if (!await StopAsync())
+            CloseStopFailed?.Invoke(status.Text);
         finalClose = true;
         // Demo stops may complete synchronously. Let the initial, cancelled
         // FormClosing event unwind before requesting the final modal close.
@@ -245,7 +250,7 @@ internal sealed class PresetEditorDialog : Form
         if (disposing && !resourcesDisposed)
         {
             resourcesDisposed = true;
-            lifetime.Cancel(); lifetime.Dispose(); motionCancellation.Cancel(); motionCancellation.Dispose();
+            positionCancellation?.Cancel(); motionCancellation.Cancel(); motionCancellation.Dispose();
         }
         base.Dispose(disposing);
     }

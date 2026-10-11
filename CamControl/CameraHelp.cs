@@ -42,6 +42,8 @@ namespace CamControl
 
             Ausgeführte Kamerabewegungen und gespeicherte Positionen werden beim Schließen nicht rückgängig gemacht. Standby (Preset 9) bleibt separat und kann hier nicht überschrieben werden. Echte Buttonnamen werden lokal für den nächsten Start gespeichert; die Positionen speichert die Kamera. Im Demo-Modus gelten eigene Namen und Positionen nur für die laufende Sitzung und verändern keine echte Kamera-Konfiguration.
 
+            Ein Fensterwechsel bricht wartende Preset-Aktionen ab und versucht alle Kanäle zu stoppen. Bereits an die Kamera übertragene Befehle lassen sich dadurch nicht rückgängig machen. Wird beim Schließen des Preset-Editors ein Stopp nicht bestätigt, bleibt die Fehlermeldung im Hauptfenster sichtbar.
+
             Bewegung und Zoom
             Einen Richtungspfeil oder „Zoom In“ / „Zoom Out“ mit der linken Maustaste gedrückt halten. Loslassen stoppt den jeweiligen Kanal. Alternativ die Pfeiltasten zum Bewegen und Plus/Minus auf dem Nummernblock zum Zoomen gedrückt halten. Die Zahlentasten 1–6 und 9 rufen die oben genannten Positionen auf.
 
