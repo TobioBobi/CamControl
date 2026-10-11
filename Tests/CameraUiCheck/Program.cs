@@ -24,7 +24,7 @@ internal static class Program
         Check(settingsButton.Text.Contains("Einstellungen") && settingsButton.Enabled,
             "Visible settings access missing");
         Check(settingsButton.Parent is Panel { Dock: DockStyle.Top } &&
-            ((Button)type.GetField("buttonRedner", flags)!.GetValue(form)!).Top >= settingsButton.Parent.Bottom,
+            ((Panel)type.GetField("cameraScroll", flags)!.GetValue(form)!).Top >= settingsButton.Parent.Bottom,
             "Settings access overlaps camera controls");
         Task Run(Func<Task> command, string action) =>
             (Task)execute.Invoke(form, new object[] { new Func<CancellationToken, Task>(_ => command()), action, CancellationToken.None })!;
@@ -74,7 +74,8 @@ internal static class Program
                 "Scaled demo window exceeded the screen working area");
             var preview = (Control)type.GetField("demoView", flags)!.GetValue(layoutMain)!;
             var error = (Control)type.GetField("cameraErrorLabel", flags)!.GetValue(layoutMain)!;
-            Check(preview.Height > 0 && preview.Bottom <= error.Top && error.Bottom <= layoutMain.ClientSize.Height,
+            var mainScroll = (Panel)type.GetField("cameraScroll", flags)!.GetValue(layoutMain)!;
+            Check(preview.Height > 0 && mainScroll.Bottom <= error.Top && error.Bottom <= layoutMain.ClientSize.Height,
                 $"Resized demo preview covered the error area or escaped the window: preview={preview.Bounds}, error={error.Bounds}, client={layoutMain.ClientSize}");
             int scaledDemoHeight = layoutMain.Height;
             for (int switchCount = 0; switchCount < 3; switchCount++)
@@ -84,6 +85,15 @@ internal static class Program
                 Application.DoEvents();
             }
             Check(layoutMain.Height == scaledDemoHeight, "Switching modes changed the capped demo window height cumulatively");
+            layoutMain.Size = new Size(Math.Min(1024, area.Width), Math.Min(728, area.Height));
+            Application.DoEvents();
+            Check(mainScroll.HorizontalScroll.Visible && mainScroll.VerticalScroll.Visible && preview.Height > 0,
+                "Small screen did not make oversized camera controls and preview scrollable");
+            var lastPreset = (Button)type.GetField("buttonStandBy", flags)!.GetValue(layoutMain)!;
+            mainScroll.ScrollControlIntoView(lastPreset);
+            Application.DoEvents();
+            Check(mainScroll.ClientRectangle.Contains(mainScroll.RectangleToClient(lastPreset.RectangleToScreen(lastPreset.ClientRectangle))),
+                "Scrolling did not make the last camera preset reachable");
             var layoutService = type.GetField("camControlService", flags)!.GetValue(layoutMain)!;
             var layoutDemo = type.GetField("demoCamera", flags)!.GetValue(layoutMain)!;
             using var editor = (Form)Activator.CreateInstance(type.Assembly.GetType("CamControl.PresetEditorDialog")!,
@@ -92,6 +102,7 @@ internal static class Program
             ShowOffscreen(editor);
             editor.Font = new Font(editor.Font.FontFamily, editor.Font.Size * 2);
             editor.PerformAutoScale();
+            editor.Width = Math.Min(1024, area.Width);
             editor.Height = Math.Min(600, area.Height);
             Application.DoEvents();
             var close = (Button)editor.CancelButton!;
@@ -110,6 +121,7 @@ internal static class Program
             ShowOffscreen(settings);
             settings.Font = new Font(settings.Font.FontFamily, settings.Font.Size * 2);
             settings.PerformAutoScale();
+            settings.Size = new Size(Math.Min(1024, area.Width), Math.Min(728, area.Height));
             Application.DoEvents();
             var settingsClose = (Button)settings.CancelButton!;
             Check(settings.Height <= area.Height && settings.ClientRectangle.Contains(
@@ -327,7 +339,7 @@ internal static class Program
         }
         Check(label.Text.Contains("HTTP 403"), "HTTP error not displayed");
         Check(label.Text.Contains("Einstellungen") && !label.Text.Contains("fünfmal"), "Error hints reference hidden access");
-        Check(form.Controls.OfType<Button>().All(button => button.Enabled), "Controls disabled after error");
+        Check(((Panel)type.GetField("cameraContent", flags)!.GetValue(form)!).Controls.OfType<Button>().All(button => button.Enabled), "Controls disabled after error");
         PumpUntil(Run(() => Task.FromException(new TaskCanceledException()), "Zoom"));
         Check(label.Text.Contains("nicht rechtzeitig"), "Timeout not displayed");
 

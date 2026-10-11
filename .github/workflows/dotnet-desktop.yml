@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
@@ -39,3 +39,15 @@ jobs:
 
       - name: Check camera UI
         run: dotnet run --project Tests/CameraUiCheck/CameraUiCheck.csproj -c Release
+
+      - name: Build self-contained MSIX test package
+        shell: pwsh
+        run: ./packaging/Build-Msix.ps1
+
+      - name: Upload unsigned MSIX test package
+        uses: actions/upload-artifact@v7
+        with:
+          name: CamControl-msix-test-x64
+          path: artifacts/msix/test/x64/*.msix
+          if-no-files-found: error
+          compression-level: 0

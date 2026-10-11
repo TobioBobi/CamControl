@@ -5,6 +5,10 @@
 
 # Locally extracted development SDKs
 /.tools/
+/artifacts/
+/packaging/StoreIdentity.json
+*.msix
+*.msixbundle
 
 # User-specific files
 *.rsuser

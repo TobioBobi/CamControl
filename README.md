@@ -26,7 +26,9 @@ and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
 GitHub Actions builds Debug and Release on Windows with .NET 10 and runs both
 check programs on each push or pull request to `master`. The workflow can also
-be started manually. Signing and MSIX packaging will be added separately.
+be started manually. It also builds an unsigned self-contained x64 MSIX test
+package and uploads it as an artifact. See [MSIX build and installation](docs/msix.md)
+for local test signing and preparation of a Store package.
 
 For local camera simulation, run CamDummy and start CamControl in Debug mode
 in another terminal:

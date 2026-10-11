@@ -4,7 +4,7 @@ namespace CamControl
     {
         public const string Text = """
             Voraussetzungen
-            CamControl benötigt einen Windows-PC und eine kompatible PTZ-Kamera (Schwenken, Neigen und Zoom). Für die aktuelle Programmversion muss die .NET 10 Desktop Runtime installiert sein.
+            CamControl benötigt einen Windows-PC und eine kompatible PTZ-Kamera (Schwenken, Neigen und Zoom). Das MSIX-Paket enthält die .NET-Laufzeit bereits. Bei einem Build ohne mitgelieferte Laufzeit muss die .NET 10 Desktop Runtime installiert sein.
 
             PC und Kamera müssen sich über das Netzwerk erreichen können. Die Kamera muss ihre HTTP-Steuerung unter der eingestellten IPv4-Adresse auf Port 80 bereitstellen. Ein SDK ist zum Bedienen der App nicht erforderlich.
 

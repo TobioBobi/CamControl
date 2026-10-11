@@ -7,6 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>1.1.0</Version>
+    <ApplicationIcon>../packaging/Assets/CamControl.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

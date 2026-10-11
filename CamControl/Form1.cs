@@ -8,6 +8,9 @@ namespace CamControl
         private readonly Label modeLabel;
         private readonly DemoCamera demoCamera = new();
         private readonly DemoCameraView demoView;
+        private readonly Panel cameraContent;
+        private readonly Panel cameraScroll;
+        private readonly int previewBaseFontHeight;
         private HttpClient? demoClient;
         private Dictionary<int, string> presetNames = PresetSettings.Load();
         private readonly Dictionary<int, string> demoPresetNames = PresetSettings.Defaults();
@@ -34,9 +37,14 @@ namespace CamControl
         {
             InitializeComponent();
             camControlService = new CamControlService();
+            previewBaseFontHeight = Font.Height;
+            cameraContent = new Panel { Name = "cameraContent", Size = ClientSize };
+            foreach (Control control in Controls.Cast<Control>().ToArray())
+                cameraContent.Controls.Add(control);
+            cameraScroll = new Panel { Name = "cameraScroll", Dock = DockStyle.Fill, AutoScroll = true };
+            cameraScroll.Controls.Add(cameraContent);
+            Controls.Add(cameraScroll);
             int headerHeight = (int)Math.Round(44 * DeviceDpi / 96F);
-            foreach (Control control in Controls)
-                control.Top += headerHeight;
             ClientSize = new Size(ClientSize.Width, ClientSize.Height + headerHeight);
             var header = new Panel { Dock = DockStyle.Top, Height = headerHeight };
             modeLabel = new Label { AutoSize = true, Text = "Kameramodus", Location = new Point(12, 12), ForeColor = Color.DimGray };
@@ -78,7 +86,7 @@ namespace CamControl
                 Size = new Size(ClientSize.Width - 24, (int)Math.Round(180 * DeviceDpi / 96F)),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
-            Controls.Add(demoView);
+            cameraContent.Controls.Add(demoView);
             if (useDemo) SetDemoMode(true);
             RefreshPresetLabels();
             foreach (var button in new[] { buttonUp, buttonDown, buttonLeft, buttonRight, buttonZoomIn, buttonZoomOut })
@@ -92,20 +100,35 @@ namespace CamControl
             };
             DpiChanged += (_, _) => BeginInvoke(new Action(FitDemoPreview));
             WindowLayout.FitToScreen(this);
+            cameraScroll.BringToFront();
+            cameraScroll.SizeChanged += (_, _) => FitDemoPreview();
+            FitDemoPreview();
         }
 
         private void FitDemoPreview()
         {
-            if (IsDisposed || Disposing || !IsDemoMode || demoView == null || fittingDemoPreview) return;
+            if (IsDisposed || Disposing || demoView == null || fittingDemoPreview) return;
             fittingDemoPreview = true;
             try
             {
-                int controlsBottom = Controls.Cast<Control>()
+                int controlsBottom = cameraContent.Controls.Cast<Control>()
                     .Where(control => control is Button || control == tableLayoutPanel1)
                     .Max(control => control.Bottom);
                 int gap = Math.Max(6, (int)Math.Round(12 * DeviceDpi / 96F));
+                int controlsRight = cameraContent.Controls.Cast<Control>()
+                    .Where(control => control is Button || control == tableLayoutPanel1)
+                    .Max(control => control.Right);
+                int rightMargin = Math.Max(4, Font.Height / 3);
+                cameraContent.Width = Math.Max(controlsRight + rightMargin,
+                    cameraScroll.ClientSize.Width - (cameraScroll.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0));
+                demoView.Left = gap;
+                demoView.Width = Math.Max(1, cameraContent.Width - 2 * gap);
                 demoView.Top = controlsBottom + gap;
-                demoView.Height = Math.Max(0, cameraErrorLabel.Top - demoView.Top - gap);
+                int preferredHeight = (int)Math.Round(180 * DeviceDpi / 96F * Font.Height / previewBaseFontHeight);
+                int minimumHeight = Font.Height * 3 + 90;
+                demoView.Height = Math.Max(minimumHeight, Math.Min(preferredHeight,
+                    cameraScroll.ClientSize.Height - demoView.Top - gap));
+                cameraContent.Height = IsDemoMode ? demoView.Bottom + gap : controlsBottom + gap;
             }
             finally { fittingDemoPreview = false; }
         }
@@ -131,7 +154,8 @@ namespace CamControl
                 camControlService.SetCameraIp(ip);
             }
             IsDemoMode = enabled;
-            ClientSize = new Size(ClientSize.Width, ClientSize.Height + (enabled ? 1 : -1) * (demoView.Height + 12));
+            int demoHeight = (int)Math.Round(192 * DeviceDpi / 96F * Font.Height / previewBaseFontHeight);
+            ClientSize = new Size(ClientSize.Width, ClientSize.Height + (enabled ? 1 : -1) * demoHeight);
             demoView.Visible = enabled;
             FitDemoPreview();
             modeLabel.Text = enabled ? "DEMO-MODUS · Keine Kamera verbunden" : "Kameramodus";
@@ -171,7 +195,7 @@ namespace CamControl
         {
             if (IsDisposed || Disposing)
                 return;
-            foreach (var button in Controls.OfType<Button>().Concat(tableLayoutPanel1.Controls.OfType<Button>()))
+            foreach (var button in cameraContent.Controls.OfType<Button>().Concat(tableLayoutPanel1.Controls.OfType<Button>()))
                 button.Enabled = CanControlCamera && !positionInProgress;
             settingsButton.Enabled = !finalClose && ControlBox && !settingsDialogOpen;
         }

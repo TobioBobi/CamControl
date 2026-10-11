@@ -23,7 +23,7 @@ demo selection is not saved across restarts. The window clearly labels demo mode
 4. During movement/zoom, switch to another window. Both channels should stop.
 5. Call preset 9. It behaves like all other presets: no timed focus sequence.
 6. Review the read-only camera configuration and the help page. Editing requires
-   **Konfiguration bearbeiten**. Cancel a changed IP and verify it is not saved.
+   **IP-Adresse ändern** on the camera tab. Cancel a changed IP and verify it is not saved.
 7. Open **Einstellungen > Buttons & Presets > Bearbeiten …** for one button.
    Save a different name with **Nur Namen speichern**. Hold direction/zoom
    buttons to choose a new frame, then save the position and confirm replacement.

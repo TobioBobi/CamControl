@@ -24,6 +24,13 @@ ihren festen Schließen-Button und scrollbare Inhalte.
 Die UI-Regressionstests prüfen zusätzlich die Größenbegrenzung, die Trennung
 von Vorschau und Fehlerbereich, wiederholte Moduswechsel sowie das Scrollen
 zum Speichern-Button in einem auf 600 Pixel Höhe begrenzten Preset-Editor.
+Auch der Bedienbereich des Hauptfensters scrollt bei Platzmangel horizontal
+und vertikal. Die Regressionstests begrenzen das vergrößerte Hauptfenster auf
+1024 × 728 Pixel und prüfen, dass das letzte Preset per Scrollen erreichbar
+bleibt und die Demo-Vorschau nicht verschwindet. Editor und Einstellungen
+werden ebenfalls mit beschränkter Breite geprüft. Dies deckt die kleinere
+Arbeitsfläche des GitHub-Runners ab, auf der die ursprüngliche Layoutprüfung
+fehlgeschlagen war.
 
 Echte Windows-Skalierung bei 100 %, 150 % und 200 %, kleinere Bildschirmflächen
 und Wechsel zwischen Monitoren mit unterschiedlichen DPI bleiben manuell zu
