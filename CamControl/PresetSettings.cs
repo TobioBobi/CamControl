@@ -7,9 +7,12 @@ internal static class PresetSettings
     public static string FilePath => Path.Combine(Path.GetDirectoryName(CameraSettings.FilePath)!, "buttons.json");
     public static Dictionary<int, string> Defaults() => new()
     {
-        [1] = "Redner", [2] = "Redner + Leser", [3] = "Tisch", [4] = "Komplette Bühne",
-        [5] = "Redner + Bildschirm", [6] = "Demo stehend", [9] = "Standby"
+        [1] = "Preset 1", [2] = "Preset 2", [3] = "Preset 3", [4] = "Preset 4",
+        [5] = "Preset 5", [6] = "Preset 6", [9] = "Preset 9"
     };
+
+    public static string Caption(int number, string name) =>
+        name == $"Preset {number}" ? name : $"{name} ({number})";
 
     public static Dictionary<int, string> Load(string? path = null)
     {

@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Net;
 using CamControl;
 
@@ -7,6 +7,7 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         ApplicationConfiguration.Initialize();
         using var form = new Form1();
         _ = form.Handle;
@@ -76,6 +77,9 @@ internal static class Program
         using (var layoutMain = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!)
         {
             ShowOffscreen(layoutMain);
+            Check(Children(layoutMain).OfType<Button>().Count(button =>
+                new[] { "Preset 1", "Preset 2", "Preset 3", "Preset 4", "Preset 5", "Preset 6", "Preset 9" }.Contains(button.Text)) == 7,
+                "Demo buttons did not show generic preset names without duplicate numbering");
             var startupScroll = (Panel)type.GetField("cameraScroll", flags)!.GetValue(layoutMain)!;
             Check(!startupScroll.HorizontalScroll.Visible && !startupScroll.VerticalScroll.Visible,
                 "Normal demo startup showed unnecessary scrollbars");
@@ -171,7 +175,7 @@ internal static class Program
             Check(!DemoFlag("Moving") && !DemoFlag("Zooming") && !DemoFlag("Focusing"), "Demo ignored focus-loss stops");
             type.GetMethod("OnActivated", flags)!.Invoke(demoForm, new object[] { EventArgs.Empty });
             type.GetMethod("buttonRedner_Click", flags)!.Invoke(demoForm, new object[] { demoForm, EventArgs.Empty });
-            Check((string)DemoState().GetType().GetProperty("Action")!.GetValue(DemoState())! == "Redner",
+            Check((string)DemoState().GetType().GetProperty("Action")!.GetValue(DemoState())! == "Preset 1",
                 "Preset button did not reach the demo handler");
             int demoHeight = demoForm.ClientSize.Height;
             PumpUntil((Task)type.GetMethod("PrepareCameraSettingsAsync", flags)!.Invoke(demoForm, null)!);
@@ -285,6 +289,57 @@ internal static class Program
                 PumpUntilCondition(() => presetType.GetField("stopping", flags)!.GetValue(waitingEditor) == null);
                 Check(pendingPresetToken.IsCancellationRequested, "Focus loss did not cancel an in-flight preset request");
             }
+            saveHandler.Requests.Clear();
+            var delayedCloseStop = new TaskCompletionSource<HttpResponseMessage>();
+            saveHandler.Respond = (_, _) => saveHandler.Requests.Count == 1
+                ? delayedCloseStop.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            using (var delayedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Preset 1", new Action<string>(_ => { }), null! }, null)!)
+            {
+                delayedEditor.StartPosition = FormStartPosition.Manual;
+                delayedEditor.Location = new Point(-32000, -32000);
+                bool timedOut = false;
+                using var watchdog = new System.Windows.Forms.Timer { Interval = 2000 };
+                watchdog.Tick += (_, _) =>
+                {
+                    timedOut = true;
+                    delayedCloseStop.TrySetResult(new HttpResponseMessage(HttpStatusCode.OK));
+                };
+                delayedEditor.Shown += (_, _) =>
+                {
+                    watchdog.Start();
+                    var closeButton = (Button)delayedEditor.CancelButton!;
+                    closeButton.PerformClick();
+                    Check(!closeButton.Enabled && !delayedEditor.ControlBox && closeButton.Text.Contains("geschlossen"),
+                        "Closing did not immediately disable repeated clicks and show feedback");
+                    closeButton.PerformClick();
+                    delayedEditor.Close();
+                    Check(saveHandler.Requests.Count == 3, "Repeated close started another stop routine");
+                    delayedCloseStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+                };
+                delayedEditor.ShowDialog();
+                watchdog.Stop();
+                Check(!timedOut && !delayedEditor.Visible, "Delayed stop did not close after one click");
+                Check(saveHandler.Requests.Count == 3, "Closing did not send exactly one complete safety stop");
+            }
+            saveHandler.Requests.Clear();
+            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            using (var savedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Preset 1", new Action<string>(_ => { }), null! }, null)!)
+            {
+                savedEditor.StartPosition = FormStartPosition.Manual;
+                savedEditor.Location = new Point(-32000, -32000);
+                int requestsBeforeClose = -1;
+                savedEditor.Shown += async (_, _) =>
+                {
+                    await (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(savedEditor, new object[] { true })!;
+                    requestsBeforeClose = saveHandler.Requests.Count;
+                    ((Button)savedEditor.CancelButton!).PerformClick();
+                };
+                savedEditor.ShowDialog();
+                Check(requestsBeforeClose == 4 && saveHandler.Requests.Count == requestsBeforeClose,
+                    "Closing after saving an already stopped camera sent redundant stops");
+            }
             saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
             using (var closeErrorEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
                 null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner", new Action<string>(_ => { }), null! }, null)!)
@@ -360,7 +415,7 @@ internal static class Program
             Check(automaticHandler.Requests.All(uri => !uri.Query.Contains("focusin")), "Normal presets still sent special focus motion");
         }
         Check(label.Text.Contains("HTTP 403"), "HTTP error not displayed");
-        Check(label.Text.Contains("Einstellungen") && !label.Text.Contains("fünfmal"), "Error hints reference hidden access");
+        Check(!label.Text.Contains("Einstellungen") && !label.Text.Contains('\n'), "Camera error retained redundant navigation instructions");
         Check(((Panel)type.GetField("cameraContent", flags)!.GetValue(form)!).Controls.OfType<Button>().All(button => button.Enabled), "Controls disabled after error");
         PumpUntil(Run(() => Task.FromException(new TaskCanceledException()), "Zoom"));
         Check(label.Text.Contains("nicht rechtzeitig"), "Timeout not displayed");

@@ -1,4 +1,4 @@
-namespace CamControl
+﻿namespace CamControl
 {
     internal sealed class StartupChoiceDialog : Form
     {
@@ -18,14 +18,14 @@ namespace CamControl
             layout.Controls.Add(new Label
             {
                 AutoSize = true, MaximumSize = new Size(450, 0),
-                Text = "Eine PTZ-Kamera steuern oder die Bedienung ohne Kamera ausprobieren. Vor deiner Auswahl werden keine Kamerabefehle gesendet."
+                Text = "PTZ-Kamera mit HTTP-CGI einrichten oder ohne Kamera ausprobieren."
             }, 0, 0);
             var demo = new Button { Text = "Ohne Kamera ausprobieren", Dock = DockStyle.Fill, Height = 54, Margin = new Padding(0, 16, 0, 8) };
             var setup = new Button { Text = "Kamera einrichten", Dock = DockStyle.Fill, Height = 54, Margin = new Padding(0, 0, 0, 8) };
             demo.Click += (_, _) => { UseDemo = true; DialogResult = DialogResult.OK; };
             setup.Click += (_, _) =>
             {
-                using var settings = new CameraSettingsDialog(CameraSettings.Load());
+                using var settings = new CameraSettingsDialog("");
                 if (settings.ShowDialog(this) == DialogResult.OK)
                 {
                     UseDemo = settings.RequestedDemoMode == true;

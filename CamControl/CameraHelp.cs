@@ -4,60 +4,32 @@ namespace CamControl
     {
         public const string Text = """
             Voraussetzungen
-            CamControl benötigt einen Windows-PC und eine kompatible PTZ-Kamera (Schwenken, Neigen und Zoom). Das MSIX-Paket enthält die .NET-Laufzeit bereits. Bei einem Build ohne mitgelieferte Laufzeit muss die .NET 10 Desktop Runtime installiert sein.
+            Windows-PC und PTZ-Kamera mit passender HTTP-CGI-Steuerung im erreichbaren Netzwerk. Das MSIX-Paket enthält .NET; andere Builds benötigen die .NET 10 Desktop Runtime.
 
-            PC und Kamera müssen sich über das Netzwerk erreichen können. Die Kamera muss ihre HTTP-Steuerung unter der eingestellten IPv4-Adresse auf Port 80 bereitstellen. Ein SDK ist zum Bedienen der App nicht erforderlich.
+            Entscheidend sind die unterstützten Befehle, unabhängig von Hersteller oder Modell: Bewegung, Zoom, Stopps und Presets über /cgi-bin/ptzctrl.cgi?ptzcmd&… . Benötigt werden IPv4 und HTTP auf Port 80 ohne Anmeldung. Nicht jede HTTP-CGI-Schnittstelle verwendet diesen Befehlssatz.
 
-            Kamerakompatibilität
-            CamControl verwendet HTTP-Befehle an /cgi-bin/ptzctrl.cgi. Eine bestätigte Liste unterstützter Kameramodelle liegt noch nicht vor. Eine beliebige PTZ-Kamera ist daher nicht automatisch kompatibel. Zugangsdaten und andere Ports können derzeit nicht eingestellt werden.
+            Kamera einrichten
+            Unter „Kamera“ die IP-Adresse ändern und speichern. Abbrechen verwirft die Eingabe.
 
-            Kamera-Adresse einstellen
-            „Einstellungen“ oben rechts öffnen und auf der Seite „Kamera“ die aktuelle Adresse ansehen. „IP-Adresse ändern“ schaltet die Eingabe frei. Erst „Speichern“ auf dieser Seite übernimmt die Adresse und speichert sie für den nächsten Start. „Abbrechen“ oder das Schließen des Dialogs verwirft die Eingabe.
+            Bewegung und Presets
+            Pfeile und Zoom-Buttons gedrückt halten; Loslassen stoppt. Tastatur: Pfeiltasten, Plus/Minus auf dem Nummernblock und 1–6 oder 9 für die Presets.
 
-            Ohne Kamera ausprobieren
-            Beim ersten Start ohne gespeicherte Kamera-Adresse „Ohne Kamera ausprobieren“ wählen. Später ist der Einstieg unter „Einstellungen“ → „Demo-Modus“ → „Demo starten“ möglich. Die Demo gilt für diese Sitzung; die gespeicherte Kamera-Adresse bleibt erhalten.
+            Jeder Preset-Button ruft die entsprechende Nummer auf der Kamera auf. Die App legt keine Kamerapositionen automatisch an. Vor dem ersten Aufruf die gewünschte Position einrichten.
 
-            Im Demo-Modus zeigt die linke Bühne den blauen Bildausschnitt, rechts steht das simulierte Kamerabild. Die gleichen Buttons und Tastenkürzel steuern Bewegung, Zoom und vorbereitete Presets. Es werden keine Kamerabefehle über das Netzwerk gesendet. Die schematische Darstellung ist kein Live-Video.
+            Unter „Buttons & Presets“ einen Button bearbeiten: Namen vergeben (1–32 Zeichen), Kamera ausrichten und „Position speichern“ wählen. Das überschreibt nach Bestätigung das Kamera-Preset. Mit „Position anfahren“ prüfen, ob es gespeichert wurde.
 
-            Zum Beenden unter „Demo-Modus“ die Kamera einrichten und die Adresse speichern. Dies aktiviert wieder den Kamerabetrieb. Eigene Start- und Abschlusspositionen der Demo gelten nur für die Sitzung.
+            Buttonnamen bleiben lokal gespeichert; Positionen speichert die Kamera. Schließen verwirft ungespeicherte Namen, macht aber keine Bewegungen oder gespeicherten Positionen rückgängig.
 
-            Positionen aufrufen
-            Die großen Buttons rufen die in der Kamera gespeicherten Positionen auf. Die folgenden Namen sind die Vorgaben; eigene Namen können in den Einstellungen gespeichert werden. Die Nummern und Tastenkürzel bleiben gleich.
+            Automatische Positionen
+            Unter „Buttons & Presets“ eine Start- oder Endposition wählen und „Automatik speichern“. Ohne eigene Auswahl gibt es keine automatische Fahrt. Beim Beenden wird die Endposition nur nach bestätigtem Stopp angefahren. Eine HTTP-Antwort bestätigt nicht, dass die Kamera ihr Ziel erreicht hat.
 
-            Button / Taste → Presetnummer der Kamera
-            Redner / 1 → 1
-            Redner + Leser / 2 → 2
-            Tisch / 3 → 3
-            komplette Bühne / 4 → 4
-            Redner + Bildschirm / 5 → 5
-            Demo stehend / 6 → 6
-            Standby / 9 → 9
+            Demo-Modus
+            Unter „Demo-Modus“ ohne Kamera ausprobieren. Links: Bühne mit Bildausschnitt; rechts: simuliertes Kamerabild, kein Live-Video. Es werden keine Netzwerkbefehle gesendet. Demo-Namen, Positionen und Automatik gelten nur für die Sitzung; deine Kameraeinstellungen bleiben erhalten.
 
-            „Demo stehend“ ist der vorgegebene Name einer normalen Kameraposition und kein Simulationsmodus.
+            Verbindungsprobleme
+            IP-Adresse, Netzwerk und Stromversorgung prüfen. HTTP-Fehler können auf eine inkompatible Kamerasteuerung hinweisen.
 
-            Buttons und Presets bearbeiten
-            „Einstellungen“ → „Buttons & Presets“ → „Bearbeiten …“ beim gewünschten Button wählen. „Nur Namen speichern“ ändert ausschließlich den Buttontext. Namen dürfen 1 bis 32 Zeichen enthalten. Ungespeicherte Namen werden beim Schließen verworfen.
-
-            Zum Einrichten einer Position die Kamera mit den Pfeil- und Zoombuttons ausrichten. „Gespeicherte Position anfahren“ lädt die bisherige Position. „Aktuelle Kameraposition … speichern“ überschreibt nach einer Bestätigung das betreffende Kamera-Preset. Die App stoppt zuvor die Bewegung. Ein erfolgreich gesendeter Speicherbefehl bestätigt noch nicht unabhängig die Speicherung; zum Prüfen die Position erneut anfahren.
-
-            Ausgeführte Kamerabewegungen und gespeicherte Positionen werden beim Schließen nicht rückgängig gemacht. Alle sieben Buttons, einschließlich Preset 9, sind gleichwertig und können benannt und gespeichert werden. Echte Buttonnamen werden lokal für den nächsten Start gespeichert; die Positionen speichert die Kamera. Im Demo-Modus gelten eigene Namen und Positionen nur für die laufende Sitzung und verändern keine echte Kamera-Konfiguration.
-
-            Ein Fensterwechsel bricht wartende Preset-Aktionen ab und versucht alle Kanäle zu stoppen. Bereits an die Kamera übertragene Befehle lassen sich dadurch nicht rückgängig machen. Wird beim Schließen des Preset-Editors ein Stopp nicht bestätigt, bleibt die Fehlermeldung im Hauptfenster sichtbar.
-
-            Bewegung und Zoom
-            Einen Richtungspfeil oder „Zoom In“ / „Zoom Out“ mit der linken Maustaste gedrückt halten. Loslassen stoppt den jeweiligen Kanal. Alternativ die Pfeiltasten zum Bewegen und Plus/Minus auf dem Nummernblock zum Zoomen gedrückt halten. Die Zahlentasten 1–6 und 9 rufen die oben genannten Positionen auf.
-
-            Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, Bewegung, Zoom und Fokus zu stoppen. Während eines Preset-Ablaufs oder eines vollständigen Stopps sind die Kamerabuttons gesperrt.
-
-            Automatische Positionen beim Start und Beenden
-            Unter „Buttons & Presets“ nach unten zu „Automatische Positionen“ scrollen. Für Start und Beenden jeweils „Keine Position“ oder einen der sieben Buttons auswählen. Erst „Automatik speichern“ übernimmt die Auswahl; Schließen verwirft ungespeicherte Änderungen. Neue Einrichtungen haben keine automatische Fahrt. Bestehende Einrichtungen behalten zunächst Preset 4 beim Start und Preset 9 beim Beenden.
-
-            Beim Beenden versucht die App zuerst alle Kanäle zu stoppen und fährt nur nach bestätigten Stopps das ausgewählte Abschluss-Preset an. „Standby“ ist lediglich der vorgegebene Name von Preset 9; es gibt keine besondere Fokusfahrt oder Warteanimation mehr. Die App wartet auf die HTTP-Antwort, kann aber ohne Positionsrückmeldung nicht bestätigen, wann die Kamera ihr Ziel erreicht hat. Im Demo-Modus lässt sich die Abschlussfahrt an der Simulation ausprobieren; eine gespeicherte Startposition wird beim nächsten Einstieg in den Demo-Modus angefahren.
-
-            Wenn keine Verbindung zustande kommt
-            Die Meldung im Hauptfenster unterscheidet Verbindungsfehler, Zeitüberschreitung und abgelehnte HTTP-Befehle. Prüfen, ob die Kamera eingeschaltet und erreichbar ist, die IPv4-Adresse stimmt und ihre HTTP-Steuerung zu CamControl passt. Anschließend kann der gewünschte Befehl erneut ausgelöst werden.
-
-            Wird ein Stopp nicht bestätigt, kann die Kamera weiterlaufen. Netzwerk und Kamera prüfen und bei Bedarf die Bedienmöglichkeit der Kamera verwenden.
+            Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, die Kamera zu stoppen. Wird ein Stopp nicht bestätigt, kann sie weiterlaufen: Kamera prüfen und bei Bedarf deren eigene Steuerung verwenden.
             """;
     }
 }

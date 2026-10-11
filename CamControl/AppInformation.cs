@@ -4,7 +4,8 @@ namespace CamControl
 {
     internal static class AppInformation
     {
-        internal const string Publisher = "Tobiobobi";
+        internal const string Publisher = "TobioBobi";
+        internal const string Description = "PTZ-Kamerasteuerung über HTTP-CGI";
         internal const string ProjectUrl = "https://github.com/TobioBobi/CamControl";
         internal static string Version => typeof(AppInformation).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]

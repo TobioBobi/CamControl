@@ -1,8 +1,32 @@
 # CamControl
 
-Windows Forms application for controlling a compatible PTZ camera over HTTP.
+Windows app for PTZ cameras that support the HTTP-CGI command interface
+`/cgi-bin/ptzctrl.cgi?ptzcmd&…`, regardless of manufacturer or model.
 
-Settings > Info & Datenschutz shows the build version, publisher Tobiobobi,
+## Camera compatibility
+
+Compatibility depends on the camera's supported commands, rather than a brand
+or model list. The camera must accept HTTP GET requests at the endpoint above,
+using IPv4, port 80, and no authentication. CamControl uses:
+
+| Function | Commands and parameters |
+| --- | --- |
+| Pan/tilt | `up`, `down`, `left`, `right`, each with `&10&10` |
+| Zoom | `zoomin`, `zoomout`, each with `&5` |
+| Stop | `ptzstop&10&10`, `zoomstop&5`, `focusstop&5` |
+| Presets | `poscall&N`, `posset&N`, with N = 1–6 or 9 |
+
+For example, preset 1 is recalled with
+`http://CAMERA-IP/cgi-bin/ptzctrl.cgi?ptzcmd&poscall&1`.
+HTTP-CGI describes the interface style; another HTTP camera API does not
+necessarily support this command set. Verify the commands against the camera's
+documentation and actual hardware. Protocol references:
+[HTTP-CGI requests](https://docs.ptzoptics.com/dev/guides/http-api-getting-started/),
+[preset commands](https://docs.ptzoptics.com/dev/http-api/Movement/preset-commands-get-preset-command/).
+
+The draft German Store description is in [store-listing.md](docs/store-listing.md).
+
+Settings > Info & Datenschutz shows the build version, publisher TobioBobi,
 project/support link and privacy information. The app embeds the same
 [privacy text](docs/privacy.md) maintained in this repository. The GitHub link
 opens the browser only when clicked. A public privacy URL for the Store listing
@@ -59,14 +83,14 @@ See [the certification test instructions](docs/store-testing.md).
 dotnet run --project CamControl/CamControl.csproj -c Release -- --demo
 ```
 
-The visible Settings button opens a read-only configuration dialog. Choose
-"Konfiguration bearbeiten" to change the camera IP; only "Speichern" applies
+The visible Settings button opens the configuration dialog. The camera IP is
+always editable; saving becomes available when a valid address changes
 and persists the change. Cancel or closing the dialog discards the edits.
 Opening settings cancels pending camera commands and attempts all stops first.
 The "Hilfe & Voraussetzungen" page explains network and runtime requirements,
 current camera compatibility limits, setup, preset numbers, keyboard/mouse
-controls, startup/standby behavior and troubleshooting. The confirmed camera
-model list and the preset-save API still need to be verified on the camera.
+controls, optional startup/exit presets and troubleshooting. Compatibility of
+the command set, including preset saving, must be tested on actual hardware.
 
 Settings > **Buttons & Presets** lists all seven position buttons. **Bearbeiten …**
 opens a separate editor with held direction/zoom controls, preset recall, and
@@ -76,8 +100,8 @@ Preset numbers 1–6 and 9 remain fixed; all seven positions are editable.
 The camera stores physical positions. Demo names and saved positions stay in
 memory for the session and do not change the real configuration. Closing an
 editor discards an unsaved name, but does not undo camera motion or saved presets.
-The save command is documented by PTZOptics and SMTAV; it still requires testing
-with the actual camera. A successful HTTP response is not independent readback.
+The save command must be supported by the camera's HTTP-CGI interface. A
+successful HTTP response is not independent readback of the stored position.
 
 Manual movement and zoom stop on key/mouse release, loss of mouse capture,
 window deactivation, settings opening and application closing. Pending commands
@@ -88,13 +112,12 @@ Network failures can prevent the camera from receiving or confirming a stop;
 an unconfirmed stop is shown as an error while the app is open.
 
 Framework-dependent builds require the .NET 10 Desktop Runtime on the target
-Windows PC. MSIX packaging and self-contained distribution are not configured yet.
+Windows PC. MSIX packages include the .NET runtime.
 
 Automatic startup and exit presets are configured in **Buttons & Presets >
 Automatische Positionen** and applied with **Automatik speichern**. Save becomes
 enabled only when a selection differs from its saved value. Each selection
-allows None or one of the seven buttons. New installations default to no motion;
-existing camera configurations without automation settings migrate to start 4,
-exit 9. Choices persist in `automatic-positions.json`. Demo choices remain in
+allows None or one of the seven buttons. Without saved choices, startup and exit
+perform no preset motion. Choices persist in `automatic-positions.json`. Demo choices remain in
 memory for the session. Preset 9 is ordinary: no timed focus sequence or loading
 animation remains. HTTP completion does not confirm arrival at the physical target.

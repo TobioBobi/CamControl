@@ -51,7 +51,7 @@ namespace CamControl
             buttonRedner.Name = "buttonRedner";
             buttonRedner.Size = new Size(171, 86);
             buttonRedner.TabIndex = 0;
-            buttonRedner.Text = "Redner (1)";
+            buttonRedner.Text = "Preset 1";
             buttonRedner.UseVisualStyleBackColor = true;
             buttonRedner.Click += buttonRedner_Click;
             // 
@@ -61,7 +61,7 @@ namespace CamControl
             buttonRednerLeser.Name = "buttonRednerLeser";
             buttonRednerLeser.Size = new Size(171, 86);
             buttonRednerLeser.TabIndex = 1;
-            buttonRednerLeser.Text = "Redner + Leser (2)";
+            buttonRednerLeser.Text = "Preset 2";
             buttonRednerLeser.UseVisualStyleBackColor = true;
             buttonRednerLeser.Click += buttonRednerLeser_Click;
             // 
@@ -71,7 +71,7 @@ namespace CamControl
             buttonTisch.Name = "buttonTisch";
             buttonTisch.Size = new Size(171, 86);
             buttonTisch.TabIndex = 2;
-            buttonTisch.Text = "Tisch (3)";
+            buttonTisch.Text = "Preset 3";
             buttonTisch.UseVisualStyleBackColor = true;
             buttonTisch.Click += buttonTisch_Click;
             // 
@@ -81,7 +81,7 @@ namespace CamControl
             buttonKompletteBuehne.Name = "buttonKompletteBuehne";
             buttonKompletteBuehne.Size = new Size(171, 86);
             buttonKompletteBuehne.TabIndex = 3;
-            buttonKompletteBuehne.Text = "komplette Bühne (4)";
+            buttonKompletteBuehne.Text = "Preset 4";
             buttonKompletteBuehne.UseVisualStyleBackColor = true;
             buttonKompletteBuehne.Click += buttonKompletteBuehne_Click;
             // 
@@ -91,7 +91,7 @@ namespace CamControl
             buttonRednerBildschirm.Name = "buttonRednerBildschirm";
             buttonRednerBildschirm.Size = new Size(171, 86);
             buttonRednerBildschirm.TabIndex = 4;
-            buttonRednerBildschirm.Text = "Redner + Bildschirm (5)";
+            buttonRednerBildschirm.Text = "Preset 5";
             buttonRednerBildschirm.UseVisualStyleBackColor = true;
             buttonRednerBildschirm.Click += buttonRednerBildschirm_Click;
             // 
@@ -145,7 +145,7 @@ namespace CamControl
             buttonStandBy.Name = "buttonStandBy";
             buttonStandBy.Size = new Size(171, 86);
             buttonStandBy.TabIndex = 6;
-            buttonStandBy.Text = "Standby (9)";
+            buttonStandBy.Text = "Preset 9";
             buttonStandBy.UseVisualStyleBackColor = true;
             buttonStandBy.Click += buttonStandBy_Click;
             // 
@@ -179,7 +179,7 @@ namespace CamControl
             buttonDemoStehend.Name = "buttonDemoStehend";
             buttonDemoStehend.Size = new Size(171, 86);
             buttonDemoStehend.TabIndex = 5;
-            buttonDemoStehend.Text = "Demo stehend (6)";
+            buttonDemoStehend.Text = "Preset 6";
             buttonDemoStehend.UseVisualStyleBackColor = true;
             buttonDemoStehend.Click += buttonDemoStehend_Click;
             // 

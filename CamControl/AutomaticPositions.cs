@@ -9,7 +9,7 @@ internal sealed class AutomaticPositions
     public static string FilePath => Path.Combine(Path.GetDirectoryName(CameraSettings.FilePath)!, "automatic-positions.json");
     public static bool IsValid(int? number) => number == null || number is >= 1 and <= 6 or 9;
 
-    public static AutomaticPositions Load(string? path = null, bool? existingInstallation = null)
+    public static AutomaticPositions Load(string? path = null)
     {
         try
         {
@@ -19,10 +19,8 @@ internal sealed class AutomaticPositions
                     ExitPreset = IsValid(value.ExitPreset) ? value.ExitPreset : null };
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
-        // Only absent settings migrate the old behavior. Damaged settings fail
-        // closed rather than unexpectedly moving a camera.
-        return !File.Exists(path ?? FilePath) && (existingInstallation ?? CameraSettings.TryLoad(null, out _))
-            ? new() { StartPreset = 4, ExitPreset = 9 } : new();
+        // Automatic movement is opt-in, including for existing camera addresses.
+        return new();
     }
 
     public static void Save(AutomaticPositions value, string? path = null)

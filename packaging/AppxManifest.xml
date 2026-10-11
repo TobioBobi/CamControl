@@ -8,8 +8,8 @@
   <Identity Name="CamControl.LocalTest" Publisher="CN=Tobias Heer" Version="1.1.0.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>CamControl (Test)</DisplayName>
-    <PublisherDisplayName>Tobiobobi</PublisherDisplayName>
-    <Description>Steuerung kompatibler PTZ-Kameras mit hardwarefreiem Demo-Modus.</Description>
+    <PublisherDisplayName>TobioBobi</PublisherDisplayName>
+    <Description>PTZ-Kamerasteuerung über kompatible HTTP-CGI-Befehle. Mit Demo-Modus.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   <Resources><Resource Language="de-DE" /></Resources>
@@ -19,7 +19,7 @@
   <Applications>
     <Application Id="CamControl" Executable="CamControl.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
       <uap:VisualElements DisplayName="CamControl (Test)"
-                          Description="Steuerung kompatibler PTZ-Kameras mit hardwarefreiem Demo-Modus."
+                          Description="PTZ-Kamerasteuerung über kompatible HTTP-CGI-Befehle. Mit Demo-Modus."
                           Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png" BackgroundColor="transparent" />
     </Application>

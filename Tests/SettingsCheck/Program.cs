@@ -1,4 +1,4 @@
-using CamControl;
+﻿using CamControl;
 using System.Net;
 
 int checks = 0;
@@ -34,35 +34,36 @@ using var handler = new RecordingHandler();
 var namesPath = Path.Combine(AppContext.BaseDirectory, "test-buttons.json");
 var automaticPath = Path.Combine(AppContext.BaseDirectory, "test-automatic-positions.json");
 File.Delete(automaticPath);
-var freshAutomatic = AutomaticPositions.Load(automaticPath, existingInstallation: false);
+var freshAutomatic = AutomaticPositions.Load(automaticPath);
 Check(freshAutomatic.StartPreset == null && freshAutomatic.ExitPreset == null, "Fresh setup unexpectedly enabled automatic motion");
-var migratedAutomatic = AutomaticPositions.Load(automaticPath, existingInstallation: true);
-Check(migratedAutomatic.StartPreset == 4 && migratedAutomatic.ExitPreset == 9, "Existing installation lost its automatic positions");
+Check(!File.Exists(automaticPath), "Reading automatic settings persisted defaults before configuration");
 AutomaticPositions.Save(new() { StartPreset = 2, ExitPreset = 6 }, automaticPath);
-var reloadedAutomatic = AutomaticPositions.Load(automaticPath, false);
+var reloadedAutomatic = AutomaticPositions.Load(automaticPath);
 Check(reloadedAutomatic.StartPreset == 2 && reloadedAutomatic.ExitPreset == 6, "Automatic choices did not survive restart");
 AutomaticPositions.Save(new(), automaticPath);
-Check(AutomaticPositions.Load(automaticPath, true).StartPreset == null && AutomaticPositions.Load(automaticPath, true).ExitPreset == null,
+Check(AutomaticPositions.Load(automaticPath).StartPreset == null && AutomaticPositions.Load(automaticPath).ExitPreset == null,
     "Saved none selection reverted to legacy behavior");
 File.WriteAllText(automaticPath, "broken");
-Check(AutomaticPositions.Load(automaticPath, true).StartPreset == null, "Damaged automation enabled legacy movement");
+Check(AutomaticPositions.Load(automaticPath).StartPreset == null, "Damaged automation enabled legacy movement");
 File.WriteAllText(automaticPath, "{\"StartPreset\":7,\"ExitPreset\":9}");
-Check(AutomaticPositions.Load(automaticPath, false).StartPreset == null && AutomaticPositions.Load(automaticPath, false).ExitPreset == 9,
+Check(AutomaticPositions.Load(automaticPath).StartPreset == null && AutomaticPositions.Load(automaticPath).ExitPreset == 9,
     "Invalid automatic preset accepted or valid preset discarded");
 try { AutomaticPositions.Save(new() { ExitPreset = 8 }, automaticPath); throw new Exception("Invalid automatic preset saved"); }
 catch (ArgumentException) { checks++; }
 File.Delete(automaticPath);
 File.Delete(namesPath);
 var names = PresetSettings.Load(namesPath);
-Check(names.Count == 7 && names[1] == "Redner", "Missing button settings lost defaults");
+Check(names.Count == 7 && names[1] == "Preset 1", "Missing button settings lost defaults");
+Check(names.All(pair => pair.Value == $"Preset {pair.Key}") && !File.Exists(namesPath) && !File.Exists(automaticPath),
+    "Reading fresh preset settings persisted configuration or used setup-specific names");
 names[1] = "  Bühne links  ";
 PresetSettings.Save(names, namesPath);
 Check(PresetSettings.Load(namesPath)[1] == "Bühne links", "Button name did not survive restart");
 File.WriteAllText(namesPath, "{\"1\":\"\",\"2\":\"Lesepult\",\"9\":\"Wrong\"}");
 var loadedNames = PresetSettings.Load(namesPath);
-Check(loadedNames[1] == "Redner" && loadedNames[2] == "Lesepult" && loadedNames[9] == "Wrong", "Invalid names or standby mapping accepted");
+Check(loadedNames[1] == "Preset 1" && loadedNames[2] == "Lesepult" && loadedNames[9] == "Wrong", "Invalid names or standby mapping accepted");
 File.WriteAllText(namesPath, "broken json");
-Check(PresetSettings.Load(namesPath)[1] == "Redner", "Damaged button file prevented fallback");
+Check(PresetSettings.Load(namesPath)[1] == "Preset 1", "Damaged button file prevented fallback");
 foreach (var invalidName in new[] { "", "   ", new string('x', 33), "a\nb" })
     Check(!PresetSettings.IsValidName(invalidName), "Invalid button name accepted");
 names[1] = "";
@@ -296,10 +297,11 @@ IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control
 var dialogControls = Descendants(dialog).ToArray();
 var address = dialogControls.OfType<TextBox>().Single();
 var help = dialogControls.OfType<RichTextBox>().Single(control => control.Name == "cameraHelp");
-Check(help.ReadOnly && help.ScrollBars == RichTextBoxScrollBars.Vertical,
+Check(help.ReadOnly && help.ScrollBars == RichTextBoxScrollBars.Vertical &&
+    help.Text.Contains("HTTP-CGI") && help.Text.Contains("/cgi-bin/ptzctrl.cgi?ptzcmd&"),
     "Help could be edited or was not scrollable");
 var save = dialogControls.OfType<Button>().Single(button => button.Text == "Speichern");
-Check(dialog.AcceptButton == null && !save.Enabled && address.ReadOnly,
+Check(dialog.AcceptButton == null && !save.Enabled && !address.ReadOnly && address.TabStop,
     "Opening the dialog allowed accidental changes");
 Check(dialog.CancelButton is Button cancel && cancel.DialogResult == DialogResult.Cancel, "Cancel button missing");
 Check(address.Text == "192.168.188.24", "Dialog did not show active IP");
@@ -314,14 +316,19 @@ var privacy = dialogControls.OfType<RichTextBox>().Single(control => control.Nam
 Check(pages.SelectedTab!.Text == "Info & Datenschutz" && privacy.ReadOnly &&
     privacy.Text == AppInformation.PrivacyText && privacy.Text.Contains("unverschlüsseltes HTTP"),
     "Privacy page did not display the embedded policy as read-only text");
-Check(dialogControls.Single(control => control.Name == "appInformation").Text.Contains("Tobiobobi") &&
+Check(dialogControls.Single(control => control.Name == "appInformation").Text.Contains("TobioBobi") &&
+    dialogControls.Single(control => control.Name == "appInformation").Text.Contains(AppInformation.Description) &&
     !string.IsNullOrWhiteSpace(AppInformation.Version) && !File.Exists(testPath) && !save.Enabled,
     "Reading app information changed configuration or omitted publisher/version");
-pages.SelectedIndex = 1;
-typeof(CameraSettingsDialog).GetMethod("Edit_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
-Check(!address.ReadOnly && save.Enabled && dialog.AcceptButton == save &&
-    ((Button)dialog.CancelButton!).Text == "Abbrechen" && pages.SelectedIndex == 0,
-    "Edit mode was not explicitly enabled on the camera page");
+pages.SelectedIndex = 0;
+address.Text = "invalid";
+Check(!save.Enabled, "Invalid IP enabled saving");
+address.Text = "192.168.188.024";
+Check(!save.Enabled, "Equivalent normalized IP enabled saving");
+address.Text = "192.168.188.25";
+Check(save.Enabled && dialog.AcceptButton == save, "Changed valid IP did not enable saving");
+address.Text = "192.168.188.24";
+Check(!save.Enabled && dialog.AcceptButton == null, "Reverting IP left saving enabled");
 address.Text = "192.168.188.025";
 pages.SelectedIndex = 1;
 Check(pages.SelectedTab!.Text == "Hilfe & Voraussetzungen" &&
@@ -340,7 +347,6 @@ Check(dialog.DialogResult == DialogResult.OK && dialog.CameraIp == "192.168.188.
     CameraSettings.Load(testPath) == "192.168.188.25", "Save did not persist and return the normalized IP");
 using (var cancelledDialog = new CameraSettingsDialog("192.168.188.25", testPath))
 {
-    typeof(CameraSettingsDialog).GetMethod("Edit_Click", dialogFlags)!.Invoke(cancelledDialog, new object?[] { null, EventArgs.Empty });
     Descendants(cancelledDialog).OfType<TextBox>().Single().Text = "192.168.188.26";
     cancelledDialog.DialogResult = DialogResult.Cancel;
     cancelledDialog.Close();
@@ -360,9 +366,9 @@ using (var demoDialog = new CameraSettingsDialog("192.168.188.25", testPath, dem
 {
     var demoButton = Descendants(demoDialog).OfType<Button>().Single(button => button.Name == "demoAction");
     typeof(Button).GetMethod("OnClick", dialogFlags)!.Invoke(demoButton, new object[] { EventArgs.Empty });
-    Check(demoDialog.RequestedDemoMode == false && demoDialog.DialogResult != DialogResult.OK &&
+    Check(demoDialog.RequestedDemoMode == false && demoDialog.DialogResult == DialogResult.OK &&
         !Descendants(demoDialog).OfType<TextBox>().Single().ReadOnly && !File.Exists(testPath),
-        "Leaving demo did not require deliberate configuration saving");
+        "Explicit demo exit failed or changed camera settings");
     demoDialog.DialogResult = DialogResult.Cancel;
     Check(!File.Exists(testPath), "Cancelling demo exit saved the camera IP");
 }

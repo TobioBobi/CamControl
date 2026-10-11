@@ -51,13 +51,13 @@ namespace CamControl
                         if (parts.Length != 3 || !int.TryParse(parts[2], out int preset)) return false;
                         var target = preset switch
                         {
-                            1 => (.25f, .45f, 2.5f, "Redner"),
-                            2 => (.35f, .45f, 1.8f, "Redner + Leser"),
-                            3 => (.65f, .65f, 2f, "Tisch"),
-                            4 => (.5f, .5f, 1f, "komplette Bühne"),
-                            5 => (.5f, .4f, 1.3f, "Redner + Bildschirm"),
-                            6 => (.72f, .5f, 2.5f, "Demo stehend"),
-                            9 => (.5f, .85f, 2f, "Standby"),
+                            1 => (.25f, .45f, 2.5f, "Preset 1"),
+                            2 => (.35f, .45f, 1.8f, "Preset 2"),
+                            3 => (.65f, .65f, 2f, "Preset 3"),
+                            4 => (.5f, .5f, 1f, "Preset 4"),
+                            5 => (.5f, .4f, 1.3f, "Preset 5"),
+                            6 => (.72f, .5f, 2.5f, "Preset 6"),
+                            9 => (.5f, .85f, 2f, "Preset 9"),
                             _ => (0f, 0f, 0f, "")
                         };
                         if (savedPresets.TryGetValue(preset, out var saved)) target = saved;
@@ -73,7 +73,7 @@ namespace CamControl
                     case "zoomin": zoomDirection = 1; lastAction = "Zoom In"; break;
                     case "zoomout": zoomDirection = -1; lastAction = "Zoom Out"; break;
                     case "zoomstop": zoomDirection = 0; lastAction = "Zoom gestoppt"; break;
-                    case "focusin": focusing = true; lastAction = "Standby: Fokusfahrt"; break;
+                    case "focusin": focusing = true; lastAction = "Fokusfahrt"; break;
                     case "focusstop": focusing = false; lastAction = "Fokus gestoppt"; break;
                     default: return false;
                 }

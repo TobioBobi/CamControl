@@ -1,14 +1,12 @@
-namespace CamControl
+﻿namespace CamControl
 {
     internal sealed class CameraSettingsDialog : Form
     {
         private readonly TextBox address;
-        private readonly Button edit, save, cancel;
-        private readonly Label hint;
+        private readonly Button save, cancel;
         private readonly TabControl pages;
         private readonly Button demoAction;
         private readonly string? settingsPath;
-        private bool editing;
         private TabPage? presetsPage;
         private readonly FlowLayoutPanel presetLayout;
         private readonly Dictionary<int, string>? presetNames;
@@ -39,17 +37,9 @@ namespace CamControl
             address = new TextBox
             {
                 Name = "cameraAddress", Text = cameraIp, Dock = DockStyle.Top,
-                ReadOnly = true, TabStop = false, AccessibleName = "IP-Adresse der Kamera"
+                TabStop = true, AccessibleName = "IP-Adresse der Kamera"
             };
-            hint = new Label
-            {
-                AutoSize = true, MaximumSize = new Size(460, 0), Dock = DockStyle.Top,
-                Text = "Die IP-Adresse ist vor Änderungen geschützt. Zum Ändern „IP-Adresse ändern“ wählen.",
-                Margin = new Padding(0, 12, 0, 0)
-            };
-            edit = new Button { Name = "editConfiguration", Text = "IP-Adresse ändern", AutoSize = true, TabIndex = 0 };
             save = new Button { Name = "saveConfiguration", Text = "Speichern", AutoSize = true, Enabled = false, TabIndex = 1 };
-            edit.Click += Edit_Click;
             save.Click += Save_Click;
             pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill, Multiline = true };
             pages.TabPages.Add(CreateCameraPage());
@@ -59,21 +49,21 @@ namespace CamControl
             demoLayout.Controls.Add(new Label
             {
                 Text = demoModeActive
-                    ? "Demo-Modus aktiv. Es werden keine Befehle an eine echte Kamera gesendet. Zum Wechseln die Kamera-Adresse prüfen und speichern."
-                    : "Ohne Kamera ausprobieren: Eine schematische Bühne zeigt Bewegung, Zoom und Presets. Die gespeicherte Kamera-Adresse bleibt erhalten.",
+                    ? "Demo aktiv · Keine Netzwerkbefehle."
+                    : "Bewegung, Zoom und Presets ohne Kamera testen. Deine Kameraeinstellungen bleiben erhalten.",
                 AutoSize = true, MaximumSize = new Size(490, 0)
             });
             demoAction = new Button
             {
                 Name = "demoAction", AutoSize = true, Margin = new Padding(0, 16, 0, 0),
-                Text = demoModeActive ? "Kamera einrichten und Demo beenden" : "Demo starten"
+                Text = demoModeActive ? "Zur Kamera wechseln" : "Demo starten"
             };
             demoAction.Click += (_, _) =>
             {
                 if (demoModeActive)
                 {
                     RequestedDemoMode = false;
-                    Edit_Click(null, EventArgs.Empty);
+                    DialogResult = DialogResult.OK;
                 }
                 else
                 {
@@ -92,19 +82,19 @@ namespace CamControl
             presetLayout.Controls.Add(new Label
             {
                 AutoSize = true, MaximumSize = new Size(500, 0),
-                Text = service == null ? "Bitte zuerst die Kamera einrichten oder den Demo-Modus starten."
-                    : "„Bearbeiten …“ öffnet die Steuerung und das gezielte Speichern für jeden Button."
+                Text = service == null ? "Zuerst Kamera einrichten oder Demo starten."
+                    : "Buttonnamen und Kamerapositionen bearbeiten.",
             });
             if (service != null && presetNames != null && savePresetName != null)
                 foreach (int number in new[] { 1, 2, 3, 4, 5, 6, 9 })
                 {
                     var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 8, 0, 0) };
-                    var label = new Label { Text = $"{number}: {presetNames[number]}", Width = 330, Height = 30, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft };
+                    var label = new Label { Text = PresetSettings.Caption(number, presetNames[number]), Width = 330, Height = 30, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft };
                     var button = new Button { Text = "Bearbeiten …", AutoSize = true, AccessibleName = $"Preset {number} bearbeiten" };
                     button.Click += (_, _) =>
                     {
                         using var editor = new PresetEditorDialog(service, (Position)number, presetNames[number],
-                            value => { savePresetName(number, value); label.Text = $"{number}: {presetNames[number]}"; RefreshAutomaticChoices(); }, demo);
+                            value => { savePresetName(number, value); label.Text = PresetSettings.Caption(number, presetNames[number]); RefreshAutomaticChoices(); }, demo);
                         editor.CloseStopFailed += error => PresetStopFailed?.Invoke(error);
                         editor.ShowDialog(this);
                     };
@@ -116,12 +106,8 @@ namespace CamControl
             pages.TabPages.Add(CreateInfoPage());
 
             cancel = new Button { Text = "Schließen", AutoSize = true, DialogResult = DialogResult.Cancel, TabIndex = 2 };
-            pages.SelectedIndexChanged += (_, _) =>
-            {
-                bool editingCamera = editing && pages.SelectedIndex == 0;
-                AcceptButton = editingCamera ? save : null;
-                cancel.Text = editingCamera ? "Abbrechen" : "Schließen";
-            };
+            pages.SelectedIndexChanged += (_, _) => UpdateAddressActions();
+            address.TextChanged += (_, _) => UpdateAddressActions();
             var actions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.RightToLeft,
@@ -136,7 +122,7 @@ namespace CamControl
             layout.Controls.Add(actions, 0, 1);
             Controls.Add(layout);
             CancelButton = cancel;
-            // Enter cannot unlock editing or save while viewing the configuration.
+            // Enter only saves a changed, valid address on the camera page.
             AcceptButton = null;
             WindowLayout.FitToScreen(this);
         }
@@ -147,9 +133,9 @@ namespace CamControl
             group.Controls.Add(new Label { AutoSize = true, Text = "Automatische Positionen (optional)" });
             var start = new ComboBox { Name = "startPreset", DropDownStyle = ComboBoxStyle.DropDownList, Width = 440 };
             var exit = new ComboBox { Name = "exitPreset", DropDownStyle = ComboBoxStyle.DropDownList, Width = 440 };
-            group.Controls.Add(new Label { AutoSize = true, Text = "Beim Start automatisch anfahren:" });
+            group.Controls.Add(new Label { AutoSize = true, Text = "Beim Start:" });
             group.Controls.Add(start);
-            group.Controls.Add(new Label { AutoSize = true, Text = "Beim Beenden automatisch anfahren:" });
+            group.Controls.Add(new Label { AutoSize = true, Text = "Beim Beenden:" });
             group.Controls.Add(exit);
             automaticSelectors = new[] { start, exit };
             RefreshAutomaticChoices();
@@ -165,7 +151,7 @@ namespace CamControl
                 if (refreshingAutomaticChoices) return;
                 saveAutomatic.Enabled = HasChanges();
                 feedback.ForeColor = SystemColors.ControlText;
-                feedback.Text = saveAutomatic.Enabled ? "Auswahl geändert. Erst „Automatik speichern“ übernimmt sie." : "";
+                feedback.Text = saveAutomatic.Enabled ? "Ungespeicherte Änderungen." : "";
             }
             start.SelectedIndexChanged += SelectionChanged;
             exit.SelectedIndexChanged += SelectionChanged;
@@ -179,7 +165,7 @@ namespace CamControl
                     savedExit = ((PresetChoice)exit.SelectedItem!).Number;
                     saveAutomatic.Enabled = false;
                     feedback.ForeColor = Color.DarkGreen;
-                    feedback.Text = "Auswahl gespeichert. Ungespeicherte Änderungen werden beim Schließen verworfen.";
+                    feedback.Text = "Automatik gespeichert.";
                 }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 { feedback.ForeColor = Color.DarkRed; feedback.Text = "Auswahl konnte nicht gespeichert werden: " + e.Message; }
@@ -205,7 +191,7 @@ namespace CamControl
                     selector.Items.Clear();
                     selector.Items.Add(new PresetChoice(null, "Keine Position"));
                     foreach (int number in new[] { 1, 2, 3, 4, 5, 6, 9 })
-                        selector.Items.Add(new PresetChoice(number, $"{presetNames![number]} (Preset {number})"));
+                        selector.Items.Add(new PresetChoice(number, PresetSettings.Caption(number, presetNames![number])));
                     selector.SelectedItem = selector.Items.Cast<PresetChoice>().Single(item => item.Number == selected);
                 }
             }
@@ -215,39 +201,35 @@ namespace CamControl
         private TabPage CreateCameraPage()
         {
             var page = new TabPage("Kamera") { Padding = new Padding(16), AutoScroll = true };
-            var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 4 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 3 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (int row = 0; row < 4; row++)
+            for (int row = 0; row < 3; row++)
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.Controls.Add(new Label { Text = "IP-Adresse der Kamera:", AutoSize = true }, 0, 0);
             layout.Controls.Add(address, 0, 1);
-            layout.Controls.Add(hint, 0, 2);
             var addressActions = new FlowLayoutPanel
             {
                 AutoSize = true, Dock = DockStyle.Fill, WrapContents = false,
                 Margin = new Padding(0, 16, 0, 0)
             };
-            addressActions.Controls.AddRange(new Control[] { edit, save });
-            layout.Controls.Add(addressActions, 0, 3);
+            addressActions.Controls.Add(save);
+            layout.Controls.Add(addressActions, 0, 2);
             page.Controls.Add(layout);
             return page;
         }
 
-        private void Edit_Click(object? sender, EventArgs e)
+        private bool HasAddressChanges() =>
+            CameraSettings.TryNormalizeIp(address.Text, out var ip) &&
+            (!CameraSettings.TryNormalizeIp(CameraIp, out var current) || ip != current);
+
+        private void UpdateAddressActions()
         {
-            pages.SelectedIndex = 0;
-            editing = true;
-            if (presetsPage != null) presetsPage.Enabled = false;
-            demoAction.Enabled = false;
-            address.ReadOnly = false;
-            address.TabStop = true;
-            edit.Enabled = false;
-            save.Enabled = true;
-            cancel.Text = "Abbrechen";
-            hint.Text = "Änderungen gelten erst nach „Speichern“. „Abbrechen“ verwirft die Änderungen.";
-            AcceptButton = save;
-            address.Focus();
-            address.SelectAll();
+            save.Enabled = HasAddressChanges();
+            bool changed = address.Text.Trim() != CameraIp;
+            if (presetsPage != null) presetsPage.Enabled = !changed;
+            demoAction.Enabled = !changed;
+            AcceptButton = save.Enabled && pages.SelectedIndex == 0 ? save : null;
+            cancel.Text = changed && pages.SelectedIndex == 0 ? "Abbrechen" : "Schließen";
         }
 
         private static TabPage CreateHelpPage()
@@ -277,7 +259,7 @@ namespace CamControl
             layout.Controls.Add(new Label
             {
                 Name = "appInformation", AutoSize = true, MaximumSize = new Size(510, 0),
-                Text = $"CamControl · Version {AppInformation.Version}\nSteuerung kompatibler PTZ-Kameras über HTTP\nHerausgeber: {AppInformation.Publisher}",
+                Text = $"CamControl · Version {AppInformation.Version}\n{AppInformation.Description}\nHerausgeber: {AppInformation.Publisher}",
                 Margin = new Padding(3, 3, 3, 12)
             }, 0, 0);
             var link = new LinkLabel { Name = "projectSupport", Text = "Projekt & Support auf GitHub", AutoSize = true, Margin = new Padding(3, 0, 3, 8) };
@@ -308,11 +290,11 @@ namespace CamControl
 
         private void Save_Click(object? sender, EventArgs e)
         {
-            if (!editing || pages.SelectedIndex != 0)
+            if (!HasAddressChanges() || pages.SelectedIndex != 0)
                 return;
             if (!CameraSettings.TryNormalizeIp(address.Text, out var ip))
             {
-                MessageBox.Show(this, "Bitte eine gültige IPv4-Adresse eingeben, zum Beispiel 192.168.188.24.",
+                MessageBox.Show(this, "Gültige IPv4-Adresse eingeben, z. B. 192.168.1.100.",
                     "Ungültige Adresse", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 address.Focus();
                 address.SelectAll();

@@ -188,7 +188,7 @@ namespace CamControl
             var numbers = new[] { 1, 2, 3, 4, 5, 6, 9 };
             for (int i = 0; i < buttons.Length; i++)
             {
-                buttons[i].Text = $"{names[numbers[i]]} ({numbers[i]})";
+                buttons[i].Text = PresetSettings.Caption(numbers[i], names[numbers[i]]);
                 buttons[i].AccessibleName = names[numbers[i]];
             }
         }
@@ -222,7 +222,7 @@ namespace CamControl
             if (IsDisposed || Disposing || finalClose || !ControlBox)
                 return;
             cameraErrorVersion++;
-            cameraErrorLabel.Text = $"{action}: {error}\nAdresse ändern: „Einstellungen“ → „Konfiguration bearbeiten“.";
+            cameraErrorLabel.Text = $"{action}: {error}";
         }
 
         private async Task ExecuteCameraCommandAsync(Func<CancellationToken, Task> command, string action,
@@ -313,7 +313,7 @@ namespace CamControl
                 using var dialog = new CameraSettingsDialog(camControlService.CameraIp, demoModeActive: IsDemoMode,
                     service: camControlService, presetNames: IsDemoMode ? demoPresetNames : presetNames,
                     savePresetName: SavePresetName, demo: IsDemoMode ? demoCamera : null);
-                dialog.PresetStopFailed += error => ReportCameraError("Kamerastopp beim Schließen des Preset-Editors nicht bestätigt", error);
+                dialog.PresetStopFailed += error => ReportCameraError("Stopp beim Schließen nicht bestätigt", error);
                 dialog.ConfigureAutomaticPositions(IsDemoMode ? demoAutomaticPositions : automaticPositions, value =>
                 {
                     if (IsDemoMode) demoAutomaticPositions = value;

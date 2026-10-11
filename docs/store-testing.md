@@ -22,12 +22,12 @@ demo selection is not saved across restarts. The window clearly labels demo mode
    releasing the control stops the zoom.
 4. During movement/zoom, switch to another window. Both channels should stop.
 5. Call preset 9. It behaves like all other presets: no timed focus sequence.
-6. Review the read-only camera configuration and the help page. Editing requires
-   **IP-Adresse ändern** on the camera tab. Cancel a changed IP and verify it is not saved.
+6. Review the camera configuration and the help page. The IP is editable;
+   **Speichern** activates only for a changed, valid IP. Cancel a changed IP and verify it is not saved.
 7. Open **Einstellungen > Buttons & Presets > Bearbeiten …** for one button.
    Save a different name with **Nur Namen speichern**. Hold direction/zoom
    buttons to choose a new frame, then save the position and confirm replacement.
-   Move elsewhere and use **Gespeicherte Position anfahren** to verify recall.
+   Move elsewhere and use **Position anfahren** to verify recall.
    Close settings: the renamed main button recalls the new position too.
    Restart demo to restore defaults; real camera configuration is unchanged.
 8. Scroll down in **Buttons & Presets** to **Automatische Positionen**.
@@ -36,16 +36,19 @@ demo selection is not saved across restarts. The window clearly labels demo mode
    Close demo: it stops all channels, calls the selected exit preset if any,
    and exits without a focus sequence. Demo selections do not change real settings.
 
-To leave demo mode, open **Einstellungen > Demo-Modus > Kamera einrichten und
-Demo beenden**, review/edit the IP, then save. This deliberately activates camera
+To leave demo mode, open **Einstellungen > Demo-Modus > Zur Kamera wechseln**,
+review/edit the IP, then save. This deliberately activates camera
 control; physical hardware is required to verify the real commands.
 
 ## Current limitations
 
 - Preset numbers 1–6 and 9 remain fixed. All seven names and positions are editable;
   saving to a physical camera uses `posset` and still requires hardware validation.
-- “Demo stehend” is the name of preset 6, separate from the hardware-free mode.
-- The model list remains to be confirmed. The app currently targets the HTTP
-  `/cgi-bin/ptzctrl.cgi` command endpoint on port 80 with an IPv4 camera address.
+- Default button names are **Preset 1–6** and **Preset 9**. The app never creates
+  camera presets automatically; demo positions are simulated only in memory.
+- Compatibility is based on the supported HTTP-CGI command set, regardless of
+  brand or model. The camera must accept `/cgi-bin/ptzctrl.cgi?ptzcmd&…` over
+  HTTP on port 80 with an IPv4 address and no authentication. See the command
+  list in the README; a different HTTP-CGI API is not sufficient.
 - Real hardware tests are still required before submission. Include the confirmed
-  model/protocol requirements and these demo instructions in certification notes.
+  command support and these demo instructions in certification notes.
