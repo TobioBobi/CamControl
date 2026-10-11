@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../CamControl/AppInformation.cs" Link="AppInformation.cs" />
+    <EmbeddedResource Include="../../docs/privacy.md" LogicalName="CamControl.PrivacyPolicy" />
     <Compile Include="../../CamControl/CameraSettings.cs" Link="CameraSettings.cs" />
     <Compile Include="../../CamControl/CamControlService.cs" Link="CamControlService.cs" />
     <Compile Include="../../CamControl/CameraCommandRunner.cs" Link="CameraCommandRunner.cs" />

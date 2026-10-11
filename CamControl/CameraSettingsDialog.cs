@@ -47,7 +47,7 @@ namespace CamControl
                 Text = "Die Konfiguration ist vor Änderungen geschützt. Zum Ändern „Konfiguration bearbeiten“ wählen.",
                 Margin = new Padding(0, 12, 0, 0)
             };
-            pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill };
+            pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill, Multiline = true };
             pages.TabPages.Add(CreateCameraPage());
             pages.TabPages.Add(CreateHelpPage());
             var demoPage = new TabPage("Demo-Modus") { Padding = new Padding(16) };
@@ -109,6 +109,7 @@ namespace CamControl
                 }
             presetsPage.Controls.Add(presetLayout);
             pages.TabPages.Add(presetsPage);
+            pages.TabPages.Add(CreateInfoPage());
 
             edit = new Button { Name = "editConfiguration", Text = "Konfiguration bearbeiten", AutoSize = true, TabIndex = 0 };
             save = new Button { Name = "saveConfiguration", Text = "Speichern", AutoSize = true, Enabled = false, TabIndex = 1 };
@@ -247,6 +248,47 @@ namespace CamControl
                 AccessibleName = "Hilfe und Voraussetzungen", TabStop = true
             };
             page.Controls.Add(help);
+            return page;
+        }
+
+        private static TabPage CreateInfoPage()
+        {
+            var page = new TabPage("Info & Datenschutz") { Padding = new Padding(8) };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            layout.Controls.Add(new Label
+            {
+                Name = "appInformation", AutoSize = true, MaximumSize = new Size(510, 0),
+                Text = $"CamControl · Version {AppInformation.Version}\nSteuerung kompatibler PTZ-Kameras über HTTP\nHerausgeber: {AppInformation.Publisher}",
+                Margin = new Padding(3, 3, 3, 12)
+            }, 0, 0);
+            var link = new LinkLabel { Name = "projectSupport", Text = "Projekt & Support auf GitHub", AutoSize = true, Margin = new Padding(3, 0, 3, 8) };
+            var feedback = new Label { AutoSize = true, MaximumSize = new Size(510, 0), ForeColor = Color.DarkRed };
+            link.LinkClicked += (_, _) =>
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AppInformation.ProjectUrl) { UseShellExecute = true });
+                    feedback.Text = "";
+                }
+                catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+                { feedback.Text = "Der Browser konnte nicht geöffnet werden: " + e.Message; }
+            };
+            layout.Controls.Add(link, 0, 1);
+            layout.Controls.Add(feedback, 0, 2);
+            layout.Controls.Add(new RichTextBox
+            {
+                Name = "privacyInformation", Text = AppInformation.PrivacyText,
+                Dock = DockStyle.Fill, ReadOnly = true, BorderStyle = BorderStyle.None,
+                BackColor = SystemColors.Window, DetectUrls = false,
+                ScrollBars = RichTextBoxScrollBars.Vertical, WordWrap = true,
+                AccessibleName = "Datenschutz für CamControl"
+            }, 0, 3);
+            page.Controls.Add(layout);
             return page;
         }
 

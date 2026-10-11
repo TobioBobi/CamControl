@@ -295,7 +295,7 @@ IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control
     .SelectMany(child => new[] { child }.Concat(Descendants(child)));
 var dialogControls = Descendants(dialog).ToArray();
 var address = dialogControls.OfType<TextBox>().Single();
-var help = dialogControls.OfType<RichTextBox>().Single();
+var help = dialogControls.OfType<RichTextBox>().Single(control => control.Name == "cameraHelp");
 Check(help.ReadOnly && help.ScrollBars == RichTextBoxScrollBars.Vertical,
     "Help could be edited or was not scrollable");
 var save = dialogControls.OfType<Button>().Single(button => button.Text == "Speichern");
@@ -307,6 +307,14 @@ var dialogFlags = System.Reflection.BindingFlags.Instance | System.Reflection.Bi
 typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
 Check(!File.Exists(testPath), "View mode persisted settings");
 var pages = dialogControls.OfType<TabControl>().Single();
+pages.SelectedIndex = 4;
+var privacy = dialogControls.OfType<RichTextBox>().Single(control => control.Name == "privacyInformation");
+Check(pages.SelectedTab!.Text == "Info & Datenschutz" && privacy.ReadOnly &&
+    privacy.Text == AppInformation.PrivacyText && privacy.Text.Contains("unverschlüsseltes HTTP"),
+    "Privacy page did not display the embedded policy as read-only text");
+Check(dialogControls.Single(control => control.Name == "appInformation").Text.Contains("Tobias Heer") &&
+    !string.IsNullOrWhiteSpace(AppInformation.Version) && !File.Exists(testPath) && !save.Enabled,
+    "Reading app information changed configuration or omitted publisher/version");
 pages.SelectedIndex = 1;
 typeof(CameraSettingsDialog).GetMethod("Edit_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
 Check(!address.ReadOnly && save.Enabled && dialog.AcceptButton == save &&
