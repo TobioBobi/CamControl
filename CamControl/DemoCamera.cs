@@ -42,13 +42,13 @@ namespace CamControl
                 switch (parts[1])
                 {
                     case "posset":
-                        if (parts.Length != 3 || !int.TryParse(parts[2], out int saveNumber) || !Enum.IsDefined((Position)saveNumber))
+                        if (parts.Length != 3 || !int.TryParse(parts[2], out int saveNumber) || !PresetSettings.IsValidNumber(saveNumber))
                             return false;
                         savedPresets[saveNumber] = (x, y, zoom, $"Eigenes Preset {saveNumber}");
                         lastAction = $"Preset {saveNumber} gespeichert";
                         break;
                     case "poscall":
-                        if (parts.Length != 3 || !int.TryParse(parts[2], out int preset)) return false;
+                        if (parts.Length != 3 || !int.TryParse(parts[2], out int preset) || !PresetSettings.IsValidNumber(preset)) return false;
                         var target = preset switch
                         {
                             1 => (.25f, .45f, 2.5f, "Preset 1"),

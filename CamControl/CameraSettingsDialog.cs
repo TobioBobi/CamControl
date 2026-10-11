@@ -12,6 +12,15 @@
         private readonly Dictionary<int, string>? presetNames;
         private ComboBox[] automaticSelectors = Array.Empty<ComboBox>();
         private bool refreshingAutomaticChoices;
+        private readonly Dictionary<int, Label> presetLabels = new();
+        private IReadOnlyDictionary<int, int> presetNumbers = PresetSettings.DefaultNumbers();
+        private Action<int, string, int>? savePresetConfiguration;
+        internal void ConfigurePresetNumbers(IReadOnlyDictionary<int, int> numbers, Action<int, string, int> save)
+        {
+            presetNumbers = numbers;
+            savePresetConfiguration = save;
+            RefreshPresetRows();
+        }
         public string CameraIp { get; private set; }
         public bool? RequestedDemoMode { get; private set; }
         internal event Action<string>? PresetStopFailed;
@@ -90,11 +99,18 @@
                 {
                     var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 8, 0, 0) };
                     var label = new Label { Text = PresetSettings.Caption(number, presetNames[number]), Width = 330, Height = 30, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft };
+                    presetLabels[number] = label;
                     var button = new Button { Text = "Bearbeiten …", AutoSize = true, AccessibleName = $"Preset {number} bearbeiten" };
                     button.Click += (_, _) =>
                     {
                         using var editor = new PresetEditorDialog(service, (Position)number, presetNames[number],
                             value => { savePresetName(number, value); label.Text = PresetSettings.Caption(number, presetNames[number]); RefreshAutomaticChoices(); }, demo);
+                        if (savePresetConfiguration != null) editor.ConfigurePresetNumber(presetNumbers[number], (value, cameraNumber) =>
+                        {
+                            savePresetConfiguration?.Invoke(number, value, cameraNumber);
+                            RefreshPresetRows();
+                            RefreshAutomaticChoices();
+                        }, value => presetNumbers.Any(pair => pair.Key != number && pair.Value == value));
                         editor.CloseStopFailed += error => PresetStopFailed?.Invoke(error);
                         editor.ShowDialog(this);
                     };
@@ -125,6 +141,12 @@
             // Enter only saves a changed, valid address on the camera page.
             AcceptButton = null;
             WindowLayout.FitToScreen(this);
+        }
+
+        private void RefreshPresetRows()
+        {
+            foreach (var (button, label) in presetLabels)
+                label.Text = $"{PresetSettings.Caption(button, presetNames![button])} · Kamera {presetNumbers[button]}";
         }
 
         internal void ConfigureAutomaticPositions(AutomaticPositions current, Action<AutomaticPositions> saveChoices)

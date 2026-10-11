@@ -365,6 +365,37 @@ internal static class Program
                 Check(forwardedStopError?.Contains("HTTP 500") == true, "Closing lost the failed stop error instead of forwarding it");
             }
             saveHandler.Requests.Clear();
+            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            using (var mappedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Preset 1", new Action<string>(_ => { }), null! }, null)!)
+            {
+                _ = mappedEditor.Handle;
+                int configured = 1;
+                presetType.GetMethod("ConfigurePresetNumber", flags)!.Invoke(mappedEditor,
+                    new object[] { 1, new Action<string, int>((_, value) => configured = value), new Func<int, bool>(value => value == 2) });
+                var numeric = (NumericUpDown)presetType.GetField("number", flags)!.GetValue(mappedEditor)!;
+                var recallButton = (Button)presetType.GetField("recall", flags)!.GetValue(mappedEditor)!;
+                var mappedStatus = (Label)presetType.GetField("status", flags)!.GetValue(mappedEditor)!;
+                numeric.Value = 2;
+                presetType.GetMethod("SaveName", flags)!.Invoke(mappedEditor, null);
+                Check(configured == 1 && mappedStatus.Text.Contains("anderen Button"), "Duplicate camera number was accepted");
+                numeric.Value = 90;
+                presetType.GetMethod("SaveName", flags)!.Invoke(mappedEditor, null);
+                Check(configured == 1, "Reserved camera number was accepted");
+                var storeButton = (Button)presetType.GetField("store", flags)!.GetValue(mappedEditor)!;
+                Check(!storeButton.Enabled, "Reserved number enabled position saving");
+                numeric.Value = 2;
+                Check(!storeButton.Enabled, "Duplicate number enabled position saving");
+                numeric.Value = 20;
+                Check(!recallButton.Enabled && storeButton.Enabled, "New number disabled position saving or allowed unsaved recall");
+                PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(mappedEditor, new object[] { true })!);
+                Check(configured == 20 && recallButton.Enabled, "Position saving did not apply the new mapping");
+                Check(saveHandler.Requests.Last().Query == "?ptzcmd&posset&20", "Editor saved to original button number");
+                PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(mappedEditor, new object[] { false })!);
+                Check(saveHandler.Requests.Last().Query == "?ptzcmd&poscall&20", "Editor recalled original button number");
+            }
+            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            saveHandler.Requests.Clear();
             using var failedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
                 null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner",
                     new Action<string>(_ => throw new IOException("Test write failure")), null! }, null)!;
@@ -381,6 +412,13 @@ internal static class Program
             failedName.Text = "Neuer Name";
             presetType.GetMethod("SaveName", flags)!.Invoke(failedEditor, null);
             Check(saveStatus.Text.Contains("nicht gespeichert"), "Name write failure was not shown");
+            var failedNumber = (NumericUpDown)presetType.GetField("number", flags)!.GetValue(failedEditor)!;
+            failedNumber.Value = 21;
+            int beforeFailedSave = saveHandler.Requests.Count;
+            PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(failedEditor, new object[] { true })!);
+            Check(saveHandler.Requests.Count == beforeFailedSave && saveStatus.Text.Contains("nicht gespeichert"),
+                "Failed mapping persistence still sent a position save command");
+
         }
 
         PumpUntil(Run(() => Task.FromException(new HttpRequestException("test", null, HttpStatusCode.Forbidden)), "Position"));
@@ -396,13 +434,29 @@ internal static class Program
             var automaticServiceType = type.Assembly.GetType("CamControl.CamControlService")!;
             var automaticService = Activator.CreateInstance(automaticServiceType, flags, null, new object[] { automaticClient, "192.168.188.24" }, null)!;
             type.GetField("camControlService", flags)!.SetValue(automaticForm, automaticService);
+            var mappedNumbers = (Dictionary<int, int>)type.GetField("demoPresetNumbers", flags)!.GetValue(automaticForm)!;
+            mappedNumbers[2] = 22;
+            mappedNumbers[6] = 26;
+            mappedNumbers[9] = 29;
+            type.GetMethod("SavePresetConfiguration", flags)!.Invoke(automaticForm, new object[] { 1, "Personal", 20 });
+            Check(mappedNumbers[1] == 20 && ((Dictionary<int, string>)type.GetField("demoPresetNames", flags)!.GetValue(automaticForm)!)[1] == "Personal",
+                "Demo configuration did not update both name and camera number");
+            try
+            {
+                type.GetMethod("SavePresetConfiguration", flags)!.Invoke(automaticForm, new object[] { 3, "Duplicate", 20 });
+                throw new Exception("Demo accepted a duplicate mapping");
+            }
+            catch (TargetInvocationException error) when (error.InnerException is ArgumentException) { checks++; }
+            type.GetMethod("buttonRedner_Click", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
+            Check(automaticHandler.Requests.Last().Query == "?ptzcmd&poscall&20", "Main button ignored camera number mapping");
+            automaticHandler.Requests.Clear();
             object automaticChoices = Activator.CreateInstance(automaticType, true)!;
             type.GetField("demoAutomaticPositions", flags)!.SetValue(automaticForm, automaticChoices);
             type.GetMethod("Form1_Load", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
             Check(automaticHandler.Requests.Count == 0, "None startup selection still moved camera");
             automaticType.GetProperty("StartPreset")!.SetValue(automaticChoices, 2);
             type.GetMethod("Form1_Load", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
-            Check(automaticHandler.Requests.Last().Query == "?ptzcmd&poscall&2", "Startup ignored selected preset");
+            Check(automaticHandler.Requests.Last().Query == "?ptzcmd&poscall&22", "Startup ignored selected preset mapping");
             automaticHandler.Requests.Clear();
             if (!exitCase.Stop) automaticHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
             automaticType.GetProperty("ExitPreset")!.SetValue(automaticChoices, exitNumber);
@@ -411,7 +465,7 @@ internal static class Program
             PumpUntilCondition(() => (bool)type.GetField("finalClose", flags)!.GetValue(automaticForm)!);
             Check(automaticHandler.Requests.Count == (exitNumber.HasValue && exitCase.Stop ? 4 : 3), "Exit selection sent unexpected commands");
             Check(automaticHandler.Requests.Take(3).All(uri => uri.Query.Contains("stop")), "Exit preset ran before all stops");
-            if (exitNumber.HasValue && exitCase.Stop) Check(automaticHandler.Requests.Last().Query == $"?ptzcmd&poscall&{exitNumber}", "Exit ignored selected preset");
+            if (exitNumber.HasValue && exitCase.Stop) Check(automaticHandler.Requests.Last().Query == $"?ptzcmd&poscall&{mappedNumbers[exitNumber.Value]}", "Exit ignored selected preset mapping");
             Check(automaticHandler.Requests.All(uri => !uri.Query.Contains("focusin")), "Normal presets still sent special focus motion");
         }
         Check(label.Text.Contains("HTTP 403"), "HTTP error not displayed");

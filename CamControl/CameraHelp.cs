@@ -14,17 +14,17 @@ namespace CamControl
             Bewegung und Presets
             Pfeile und Zoom-Buttons gedrückt halten; Loslassen stoppt. Tastatur: Pfeiltasten, Plus/Minus auf dem Nummernblock und 1–6 oder 9 für die Presets.
 
-            Jeder Preset-Button ruft die entsprechende Nummer auf der Kamera auf. Die App legt keine Kamerapositionen automatisch an. Vor dem ersten Aufruf die gewünschte Position einrichten.
+            Jeder Button ruft seine zugeordnete Kamerapreset-Nummer auf. Tastenkürzel bleiben an den Button gebunden. Die App legt keine Kamerapositionen automatisch an. Vor dem ersten Aufruf die gewünschte Position einrichten.
 
-            Unter „Buttons & Presets“ einen Button bearbeiten: Namen vergeben (1–32 Zeichen), Kamera ausrichten und „Position speichern“ wählen. Das überschreibt nach Bestätigung das Kamera-Preset. Mit „Position anfahren“ prüfen, ob es gespeichert wurde.
+            Unter „Buttons & Presets“ Namen und Kamerapreset-Nummer festlegen und „Zuordnung speichern“. Nummern: 0–89 oder 100–254, sofern die Kamera sie unterstützt. Mehrere Benutzer sprechen ihre Nummernbereiche ab. Doppelte Nummern innerhalb eines Windows-Kontos sind gesperrt.
 
-            Buttonnamen bleiben lokal gespeichert; Positionen speichert die Kamera. Schließen verwirft ungespeicherte Namen, macht aber keine Bewegungen oder gespeicherten Positionen rückgängig.
+            Kamera ausrichten und „Position speichern“ wählen. Das überschreibt nach Bestätigung das zugeordnete Kamerapreset. Mit „Position anfahren“ prüfen. Namen und Zuordnungen bleiben pro Windows-Konto lokal; Positionen speichert die Kamera.
 
             Automatische Positionen
             Unter „Buttons & Presets“ eine Start- oder Endposition wählen und „Automatik speichern“. Ohne eigene Auswahl gibt es keine automatische Fahrt. Beim Beenden wird die Endposition nur nach bestätigtem Stopp angefahren. Eine HTTP-Antwort bestätigt nicht, dass die Kamera ihr Ziel erreicht hat.
 
             Demo-Modus
-            Unter „Demo-Modus“ ohne Kamera ausprobieren. Links: Bühne mit Bildausschnitt; rechts: simuliertes Kamerabild, kein Live-Video. Es werden keine Netzwerkbefehle gesendet. Demo-Namen, Positionen und Automatik gelten nur für die Sitzung; deine Kameraeinstellungen bleiben erhalten.
+            Unter „Demo-Modus“ ohne Kamera ausprobieren. Links: Bühne mit Bildausschnitt; rechts: simuliertes Kamerabild, kein Live-Video. Es werden keine Netzwerkbefehle gesendet. Demo-Namen, Zuordnungen, Positionen und Automatik gelten nur für die Sitzung; deine Kameraeinstellungen bleiben erhalten.
 
             Verbindungsprobleme
             IP-Adresse, Netzwerk und Stromversorgung prüfen. HTTP-Fehler können auf eine inkompatible Kamerasteuerung hinweisen.

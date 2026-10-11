@@ -39,10 +39,14 @@ namespace CamControl
         }
 
         public Task MoveToPosition(Position position, CancellationToken cancellationToken = default)
+            => MoveToPreset((int)position, cancellationToken);
+
+        public Task MoveToPreset(int number, CancellationToken cancellationToken = default)
         {
+            if (!PresetSettings.IsValidNumber(number)) throw new ArgumentOutOfRangeException(nameof(number));
             return ExecuteSerializedAsync(async targetAddress =>
             {
-                await SendCommandAsync(targetAddress, $"poscall&{(int)position}", cancellationToken);
+                await SendCommandAsync(targetAddress, $"poscall&{number}", cancellationToken);
             }, cancellationToken, directionGate, zoomGate);
         }
 
@@ -50,8 +54,14 @@ namespace CamControl
         {
             if (!Enum.IsDefined(position))
                 throw new ArgumentOutOfRangeException(nameof(position));
+            return SavePreset((int)position, cancellationToken);
+        }
+
+        public Task SavePreset(int number, CancellationToken cancellationToken = default)
+        {
+            if (!PresetSettings.IsValidNumber(number)) throw new ArgumentOutOfRangeException(nameof(number));
             return ExecuteSerializedAsync(target => SendCommandAsync(target,
-                $"posset&{(int)position}", cancellationToken), cancellationToken, directionGate, zoomGate);
+                $"posset&{number}", cancellationToken), cancellationToken, directionGate, zoomGate);
         }
 
         public Task MoveInDirection(Direction direction, CancellationToken cancellationToken = default)

@@ -3,9 +3,21 @@
 internal sealed class PresetEditorDialog : Form
 {
     private readonly CamControlService service;
-    private readonly Position position;
     private readonly Action<string> saveName;
     private readonly TextBox name;
+    private readonly NumericUpDown number;
+    private int savedNumber;
+    private Action<string, int>? saveConfiguration;
+    private Func<int, bool>? numberInUse;
+
+    internal void ConfigurePresetNumber(int current, Action<string, int> save, Func<int, bool> inUse)
+    {
+        savedNumber = current;
+        number.Value = current;
+        saveConfiguration = save;
+        numberInUse = inUse;
+        UpdateActions();
+    }
     private readonly Label status;
     private readonly FlowLayoutPanel movement;
     private readonly Button recall, store, rename, close;
@@ -22,9 +34,9 @@ internal sealed class PresetEditorDialog : Form
         Action<string> saveName, DemoCamera? demo = null)
     {
         this.service = service;
-        this.position = position;
         this.saveName = saveName;
         savedName = currentName;
+        savedNumber = (int)position;
         Text = $"Preset {(int)position} bearbeiten";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
@@ -44,11 +56,17 @@ internal sealed class PresetEditorDialog : Form
         nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         name = new TextBox { Name = "presetName", Text = currentName, MaxLength = 32, Dock = DockStyle.Fill, AccessibleName = "Buttonname" };
-        rename = new Button { Name = "savePresetName", Text = "Nur Namen speichern", AutoSize = true };
+        rename = new Button { Name = "savePresetName", Text = "Zuordnung speichern", AutoSize = true };
         rename.Click += (_, _) => SaveName();
         nameRow.Controls.Add(name, 0, 0);
         nameRow.Controls.Add(rename, 1, 0);
         layout.Controls.Add(nameRow, 0, 1);
+        var numberRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = true, Margin = new Padding(3, 12, 3, 8) };
+        numberRow.Controls.Add(new Label { AutoSize = true, Text = "Kamerapreset-Nummer", Margin = new Padding(0, 5, 12, 0) });
+        number = new NumericUpDown { Name = "cameraPresetNumber", Minimum = 0, Maximum = 254, Value = savedNumber, Width = 80, AccessibleName = "Kamerapreset-Nummer" };
+        numberRow.Controls.Add(number);
+        numberRow.Controls.Add(new Label { AutoSize = true, Text = "0–89 oder 100–254", Margin = new Padding(12, 5, 0, 0) });
+        layout.Controls.Add(numberRow, 0, 2);
         movement = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = true };
         AddMotion("←", "Nach links", token => service.MoveInDirection(Direction.Left, token));
         AddMotion("↑", "Nach oben", token => service.MoveInDirection(Direction.Up, token));
@@ -63,7 +81,7 @@ internal sealed class PresetEditorDialog : Form
         store = new Button { Name = "storePreset", Text = "Position speichern", Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 48) };
         store.Click += async (_, _) =>
         {
-            if (MessageBox.Show(this, $"Position für „{PresetSettings.Caption((int)position, savedName)}“ überschreiben?",
+            if (MessageBox.Show(this, $"Kamerapreset {(int)number.Value} für „{name.Text.Trim()}“ überschreiben?",
                 "Position speichern", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
                 MessageBoxDefaultButton.Button2) == DialogResult.Yes)
                 await RunPositionAsync(true);
@@ -85,6 +103,8 @@ internal sealed class PresetEditorDialog : Form
         container.Controls.Add(scroll, 0, 0);
         container.Controls.Add(close, 0, 1);
         Controls.Add(container);
+        number.ValueChanged += (_, _) => UpdateActions();
+        name.TextChanged += (_, _) => UpdateActions();
         CancelButton = close;
         AcceptButton = null;
         WindowLayout.FitToScreen(this);
@@ -128,7 +148,10 @@ internal sealed class PresetEditorDialog : Form
     private void UpdateActions()
     {
         bool enabled = !busy && !closing && stopping == null;
-        movement.Enabled = recall.Enabled = store.Enabled = rename.Enabled = name.Enabled = enabled;
+        movement.Enabled = rename.Enabled = name.Enabled = number.Enabled = enabled;
+        recall.Enabled = enabled && (int)number.Value == savedNumber;
+        store.Enabled = enabled && PresetSettings.IsValidName(name.Text) &&
+            PresetSettings.IsValidNumber((int)number.Value) && numberInUse?.Invoke((int)number.Value) != true;
     }
 
     private async Task<bool> StopAsync()
@@ -154,6 +177,8 @@ internal sealed class PresetEditorDialog : Form
     private async Task RunPositionAsync(bool save)
     {
         if (busy || closing || !active || resourcesDisposed) return;
+        if (!save && (int)number.Value != savedNumber) return;
+        if (save && ((int)number.Value != savedNumber || name.Text.Trim() != savedName) && !SaveName()) return;
         using var cancellation = new CancellationTokenSource();
         positionCancellation = cancellation;
         busy = true;
@@ -164,7 +189,7 @@ internal sealed class PresetEditorDialog : Form
             var token = cancellation.Token;
             if (!save) stopRequired = true;
             bool success = await CameraCommandRunner.RunAsync(() => save
-                ? service.SavePosition(position, token) : service.MoveToPosition(position, token), ReportError, token);
+                ? service.SavePreset(savedNumber, token) : service.MoveToPreset(savedNumber, token), ReportError, token);
             if (success && !closing && !token.IsCancellationRequested)
             {
                 status.ForeColor = Color.DarkGreen;
@@ -175,17 +200,24 @@ internal sealed class PresetEditorDialog : Form
         finally { positionCancellation = null; busy = false; if (!IsDisposed) UpdateActions(); }
     }
 
-    private void SaveName()
+    private bool SaveName()
     {
-        if (!PresetSettings.IsValidName(name.Text)) { ReportError("Bitte einen Namen mit 1 bis 32 Zeichen eingeben."); return; }
+        if (!PresetSettings.IsValidName(name.Text)) { ReportError("Bitte einen Namen mit 1 bis 32 Zeichen eingeben."); return false; }
+        int selectedNumber = (int)number.Value;
+        if (!PresetSettings.IsValidNumber(selectedNumber)) { ReportError("Nummer 0–89 oder 100–254 wählen."); return false; }
+        if (numberInUse?.Invoke(selectedNumber) == true) { ReportError("Diese Nummer ist bereits einem anderen Button zugeordnet."); return false; }
         try
         {
-            saveName(name.Text.Trim());
+            if (saveConfiguration != null) saveConfiguration(name.Text.Trim(), selectedNumber);
+            else saveName(name.Text.Trim());
+            savedNumber = selectedNumber;
             savedName = name.Text.Trim();
             status.ForeColor = Color.DarkGreen;
-            status.Text = "Name gespeichert; Position unverändert.";
+            status.Text = "Zuordnung gespeichert; Kameraposition unverändert.";
+            UpdateActions();
+            return true;
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ReportError("Name konnte nicht gespeichert werden: " + e.Message); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { ReportError("Zuordnung konnte nicht gespeichert werden: " + e.Message); return false; }
     }
 
     protected override async void OnDeactivate(EventArgs e)

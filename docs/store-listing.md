@@ -9,7 +9,7 @@ eigenen Presets und Demo-Modus.
 
 CamControl steuert Schwenken, Neigen, Zoom und Presets deiner PTZ-Kamera.
 Große Buttons und Tastenkürzel machen die Bedienung einfach. Vergib eigene
-Buttonnamen, speichere Kamerapositionen und wähle bei Bedarf eine automatische
+Buttonnamen und Kamerapreset-Nummern, speichere Kamerapositionen und wähle bei Bedarf eine automatische
 Start- oder Endposition.
 
 Die Kompatibilität richtet sich nach den unterstützten Steuerbefehlen,

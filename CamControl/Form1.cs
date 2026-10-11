@@ -14,6 +14,9 @@ namespace CamControl
         private HttpClient? demoClient;
         private Dictionary<int, string> presetNames = PresetSettings.Load();
         private readonly Dictionary<int, string> demoPresetNames = PresetSettings.Defaults();
+        private readonly Dictionary<int, int> presetNumbers = PresetSettings.LoadNumbers();
+        private readonly Dictionary<int, int> demoPresetNumbers = PresetSettings.DefaultNumbers();
+        private int CameraPreset(Position button) => (IsDemoMode ? demoPresetNumbers : presetNumbers)[(int)button];
         private AutomaticPositions automaticPositions = AutomaticPositions.Load();
         private AutomaticPositions demoAutomaticPositions = new();
         internal bool IsDemoMode { get; private set; }
@@ -205,6 +208,20 @@ namespace CamControl
             RefreshPresetLabels();
         }
 
+        private void SavePresetConfiguration(int button, string name, int cameraNumber)
+        {
+            var names = IsDemoMode ? demoPresetNames : presetNames;
+            var numbers = IsDemoMode ? demoPresetNumbers : presetNumbers;
+            if (!PresetSettings.IsValidNumber(cameraNumber) || numbers.Any(pair => pair.Key != button && pair.Value == cameraNumber))
+                throw new ArgumentException("Diese Kamerapreset-Nummer ist ungültig oder bereits einem Button zugeordnet.");
+            var updatedNames = new Dictionary<int, string>(names) { [button] = name };
+            var updatedNumbers = new Dictionary<int, int>(numbers) { [button] = cameraNumber };
+            if (!IsDemoMode) PresetSettings.SaveConfiguration(updatedNames, updatedNumbers);
+            names[button] = name;
+            numbers[button] = cameraNumber;
+            RefreshPresetLabels();
+        }
+
         private bool CanControlCamera => !IsDisposed && !Disposing && !finalClose && ControlBox &&
             cameraWindowActive && !settingsDialogOpen && stopControlTask == null;
 
@@ -287,7 +304,7 @@ namespace CamControl
             {
                 // Stop manual motion and cancel queued starts before a preset.
                 if (await StopManualControlAsync() && !cancellation.IsCancellationRequested)
-                    await ExecuteCameraCommandAsync(token => camControlService.MoveToPosition(position, token),
+                    await ExecuteCameraCommandAsync(token => camControlService.MoveToPreset(CameraPreset(position), token),
                         "Position anfahren", cancellation.Token);
             }
             finally
@@ -313,6 +330,7 @@ namespace CamControl
                 using var dialog = new CameraSettingsDialog(camControlService.CameraIp, demoModeActive: IsDemoMode,
                     service: camControlService, presetNames: IsDemoMode ? demoPresetNames : presetNames,
                     savePresetName: SavePresetName, demo: IsDemoMode ? demoCamera : null);
+                dialog.ConfigurePresetNumbers(IsDemoMode ? demoPresetNumbers : presetNumbers, SavePresetConfiguration);
                 dialog.PresetStopFailed += error => ReportCameraError("Stopp beim Schließen nicht bestätigt", error);
                 dialog.ConfigureAutomaticPositions(IsDemoMode ? demoAutomaticPositions : automaticPositions, value =>
                 {
@@ -383,7 +401,7 @@ namespace CamControl
             {
                 // Do not send another motion command if stopping failed.
                 if (await StopCameraControlAsync() && (IsDemoMode ? demoAutomaticPositions : automaticPositions).ExitPreset is { } number)
-                    await CameraCommandRunner.RunAsync(() => camControlService.MoveToPosition((Position)number), _ => { });
+                    await CameraCommandRunner.RunAsync(() => camControlService.MoveToPreset(CameraPreset((Position)number)), _ => { });
             }
             finally
             {

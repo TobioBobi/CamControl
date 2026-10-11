@@ -71,10 +71,39 @@ try { PresetSettings.Save(names, namesPath); throw new Exception("Invalid name s
 catch (ArgumentException) { checks++; }
 Check(File.ReadAllText(namesPath) == "broken json", "Rejected save changed the previous file");
 File.Delete(namesPath);
+var mapping = PresetSettings.DefaultNumbers();
+names = PresetSettings.Defaults();
+names[1] = "User A";
+mapping[1] = 20;
+mapping[9] = 0;
+PresetSettings.SaveConfiguration(names, mapping, namesPath);
+Check(PresetSettings.LoadNumbers(namesPath)[1] == 20 && PresetSettings.LoadNumbers(namesPath)[9] == 0 &&
+    PresetSettings.Load(namesPath)[1] == "User A", "Preset mapping did not survive restart with its name");
+PresetSettings.Save(names, namesPath);
+Check(PresetSettings.LoadNumbers(namesPath)[1] == 20, "Name-only save lost mapping");
+var previousConfiguration = File.ReadAllText(namesPath);
+mapping[2] = 20;
+try { PresetSettings.SaveConfiguration(names, mapping, namesPath); throw new Exception("Duplicate mapping saved"); }
+catch (ArgumentException) { checks++; }
+Check(File.ReadAllText(namesPath) == previousConfiguration, "Rejected mapping damaged configuration");
+foreach (int invalid in new[] { -1, 90, 99, 255 })
+    Check(!PresetSettings.IsValidNumber(invalid), "Invalid or reserved number accepted");
+File.WriteAllText(namesPath, "{\"1\":\"Legacy\"}");
+Check(PresetSettings.Load(namesPath)[1] == "Legacy" && PresetSettings.LoadNumbers(namesPath)[1] == 1,
+    "Legacy names did not retain original camera numbers");
+File.WriteAllText(namesPath, "{\"Names\":{\"1\":\"Name\"},\"Numbers\":{\"1\":20,\"2\":20}}");
+Check(PresetSettings.LoadNumbers(namesPath).SequenceEqual(PresetSettings.DefaultNumbers()), "Broken mapping introduced duplicate numbers");
+File.Delete(namesPath);
 var demoCamera = new DemoCamera();
 using (var demoClient = new HttpClient(new DemoCameraHandler(demoCamera)))
 {
     var demoService = new CamControlService(demoClient, "192.168.188.24");
+    await demoService.SavePreset(20);
+    var savedCustomNumber = demoCamera.State;
+    await demoService.MoveToPosition(Position.Redner);
+    await demoService.MoveToPreset(20);
+    Check(demoCamera.State.X == savedCustomNumber.X && demoCamera.State.Zoom == savedCustomNumber.Zoom,
+        "Demo failed to save and recall arbitrary camera preset number");
     foreach (var preset in Enum.GetValues<Position>())
     {
         await demoService.MoveToPosition(preset);

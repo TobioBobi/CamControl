@@ -121,3 +121,19 @@ allows None or one of the seven buttons. Without saved choices, startup and exit
 perform no preset motion. Choices persist in `automatic-positions.json`. Demo choices remain in
 memory for the session. Preset 9 is ordinary: no timed focus sequence or loading
 animation remains. HTTP completion does not confirm arrival at the physical target.
+
+### Per-user camera preset numbers
+
+Each button has a configurable camera preset number, independent of its keyboard
+shortcut. In the preset editor, save the name and number with **Zuordnung speichern**;
+then save or recall the camera position. Changing the assignment sends no camera
+command and does not copy or delete the old camera preset. Saving a position also applies the edited name and number after confirmation.
+Recalling a position requires the number assignment to be saved first.
+
+Names and assignments are stored together in the current Windows account's
+`buttons.json`. Existing name-only files retain their original preset numbers.
+Duplicate assignments in one account are rejected. Users of the same camera can
+agree on separate ranges, for example 10-19, 20-29 and 30-39. Allowed numbers are
+0-89 and 100-254, subject to camera support; 90-99 are excluded because some cameras
+use them for special commands. Other accounts and camera control tools are not
+blocked from overwriting these presets. Demo assignments remain in memory.

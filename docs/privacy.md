@@ -3,7 +3,7 @@ Stand: 11. Oktober 2026
 Herausgeber: TobioBobi
 
 Lokale Daten
-Kamera-IP, Buttonnamen und Start-/Endpositionen werden unter %LOCALAPPDATA%\CamControl gespeichert (settings.json, buttons.json, automatic-positions.json). Bei MSIX kann Windows Dateien in den privaten App-Datenbereich umleiten. Es gibt kein Benutzerkonto, keine Telemetrie oder Werbung und keine Datenübertragung an den Herausgeber.
+Kamera-IP, Buttonnamen, Kamerapreset-Zuordnungen und Start-/Endpositionen werden unter %LOCALAPPDATA%\CamControl gespeichert (settings.json, buttons.json, automatic-positions.json). Bei MSIX kann Windows Dateien in den privaten App-Datenbereich umleiten. Es gibt kein Benutzerkonto, keine Telemetrie oder Werbung und keine Datenübertragung an den Herausgeber.
 
 Kamerasteuerung
 HTTP-CGI-Befehle für Bewegung, Zoom und Presets gehen über unverschlüsseltes HTTP an die konfigurierte Kamera. CamControl empfängt und speichert weder Kamerabilder noch Video oder Ton. Preset-Positionen speichert die Kamera; ihre eigene Datenverarbeitung hängt vom Gerät ab.

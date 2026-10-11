@@ -25,7 +25,7 @@ demo selection is not saved across restarts. The window clearly labels demo mode
 6. Review the camera configuration and the help page. The IP is editable;
    **Speichern** activates only for a changed, valid IP. Cancel a changed IP and verify it is not saved.
 7. Open **Einstellungen > Buttons & Presets > Bearbeiten …** for one button.
-   Save a different name with **Nur Namen speichern**. Hold direction/zoom
+   Choose a different name and camera preset number with **Zuordnung speichern**. Hold direction/zoom
    buttons to choose a new frame, then save the position and confirm replacement.
    Move elsewhere and use **Position anfahren** to verify recall.
    Close settings: the renamed main button recalls the new position too.
