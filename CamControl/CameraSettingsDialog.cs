@@ -55,7 +55,7 @@ namespace CamControl
             pages.TabPages.Add(CreateCameraPage());
             pages.TabPages.Add(CreateHelpPage());
             var demoPage = new TabPage("Demo-Modus") { Padding = new Padding(16) };
-            var demoLayout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            var demoLayout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
             demoLayout.Controls.Add(new Label
             {
                 Text = demoModeActive
@@ -138,6 +138,7 @@ namespace CamControl
             CancelButton = cancel;
             // Enter cannot unlock editing or save while viewing the configuration.
             AcceptButton = null;
+            WindowLayout.FitToScreen(this);
         }
 
         internal void ConfigureAutomaticPositions(AutomaticPositions current, Action<AutomaticPositions> saveChoices)
@@ -213,8 +214,8 @@ namespace CamControl
 
         private TabPage CreateCameraPage()
         {
-            var page = new TabPage("Kamera") { Padding = new Padding(16) };
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
+            var page = new TabPage("Kamera") { Padding = new Padding(16), AutoScroll = true };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 4 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             for (int row = 0; row < 4; row++)
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));

@@ -35,9 +35,9 @@ internal sealed class PresetEditorDialog : Form
         ClientSize = new Size(640, demo == null ? 420 : 610);
         Padding = new Padding(16);
 
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8 };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 8 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (int i = 0; i < 8; i++) layout.RowStyles.Add(new RowStyle(i == 6 ? SizeType.Percent : SizeType.AutoSize, i == 6 ? 100 : 0));
+        for (int i = 0; i < 8; i++) layout.RowStyles.Add(new RowStyle(i == 6 && demo != null ? SizeType.Absolute : SizeType.AutoSize, i == 6 && demo != null ? 180 : 0));
         layout.Controls.Add(new Label { AutoSize = true, Text = $"Buttonname · Kamera-Preset {(int)position}" }, 0, 0);
         var nameRow = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 2 };
         nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -54,7 +54,7 @@ internal sealed class PresetEditorDialog : Form
             Text = demo == null ? "Kamera ausrichten: Taste gedrückt halten. Bewegungen werden sofort ausgeführt."
                 : "DEMO-MODUS · Positionen und Namen gelten nur für diese Sitzung. Taste gedrückt halten."
         }, 0, 2);
-        movement = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = false };
+        movement = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = true };
         AddMotion("←", "Nach links", token => service.MoveInDirection(Direction.Left, token));
         AddMotion("↑", "Nach oben", token => service.MoveInDirection(Direction.Up, token));
         AddMotion("↓", "Nach unten", token => service.MoveInDirection(Direction.Down, token));
@@ -65,7 +65,7 @@ internal sealed class PresetEditorDialog : Form
         recall = new Button { Name = "recallPreset", Text = "Gespeicherte Position anfahren", AutoSize = true, Margin = new Padding(3, 12, 3, 8) };
         recall.Click += async (_, _) => await RunPositionAsync(false);
         layout.Controls.Add(recall, 0, 4);
-        store = new Button { Name = "storePreset", Text = $"Aktuelle Kameraposition für „{currentName}“ speichern", Dock = DockStyle.Top, Height = 48 };
+        store = new Button { Name = "storePreset", Text = $"Aktuelle Kameraposition für „{currentName}“ speichern", Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 48) };
         store.Click += async (_, _) =>
         {
             if (MessageBox.Show(this, $"Die bisherige Position für „{savedName}“ (Preset {(int)position}) wird überschrieben.\nPosition jetzt speichern?",
@@ -80,11 +80,19 @@ internal sealed class PresetEditorDialog : Form
         footer.Controls.Add(status);
         footer.Controls.Add(new Label { AutoSize = true, MaximumSize = new Size(600, 0), Text = "Schließen verwirft ungespeicherte Namen. Ausgeführte Bewegungen und gespeicherte Positionen bleiben bestehen." });
         var close = new Button { Text = "Schließen", AutoSize = true, DialogResult = DialogResult.Cancel };
-        footer.Controls.Add(close);
         layout.Controls.Add(footer, 0, 7);
-        Controls.Add(layout);
+        var scroll = new Panel { Name = "presetEditorContent", Dock = DockStyle.Fill, AutoScroll = true };
+        scroll.Controls.Add(layout);
+        var container = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        container.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        container.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        container.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        container.Controls.Add(scroll, 0, 0);
+        container.Controls.Add(close, 0, 1);
+        Controls.Add(container);
         CancelButton = close;
         AcceptButton = null;
+        WindowLayout.FitToScreen(this);
     }
 
     private void AddMotion(string text, string description, Func<CancellationToken, Task> command)

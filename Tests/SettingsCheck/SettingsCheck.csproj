@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../CamControl/AppInformation.cs" Link="AppInformation.cs" />
+    <Compile Include="../../CamControl/WindowLayout.cs" Link="WindowLayout.cs" />
     <EmbeddedResource Include="../../docs/privacy.md" LogicalName="CamControl.PrivacyPolicy" />
     <Compile Include="../../CamControl/CameraSettings.cs" Link="CameraSettings.cs" />
     <Compile Include="../../CamControl/CamControlService.cs" Link="CamControlService.cs" />

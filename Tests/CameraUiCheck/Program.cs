@@ -52,6 +52,71 @@ internal static class Program
             Check(condition(), "UI lifecycle did not finish");
         }
 
+        // Exercise font autoscaling and restricted screen space without camera transport.
+        IEnumerable<Control> Children(Control parent) => parent.Controls.Cast<Control>()
+            .SelectMany(child => new[] { child }.Concat(Children(child)));
+        void ShowOffscreen(Form window)
+        {
+            window.ShowInTaskbar = false;
+            window.StartPosition = FormStartPosition.Manual;
+            window.Location = new Point(-32000, -32000);
+            window.Show();
+            Application.DoEvents();
+        }
+        using (var layoutMain = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!)
+        {
+            ShowOffscreen(layoutMain);
+            layoutMain.Font = new Font(layoutMain.Font.FontFamily, layoutMain.Font.Size * 2);
+            layoutMain.PerformAutoScale();
+            Application.DoEvents();
+            var area = Screen.FromControl(layoutMain).WorkingArea;
+            Check(layoutMain.Height <= area.Height && layoutMain.Width <= area.Width,
+                "Scaled demo window exceeded the screen working area");
+            var preview = (Control)type.GetField("demoView", flags)!.GetValue(layoutMain)!;
+            var error = (Control)type.GetField("cameraErrorLabel", flags)!.GetValue(layoutMain)!;
+            Check(preview.Height > 0 && preview.Bottom <= error.Top && error.Bottom <= layoutMain.ClientSize.Height,
+                $"Resized demo preview covered the error area or escaped the window: preview={preview.Bounds}, error={error.Bounds}, client={layoutMain.ClientSize}");
+            int scaledDemoHeight = layoutMain.Height;
+            for (int switchCount = 0; switchCount < 3; switchCount++)
+            {
+                type.GetMethod("SetDemoMode", flags)!.Invoke(layoutMain, new object[] { false });
+                type.GetMethod("SetDemoMode", flags)!.Invoke(layoutMain, new object[] { true });
+                Application.DoEvents();
+            }
+            Check(layoutMain.Height == scaledDemoHeight, "Switching modes changed the capped demo window height cumulatively");
+            var layoutService = type.GetField("camControlService", flags)!.GetValue(layoutMain)!;
+            var layoutDemo = type.GetField("demoCamera", flags)!.GetValue(layoutMain)!;
+            using var editor = (Form)Activator.CreateInstance(type.Assembly.GetType("CamControl.PresetEditorDialog")!,
+                new object[] { layoutService, Enum.Parse(type.Assembly.GetType("CamControl.Position")!, "Redner"),
+                    new string('W', 32), new Action<string>(_ => { }), layoutDemo })!;
+            ShowOffscreen(editor);
+            editor.Font = new Font(editor.Font.FontFamily, editor.Font.Size * 2);
+            editor.PerformAutoScale();
+            editor.Height = Math.Min(600, area.Height);
+            Application.DoEvents();
+            var close = (Button)editor.CancelButton!;
+            var closeBounds = editor.RectangleToClient(close.RectangleToScreen(close.ClientRectangle));
+            Check(editor.Height <= area.Height && editor.ClientRectangle.Contains(closeBounds),
+                "Preset close button was not reachable on a restricted screen");
+            var scroll = Children(editor).OfType<Panel>().Single(control => control.Name == "presetEditorContent");
+            Check(scroll.AutoScroll && scroll.VerticalScroll.Visible, "Preset contents could not scroll at large font sizes");
+            var storeButton = Children(editor).Single(control => control.Name == "storePreset");
+            scroll.ScrollControlIntoView(storeButton);
+            Application.DoEvents();
+            Check(scroll.ClientRectangle.Contains(scroll.RectangleToClient(storeButton.RectangleToScreen(storeButton.ClientRectangle))),
+                "Scrolling did not make the preset save button reachable");
+            using var settings = (Form)Activator.CreateInstance(type.Assembly.GetType("CamControl.CameraSettingsDialog")!,
+                new object?[] { "192.168.188.24", null, true, null, null, null, null })!;
+            ShowOffscreen(settings);
+            settings.Font = new Font(settings.Font.FontFamily, settings.Font.Size * 2);
+            settings.PerformAutoScale();
+            Application.DoEvents();
+            var settingsClose = (Button)settings.CancelButton!;
+            Check(settings.Height <= area.Height && settings.ClientRectangle.Contains(
+                settings.RectangleToClient(settingsClose.RectangleToScreen(settingsClose.ClientRectangle))),
+                "Scaled settings window hid its close button");
+        }
+
         using (var demoForm = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!)
         {
             _ = demoForm.Handle;

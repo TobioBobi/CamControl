@@ -26,6 +26,7 @@ namespace CamControl
         private bool cameraWindowActive = true;
         private bool keyZoomIsPressed, keyDirectionIsPressed;
         private bool mouseZoomIsPressed, mouseDirectionIsPressed;
+        private bool fittingDemoPreview;
 
         public Form1() : this(false) { }
 
@@ -82,6 +83,31 @@ namespace CamControl
             RefreshPresetLabels();
             foreach (var button in new[] { buttonUp, buttonDown, buttonLeft, buttonRight, buttonZoomIn, buttonZoomOut })
                 button.MouseCaptureChanged += CameraButton_MouseCaptureChanged;
+            SizeChanged += (_, _) => FitDemoPreview();
+            Layout += (_, _) => FitDemoPreview();
+            FontChanged += (_, _) =>
+            {
+                // Font autoscaling updates child bounds after the layout event.
+                if (IsHandleCreated) BeginInvoke(new Action(FitDemoPreview));
+            };
+            DpiChanged += (_, _) => BeginInvoke(new Action(FitDemoPreview));
+            WindowLayout.FitToScreen(this);
+        }
+
+        private void FitDemoPreview()
+        {
+            if (IsDisposed || Disposing || !IsDemoMode || demoView == null || fittingDemoPreview) return;
+            fittingDemoPreview = true;
+            try
+            {
+                int controlsBottom = Controls.Cast<Control>()
+                    .Where(control => control is Button || control == tableLayoutPanel1)
+                    .Max(control => control.Bottom);
+                int gap = Math.Max(6, (int)Math.Round(12 * DeviceDpi / 96F));
+                demoView.Top = controlsBottom + gap;
+                demoView.Height = Math.Max(0, cameraErrorLabel.Top - demoView.Top - gap);
+            }
+            finally { fittingDemoPreview = false; }
         }
 
         // Call only before startup commands or after settings has cancelled all
@@ -107,6 +133,7 @@ namespace CamControl
             IsDemoMode = enabled;
             ClientSize = new Size(ClientSize.Width, ClientSize.Height + (enabled ? 1 : -1) * (demoView.Height + 12));
             demoView.Visible = enabled;
+            FitDemoPreview();
             modeLabel.Text = enabled ? "DEMO-MODUS · Keine Kamera verbunden" : "Kameramodus";
             modeLabel.ForeColor = enabled ? Color.DarkBlue : Color.DimGray;
             Text = enabled ? "CamControl – Demo" : "CamControl";

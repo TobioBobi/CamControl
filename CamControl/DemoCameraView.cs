@@ -24,9 +24,10 @@ namespace CamControl
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var state = camera.State;
             using var heading = new Font(Font, FontStyle.Bold);
-            g.DrawString("Simulation: Bühne und Kamerabild", heading, Brushes.DarkBlue, 0, 0);
-            float top = heading.Height + 10;
-            float sceneHeight = Math.Max(70, Height - top - Font.Height * 2 - 12);
+            bool compact = Height < heading.Height + Font.Height * 2 + 92;
+            if (!compact) g.DrawString("Simulation: Bühne und Kamerabild", heading, Brushes.DarkBlue, 0, 0);
+            float top = compact ? 0 : heading.Height + 10;
+            float sceneHeight = Math.Max(1, compact ? Height : Height - top - Font.Height * 2 - 12);
             var overview = new RectangleF(0, top, Width * .48f, sceneHeight);
             var preview = new RectangleF(Width * .52f, top, Width * .48f, sceneHeight);
             DrawScene(g, overview);
@@ -41,9 +42,12 @@ namespace CamControl
                 preview.Y - frame.Y * preview.Height / frame.Height, preview.Width / frame.Width, preview.Height / frame.Height));
             g.Restore(saved);
             g.DrawRectangle(Pens.SlateGray, preview.X, preview.Y, preview.Width, preview.Height);
-            g.DrawString("Bühne mit Bildausschnitt", Font, Brushes.DimGray, overview.X, overview.Bottom + 4);
-            g.DrawString($"Kamerabild · Zoom {state.Zoom:0.0}×", Font, Brushes.DimGray, preview.X, preview.Bottom + 4);
-            g.DrawString(state.Focusing ? "Fokusfahrt läuft …" : state.Action, Font, Brushes.DarkBlue, 0, Height - Font.Height);
+            if (!compact)
+            {
+                g.DrawString("Bühne mit Bildausschnitt", Font, Brushes.DimGray, overview.X, overview.Bottom + 4);
+                g.DrawString($"Kamerabild · Zoom {state.Zoom:0.0}×", Font, Brushes.DimGray, preview.X, preview.Bottom + 4);
+                g.DrawString(state.Focusing ? "Fokusfahrt läuft …" : state.Action, Font, Brushes.DarkBlue, 0, Height - Font.Height);
+            }
         }
 
         private void DrawScene(Graphics g, RectangleF bounds)
@@ -73,7 +77,8 @@ namespace CamControl
                 FormatFlags = StringFormatFlags.NoWrap
             };
             using var labelFont = new Font(Font.FontFamily,
-                Math.Max(7, Math.Min(Font.SizeInPoints, rectangle.Width / label.Length * .9f)));
+                Math.Max(4, Math.Min(rectangle.Height * 72f / g.DpiY * .8f,
+                    Math.Min(Font.SizeInPoints, rectangle.Width / label.Length * .9f))));
             g.DrawString(label, labelFont, Brushes.White, rectangle, format);
         }
 
