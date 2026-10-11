@@ -307,6 +307,8 @@ var dialogFlags = System.Reflection.BindingFlags.Instance | System.Reflection.Bi
 typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
 Check(!File.Exists(testPath), "View mode persisted settings");
 var pages = dialogControls.OfType<TabControl>().Single();
+// Tab selection events require a native handle, even without showing a window.
+_ = pages.Handle;
 pages.SelectedIndex = 4;
 var privacy = dialogControls.OfType<RichTextBox>().Single(control => control.Name == "privacyInformation");
 Check(pages.SelectedTab!.Text == "Info & Datenschutz" && privacy.ReadOnly &&
@@ -326,6 +328,13 @@ Check(pages.SelectedTab!.Text == "Hilfe & Voraussetzungen" &&
     address.Text == "192.168.188.025" && !File.Exists(testPath),
     "Reading help applied or discarded unsaved configuration changes");
 Check(dialog.CameraIp == "192.168.188.24" && !File.Exists(testPath), "Editing applied unsaved changes");
+Check(dialog.AcceptButton == null && ((Button)dialog.CancelButton!).Text == "Schließen",
+    "Reading another tab kept the camera save action as the Enter default");
+typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
+Check(!File.Exists(testPath), "A hidden camera save action persisted settings from another tab");
+pages.SelectedIndex = 0;
+Check(dialog.AcceptButton == save && ((Button)dialog.CancelButton!).Text == "Abbrechen",
+    "Returning to camera editing did not restore its actions");
 typeof(CameraSettingsDialog).GetMethod("Save_Click", dialogFlags)!.Invoke(dialog, new object?[] { null, EventArgs.Empty });
 Check(dialog.DialogResult == DialogResult.OK && dialog.CameraIp == "192.168.188.25" &&
     CameraSettings.Load(testPath) == "192.168.188.25", "Save did not persist and return the normalized IP");

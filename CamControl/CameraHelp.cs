@@ -12,7 +12,7 @@ namespace CamControl
             CamControl verwendet HTTP-Befehle an /cgi-bin/ptzctrl.cgi. Eine bestätigte Liste unterstützter Kameramodelle liegt noch nicht vor. Eine beliebige PTZ-Kamera ist daher nicht automatisch kompatibel. Zugangsdaten und andere Ports können derzeit nicht eingestellt werden.
 
             Kamera-Adresse einstellen
-            „Einstellungen“ oben rechts öffnen und auf der Seite „Kamera“ die aktuelle Adresse ansehen. „Konfiguration bearbeiten“ schaltet die Eingabe frei. Erst „Speichern“ übernimmt die Adresse und speichert sie für den nächsten Start. „Abbrechen“ oder das Schließen des Dialogs verwirft die Eingabe.
+            „Einstellungen“ oben rechts öffnen und auf der Seite „Kamera“ die aktuelle Adresse ansehen. „IP-Adresse ändern“ schaltet die Eingabe frei. Erst „Speichern“ auf dieser Seite übernimmt die Adresse und speichert sie für den nächsten Start. „Abbrechen“ oder das Schließen des Dialogs verwirft die Eingabe.
 
             Ohne Kamera ausprobieren
             Beim ersten Start ohne gespeicherte Kamera-Adresse „Ohne Kamera ausprobieren“ wählen. Später ist der Einstieg unter „Einstellungen“ → „Demo-Modus“ → „Demo starten“ möglich. Die Demo gilt für diese Sitzung; die gespeicherte Kamera-Adresse bleibt erhalten.

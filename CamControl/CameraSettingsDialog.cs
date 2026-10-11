@@ -44,9 +44,13 @@ namespace CamControl
             hint = new Label
             {
                 AutoSize = true, MaximumSize = new Size(460, 0), Dock = DockStyle.Top,
-                Text = "Die Konfiguration ist vor Änderungen geschützt. Zum Ändern „Konfiguration bearbeiten“ wählen.",
+                Text = "Die IP-Adresse ist vor Änderungen geschützt. Zum Ändern „IP-Adresse ändern“ wählen.",
                 Margin = new Padding(0, 12, 0, 0)
             };
+            edit = new Button { Name = "editConfiguration", Text = "IP-Adresse ändern", AutoSize = true, TabIndex = 0 };
+            save = new Button { Name = "saveConfiguration", Text = "Speichern", AutoSize = true, Enabled = false, TabIndex = 1 };
+            edit.Click += Edit_Click;
+            save.Click += Save_Click;
             pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill, Multiline = true };
             pages.TabPages.Add(CreateCameraPage());
             pages.TabPages.Add(CreateHelpPage());
@@ -111,17 +115,19 @@ namespace CamControl
             pages.TabPages.Add(presetsPage);
             pages.TabPages.Add(CreateInfoPage());
 
-            edit = new Button { Name = "editConfiguration", Text = "Konfiguration bearbeiten", AutoSize = true, TabIndex = 0 };
-            save = new Button { Name = "saveConfiguration", Text = "Speichern", AutoSize = true, Enabled = false, TabIndex = 1 };
             cancel = new Button { Text = "Schließen", AutoSize = true, DialogResult = DialogResult.Cancel, TabIndex = 2 };
-            edit.Click += Edit_Click;
-            save.Click += Save_Click;
+            pages.SelectedIndexChanged += (_, _) =>
+            {
+                bool editingCamera = editing && pages.SelectedIndex == 0;
+                AcceptButton = editingCamera ? save : null;
+                cancel.Text = editingCamera ? "Abbrechen" : "Schließen";
+            };
             var actions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.RightToLeft,
                 WrapContents = false, Margin = new Padding(0, 12, 0, 0)
             };
-            actions.Controls.AddRange(new Control[] { cancel, save, edit });
+            actions.Controls.Add(cancel);
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -208,13 +214,20 @@ namespace CamControl
         private TabPage CreateCameraPage()
         {
             var page = new TabPage("Kamera") { Padding = new Padding(16) };
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (int row = 0; row < 3; row++)
+            for (int row = 0; row < 4; row++)
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.Controls.Add(new Label { Text = "IP-Adresse der Kamera:", AutoSize = true }, 0, 0);
             layout.Controls.Add(address, 0, 1);
             layout.Controls.Add(hint, 0, 2);
+            var addressActions = new FlowLayoutPanel
+            {
+                AutoSize = true, Dock = DockStyle.Fill, WrapContents = false,
+                Margin = new Padding(0, 16, 0, 0)
+            };
+            addressActions.Controls.AddRange(new Control[] { edit, save });
+            layout.Controls.Add(addressActions, 0, 3);
             page.Controls.Add(layout);
             return page;
         }
@@ -294,7 +307,7 @@ namespace CamControl
 
         private void Save_Click(object? sender, EventArgs e)
         {
-            if (!editing)
+            if (!editing || pages.SelectedIndex != 0)
                 return;
             if (!CameraSettings.TryNormalizeIp(address.Text, out var ip))
             {
