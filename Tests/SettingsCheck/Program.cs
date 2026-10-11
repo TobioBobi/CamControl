@@ -314,7 +314,7 @@ var privacy = dialogControls.OfType<RichTextBox>().Single(control => control.Nam
 Check(pages.SelectedTab!.Text == "Info & Datenschutz" && privacy.ReadOnly &&
     privacy.Text == AppInformation.PrivacyText && privacy.Text.Contains("unverschlüsseltes HTTP"),
     "Privacy page did not display the embedded policy as read-only text");
-Check(dialogControls.Single(control => control.Name == "appInformation").Text.Contains("Tobias Heer") &&
+Check(dialogControls.Single(control => control.Name == "appInformation").Text.Contains("Tobiobobi") &&
     !string.IsNullOrWhiteSpace(AppInformation.Version) && !File.Exists(testPath) && !save.Enabled,
     "Reading app information changed configuration or omitted publisher/version");
 pages.SelectedIndex = 1;

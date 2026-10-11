@@ -8,7 +8,7 @@
   <Identity Name="CamControl.LocalTest" Publisher="CN=Tobias Heer" Version="1.1.0.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>CamControl (Test)</DisplayName>
-    <PublisherDisplayName>Tobias Heer</PublisherDisplayName>
+    <PublisherDisplayName>Tobiobobi</PublisherDisplayName>
     <Description>Steuerung kompatibler PTZ-Kameras mit hardwarefreiem Demo-Modus.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>

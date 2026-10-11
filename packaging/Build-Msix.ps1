@@ -20,7 +20,7 @@ function Invoke-Checked([string]$Executable, [string[]]$Arguments) {
 
 $identity = [pscustomobject]@{
     Name = 'CamControl.LocalTest'; Publisher = 'CN=Tobias Heer'
-    PublisherDisplayName = 'Tobias Heer'; DisplayName = 'CamControl (Test)'
+    PublisherDisplayName = 'Tobiobobi'; DisplayName = 'CamControl (Test)'
 }
 if ($Mode -eq 'Store') {
     if (!$StoreIdentityPath) { throw 'Store builds require -StoreIdentityPath with the exact Partner Center identity.' }

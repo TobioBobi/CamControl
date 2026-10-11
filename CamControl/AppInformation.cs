@@ -4,7 +4,7 @@ namespace CamControl
 {
     internal static class AppInformation
     {
-        internal const string Publisher = "Tobias Heer";
+        internal const string Publisher = "Tobiobobi";
         internal const string ProjectUrl = "https://github.com/TobioBobi/CamControl";
         internal static string Version => typeof(AppInformation).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]

@@ -2,7 +2,7 @@
 
 Windows Forms application for controlling a compatible PTZ camera over HTTP.
 
-Settings > Info & Datenschutz shows the build version, publisher Tobias Heer,
+Settings > Info & Datenschutz shows the build version, publisher Tobiobobi,
 project/support link and privacy information. The app embeds the same
 [privacy text](docs/privacy.md) maintained in this repository. The GitHub link
 opens the browser only when clicked. A public privacy URL for the Store listing

@@ -1,6 +1,6 @@
 Datenschutz für CamControl
 Stand: 11. Oktober 2026
-Herausgeber: Tobias Heer
+Herausgeber: Tobiobobi
 
 Lokale Einstellungen
 CamControl speichert die Kamera-Adresse in settings.json, die Namen der Buttons in buttons.json und die Auswahl der automatischen Start- und Endposition in automatic-positions.json. Diese Dateien liegen im Benutzerprofil unter %LOCALAPPDATA%\CamControl. Sie werden nicht an den Herausgeber übertragen.
