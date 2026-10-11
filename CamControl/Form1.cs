@@ -38,7 +38,7 @@ namespace CamControl
             InitializeComponent();
             camControlService = new CamControlService();
             previewBaseFontHeight = Font.Height;
-            cameraContent = new Panel { Name = "cameraContent", Size = ClientSize };
+            cameraContent = new Panel { Name = "cameraContent", Size = ClientSize, Margin = Padding.Empty };
             foreach (Control control in Controls.Cast<Control>().ToArray())
                 cameraContent.Controls.Add(control);
             cameraScroll = new Panel { Name = "cameraScroll", Dock = DockStyle.Fill, AutoScroll = true };
@@ -119,16 +119,33 @@ namespace CamControl
                     .Where(control => control is Button || control == tableLayoutPanel1)
                     .Max(control => control.Right);
                 int rightMargin = Math.Max(4, Font.Height / 3);
-                cameraContent.Width = Math.Max(controlsRight + rightMargin,
-                    cameraScroll.ClientSize.Width - (cameraScroll.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0));
-                demoView.Left = gap;
-                demoView.Width = Math.Max(1, cameraContent.Width - 2 * gap);
-                demoView.Top = controlsBottom + gap;
                 int preferredHeight = (int)Math.Round(180 * DeviceDpi / 96F * Font.Height / previewBaseFontHeight);
                 int minimumHeight = Font.Height * 3 + 90;
-                demoView.Height = Math.Max(minimumHeight, Math.Min(preferredHeight,
-                    cameraScroll.ClientSize.Height - demoView.Top - gap));
-                cameraContent.Height = IsDemoMode ? demoView.Bottom + gap : controlsBottom + gap;
+                int minimumWidth = controlsRight + rightMargin;
+                int minimumContentHeight = IsDemoMode
+                    ? controlsBottom + 2 * gap + minimumHeight
+                    : controlsBottom + rightMargin;
+                // ClientSize already excludes visible scrollbars. Start with the
+                // full viewport so old scrollbars cannot keep each other alive.
+                int viewportWidth = cameraScroll.ClientSize.Width +
+                    (cameraScroll.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0);
+                int viewportHeight = cameraScroll.ClientSize.Height +
+                    (cameraScroll.HorizontalScroll.Visible ? SystemInformation.HorizontalScrollBarHeight : 0);
+                bool horizontal = false, vertical = false;
+                for (int pass = 0; pass < 3; pass++)
+                {
+                    horizontal = minimumWidth > viewportWidth - (vertical ? SystemInformation.VerticalScrollBarWidth : 0);
+                    vertical = minimumContentHeight > viewportHeight - (horizontal ? SystemInformation.HorizontalScrollBarHeight : 0);
+                }
+                int availableWidth = viewportWidth - (vertical ? SystemInformation.VerticalScrollBarWidth : 0);
+                int availableHeight = viewportHeight - (horizontal ? SystemInformation.HorizontalScrollBarHeight : 0);
+                int previewTop = controlsBottom + gap;
+                int previewHeight = Math.Max(minimumHeight, Math.Min(preferredHeight, availableHeight - previewTop - gap));
+                cameraScroll.SuspendLayout();
+                cameraContent.Size = new Size(Math.Max(minimumWidth, availableWidth),
+                    IsDemoMode ? previewTop + previewHeight + gap : minimumContentHeight);
+                demoView.SetBounds(gap, previewTop, Math.Max(1, cameraContent.Width - 2 * gap), previewHeight);
+                cameraScroll.ResumeLayout(true);
             }
             finally { fittingDemoPreview = false; }
         }

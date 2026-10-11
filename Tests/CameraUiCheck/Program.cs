@@ -63,9 +63,31 @@ internal static class Program
             window.Show();
             Application.DoEvents();
         }
+        using (var cameraLayout = new Form1())
+        {
+            // Suppress startup motion while exercising the real camera layout.
+            type.GetField("automaticPositions", flags)!.SetValue(cameraLayout,
+                Activator.CreateInstance(type.Assembly.GetType("CamControl.AutomaticPositions")!, true));
+            ShowOffscreen(cameraLayout);
+            var scroll = (Panel)type.GetField("cameraScroll", flags)!.GetValue(cameraLayout)!;
+            Check(!scroll.HorizontalScroll.Visible && !scroll.VerticalScroll.Visible,
+                "Normal camera startup showed unnecessary scrollbars");
+        }
         using (var layoutMain = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!)
         {
             ShowOffscreen(layoutMain);
+            var startupScroll = (Panel)type.GetField("cameraScroll", flags)!.GetValue(layoutMain)!;
+            Check(!startupScroll.HorizontalScroll.Visible && !startupScroll.VerticalScroll.Visible,
+                "Normal demo startup showed unnecessary scrollbars");
+            var originalSize = layoutMain.Size;
+            layoutMain.Size = new Size(originalSize.Width / 2, originalSize.Height / 2);
+            Application.DoEvents();
+            Check(startupScroll.HorizontalScroll.Visible && startupScroll.VerticalScroll.Visible,
+                "Shrinking the window did not make camera content scrollable");
+            layoutMain.Size = originalSize;
+            Application.DoEvents();
+            Check(!startupScroll.HorizontalScroll.Visible && !startupScroll.VerticalScroll.Visible,
+                "Restoring available space left unnecessary scrollbars behind");
             layoutMain.Font = new Font(layoutMain.Font.FontFamily, layoutMain.Font.Size * 2);
             layoutMain.PerformAutoScale();
             Application.DoEvents();

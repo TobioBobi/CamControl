@@ -83,8 +83,12 @@ beziehungsweise konfigurierte Start-/Endpositionen hin die Kamera über HTTP.
 Für die Store-Zertifizierung die Demo und diese Verwendung der Capability
 in den Prüferhinweisen erklären.
 
-Vor Einreichung offen: Installation/Deinstallation und Update des Pakets auf
-einem Test-PC, Windows App Certification Kit, Hardwaretests, bestätigte
+Installation, Update mit Datenerhaltung und Deinstallation wurden lokal
+geprüft; Einzelheiten und Grenzen stehen im
+[Installationstest](msix-installation-test.md). Das endgültige Store-Paket mit
+seiner eigenen Identität muss erneut getestet werden.
+
+Vor Einreichung offen: Windows App Certification Kit, Hardwaretests, bestätigte
 Kamerakompatibilität, Store-Name/Metadaten, Screenshots und öffentliche
 Datenschutz-URL. Das Manifest setzt Windows 10 Build 19041 als technische
 Untergrenze; eine unterstützte Windows-Version bleibt erforderlich.
