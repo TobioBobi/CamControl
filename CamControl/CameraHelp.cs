@@ -22,7 +22,7 @@ namespace CamControl
             Zum Beenden unter „Demo-Modus“ die Kamera einrichten und die Adresse speichern. Dies aktiviert wieder den Kamerabetrieb. Im Demo-Modus schließt die App nach den Stopps ohne zusätzliche Standbyfahrt.
 
             Positionen aufrufen
-            Die großen Buttons rufen bereits in der Kamera gespeicherte Positionen auf. Ihre Namen beschreiben die bisherige Einrichtung; für eine andere Kamera müssen die passenden Positionen dort bereits gespeichert sein.
+            Die großen Buttons rufen die in der Kamera gespeicherten Positionen auf. Die folgenden Namen sind die Vorgaben; eigene Namen können in den Einstellungen gespeichert werden. Die Nummern und Tastenkürzel bleiben gleich.
 
             Button / Taste → Presetnummer der Kamera
             Redner / 1 → 1
@@ -33,7 +33,14 @@ namespace CamControl
             Demo stehend / 6 → 6
             Standby / 9 → 9
 
-            „Demo stehend“ ist eine normale Kameraposition und kein Simulationsmodus. Buttonnamen und Presets sind derzeit fest vorgegeben. Neue Positionen können mit CamControl noch nicht in der Kamera gespeichert werden.
+            „Demo stehend“ ist der vorgegebene Name einer normalen Kameraposition und kein Simulationsmodus.
+
+            Buttons und Presets bearbeiten
+            „Einstellungen“ → „Buttons & Presets“ → „Bearbeiten …“ beim gewünschten Button wählen. „Nur Namen speichern“ ändert ausschließlich den Buttontext. Namen dürfen 1 bis 32 Zeichen enthalten. Ungespeicherte Namen werden beim Schließen verworfen.
+
+            Zum Einrichten einer Position die Kamera mit den Pfeil- und Zoombuttons ausrichten. „Gespeicherte Position anfahren“ lädt die bisherige Position. „Aktuelle Kameraposition … speichern“ überschreibt nach einer Bestätigung das betreffende Kamera-Preset. Die App stoppt zuvor die Bewegung. Ein erfolgreich gesendeter Speicherbefehl bestätigt noch nicht unabhängig die Speicherung; zum Prüfen die Position erneut anfahren.
+
+            Ausgeführte Kamerabewegungen und gespeicherte Positionen werden beim Schließen nicht rückgängig gemacht. Standby (Preset 9) bleibt separat und kann hier nicht überschrieben werden. Echte Buttonnamen werden lokal für den nächsten Start gespeichert; die Positionen speichert die Kamera. Im Demo-Modus gelten eigene Namen und Positionen nur für die laufende Sitzung und verändern keine echte Kamera-Konfiguration.
 
             Bewegung und Zoom
             Einen Richtungspfeil oder „Zoom In“ / „Zoom Out“ mit der linken Maustaste gedrückt halten. Loslassen stoppt den jeweiligen Kanal. Alternativ die Pfeiltasten zum Bewegen und Plus/Minus auf dem Nummernblock zum Zoomen gedrückt halten. Die Zahlentasten 1–6 und 9 rufen die oben genannten Positionen auf.

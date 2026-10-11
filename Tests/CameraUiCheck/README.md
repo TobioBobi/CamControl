@@ -1,12 +1,17 @@
 # Camera UI checks
 
+Preset editor checks cover independent renaming, stop-before-save, custom demo
+recall, focus-loss/close stops, rejected save commands and local write failures.
+An offscreen modal dialog also verifies that one Close click after saving a
+demo preset exits the dialog when stop requests complete synchronously.
+
 Run on Windows with the .NET 10 SDK:
 
 ```powershell
 dotnet run --project Tests/CameraUiCheck/CameraUiCheck.csproj -c Release
 ```
 
-These checks instantiate the real form without showing a window, inject a fake
+These checks instantiate the real form without showing a visible window, inject a fake
 camera HTTP handler and exercise button and keyboard handlers via reflection.
 They verify error display, usable controls after failures, standby cleanup,
 recovery, closing while the camera fails, and that an older successful request

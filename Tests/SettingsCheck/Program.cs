@@ -31,6 +31,25 @@ Check(rejected, "Invalid settings saved");
 File.Delete(testPath);
 
 using var handler = new RecordingHandler();
+var namesPath = Path.Combine(AppContext.BaseDirectory, "test-buttons.json");
+File.Delete(namesPath);
+var names = PresetSettings.Load(namesPath);
+Check(names.Count == 6 && names[1] == "Redner", "Missing button settings lost defaults");
+names[1] = "  Bühne links  ";
+PresetSettings.Save(names, namesPath);
+Check(PresetSettings.Load(namesPath)[1] == "Bühne links", "Button name did not survive restart");
+File.WriteAllText(namesPath, "{\"1\":\"\",\"2\":\"Lesepult\",\"9\":\"Wrong\"}");
+var loadedNames = PresetSettings.Load(namesPath);
+Check(loadedNames[1] == "Redner" && loadedNames[2] == "Lesepult" && !loadedNames.ContainsKey(9), "Invalid names or standby mapping accepted");
+File.WriteAllText(namesPath, "broken json");
+Check(PresetSettings.Load(namesPath)[1] == "Redner", "Damaged button file prevented fallback");
+foreach (var invalidName in new[] { "", "   ", new string('x', 33), "a\nb" })
+    Check(!PresetSettings.IsValidName(invalidName), "Invalid button name accepted");
+names[1] = "";
+try { PresetSettings.Save(names, namesPath); throw new Exception("Invalid name saved"); }
+catch (ArgumentException) { checks++; }
+Check(File.ReadAllText(namesPath) == "broken json", "Rejected save changed the previous file");
+File.Delete(namesPath);
 var demoCamera = new DemoCamera();
 using (var demoClient = new HttpClient(new DemoCameraHandler(demoCamera)))
 {
@@ -68,9 +87,26 @@ using (var demoClient = new HttpClient(new DemoCameraHandler(demoCamera)))
     using var rejectedDemoResponse = await demoClient.GetAsync("http://example.invalid/unsupported");
     Check(rejectedDemoResponse.StatusCode == HttpStatusCode.BadRequest, "Demo handler accepted an unknown endpoint");
     Check(!demoCamera.Apply("?ptzcmd&poscall&999"), "Demo accepted an unsupported preset");
+    await demoService.MoveToPosition(Position.Tisch);
+    await demoService.Zoom(Zoom.ZoomIn);
+    demoCamera.Advance(TimeSpan.FromMilliseconds(600));
+    await demoService.StopAll();
+    var savedPosition = demoCamera.State;
+    await demoService.SavePosition(Position.Redner);
+    await demoService.MoveToPosition(Position.BuehneKomplett);
+    await demoService.MoveToPosition(Position.Redner);
+    Check(demoCamera.State.X == savedPosition.X && demoCamera.State.Y == savedPosition.Y &&
+        demoCamera.State.Zoom == savedPosition.Zoom, "Demo did not recall a custom position and zoom");
+    await demoService.SavePosition(Position.Redner);
+    Check(!demoCamera.Apply("?ptzcmd&posset&9"), "Demo overwrote standby");
 }
 using var client = new HttpClient(handler);
 var service = new CamControlService(client, "192.168.188.24");
+await service.SavePosition(Position.Redner);
+Check(handler.Requests.Last().Query == "?ptzcmd&posset&1", "Preset save URL differs from documented command");
+handler.Requests.Clear();
+try { await service.SavePosition(Position.StandBy); throw new Exception("Standby save accepted"); }
+catch (ArgumentOutOfRangeException) { checks++; }
 await service.MoveToPosition(Position.BuehneKomplett);
 service.SetCameraIp("192.168.188.25");
 await service.MoveToPosition(Position.BuehneKomplett);
@@ -98,6 +134,7 @@ Check(handler.Requests.Last().Host == "192.168.188.26", "New commands did not us
 var commands = new (string Name, Func<Task> Execute)[]
 {
     ("Position", () => service.MoveToPosition(Position.Redner)),
+    ("Save position", () => service.SavePosition(Position.Redner)),
     ("Standby", () => service.MoveToPosition(Position.StandBy)),
     ("Movement", () => service.MoveInDirection(Direction.Up)),
     ("Movement stop", () => service.StopDirectionalMovement()),

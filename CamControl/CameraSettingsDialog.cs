@@ -9,10 +9,13 @@ namespace CamControl
         private readonly Button demoAction;
         private readonly string? settingsPath;
         private bool editing;
+        private TabPage? presetsPage;
         public string CameraIp { get; private set; }
         public bool? RequestedDemoMode { get; private set; }
 
-        public CameraSettingsDialog(string cameraIp, string? settingsPath = null, bool demoModeActive = false)
+        public CameraSettingsDialog(string cameraIp, string? settingsPath = null, bool demoModeActive = false,
+            CamControlService? service = null, Dictionary<int, string>? presetNames = null,
+            Action<int, string>? savePresetName = null, DemoCamera? demo = null)
         {
             CameraIp = cameraIp;
             this.settingsPath = settingsPath;
@@ -24,7 +27,7 @@ namespace CamControl
             ShowInTaskbar = false;
             AutoScaleMode = AutoScaleMode.Font;
             AutoScaleDimensions = new SizeF(7F, 15F);
-            ClientSize = new Size(600, 420);
+            ClientSize = new Size(600, 480);
             Padding = new Padding(16);
 
             address = new TextBox
@@ -38,8 +41,6 @@ namespace CamControl
                 Text = "Die Konfiguration ist vor Änderungen geschützt. Zum Ändern „Konfiguration bearbeiten“ wählen.",
                 Margin = new Padding(0, 12, 0, 0)
             };
-            // Add future pages for camera presets and button labels here once
-            // the camera's preset-save API is known. All pages share edit/save/cancel.
             pages = new TabControl { Name = "settingsPages", Dock = DockStyle.Fill };
             pages.TabPages.Add(CreateCameraPage());
             pages.TabPages.Add(CreateHelpPage());
@@ -73,6 +74,34 @@ namespace CamControl
             demoLayout.Controls.Add(demoAction);
             demoPage.Controls.Add(demoLayout);
             pages.TabPages.Add(demoPage);
+            presetsPage = new TabPage("Buttons & Presets") { Padding = new Padding(12) };
+            var presetLayout = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true
+            };
+            presetLayout.Controls.Add(new Label
+            {
+                AutoSize = true, MaximumSize = new Size(500, 0),
+                Text = service == null ? "Bitte zuerst die Kamera einrichten oder den Demo-Modus starten."
+                    : "„Bearbeiten …“ öffnet die Steuerung und das gezielte Speichern. Standby bleibt separat."
+            });
+            if (service != null && presetNames != null && savePresetName != null)
+                foreach (int number in Enumerable.Range(1, 6))
+                {
+                    var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 8, 0, 0) };
+                    var label = new Label { Text = $"{number}: {presetNames[number]}", Width = 330, Height = 30, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft };
+                    var button = new Button { Text = "Bearbeiten …", AutoSize = true, AccessibleName = $"Preset {number} bearbeiten" };
+                    button.Click += (_, _) =>
+                    {
+                        using var editor = new PresetEditorDialog(service, (Position)number, presetNames[number],
+                            value => { savePresetName(number, value); label.Text = $"{number}: {presetNames[number]}"; }, demo);
+                        editor.ShowDialog(this);
+                    };
+                    row.Controls.AddRange(new Control[] { label, button });
+                    presetLayout.Controls.Add(row);
+                }
+            presetsPage.Controls.Add(presetLayout);
+            pages.TabPages.Add(presetsPage);
 
             edit = new Button { Name = "editConfiguration", Text = "Konfiguration bearbeiten", AutoSize = true, TabIndex = 0 };
             save = new Button { Name = "saveConfiguration", Text = "Speichern", AutoSize = true, Enabled = false, TabIndex = 1 };
@@ -115,6 +144,7 @@ namespace CamControl
         {
             pages.SelectedIndex = 0;
             editing = true;
+            if (presetsPage != null) presetsPage.Enabled = false;
             demoAction.Enabled = false;
             address.ReadOnly = false;
             address.TabStop = true;

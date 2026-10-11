@@ -80,6 +80,90 @@ internal static class Program
             Check(!demoForm.Text.Contains("Demo") && demoForm.ClientSize.Height < demoHeight, "Leaving demo retained its view or label");
             type.GetMethod("SetDemoMode", flags)!.Invoke(demoForm, new object[] { true });
             Check(demoForm.ClientSize.Height == demoHeight, "Repeated demo entry accumulated window height");
+            var presetType = type.Assembly.GetType("CamControl.PresetEditorDialog")!;
+            var demoPositionType = type.Assembly.GetType("CamControl.Position")!;
+            var demoService = type.GetField("camControlService", flags)!.GetValue(demoForm)!;
+            // Exercise the actual modal message loop: Close() on an unshown form
+            // does not reproduce the synchronous demo-stop reentrancy.
+            using (var modalEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                null, new object[] { demoService, Enum.Parse(demoPositionType, "Redner"), "Redner",
+                    new Action<string>(_ => { }), demo }, null)!)
+            {
+                modalEditor.StartPosition = FormStartPosition.Manual;
+                modalEditor.Location = new Point(-32000, -32000);
+                bool timedOut = false;
+                using var watchdog = new System.Windows.Forms.Timer { Interval = 2000 };
+                watchdog.Tick += (_, _) =>
+                {
+                    timedOut = true;
+                    watchdog.Stop();
+                    presetType.GetField("finalClose", flags)!.SetValue(modalEditor, true);
+                    modalEditor.Close();
+                };
+                modalEditor.Shown += async (_, _) =>
+                {
+                    await (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(modalEditor, new object[] { true })!;
+                    watchdog.Start();
+                    ((Button)modalEditor.CancelButton!).PerformClick();
+                };
+                modalEditor.ShowDialog();
+                watchdog.Stop();
+                Check(!timedOut, "Modal demo editor needed a second close after saving a preset");
+                Check(!DemoFlag("Moving") && !DemoFlag("Zooming"), "Modal editor closed without stopping demo channels");
+            }
+            string? savedName = null;
+            using var editor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                null, new object[] { demoService, Enum.Parse(demoPositionType, "Redner"), "Redner",
+                    new Action<string>(value => savedName = value), demo }, null)!;
+            _ = editor.Handle;
+            Task EditorTask(string method, params object[] args) => (Task)presetType.GetMethod(method, flags)!.Invoke(editor, args)!;
+            PumpUntil(EditorTask("RunPositionAsync", false));
+            var original = DemoState();
+            var editorName = (TextBox)presetType.GetField("name", flags)!.GetValue(editor)!;
+            editorName.Text = "Mein Redner";
+            presetType.GetMethod("SaveName", flags)!.Invoke(editor, null);
+            Check(savedName == "Mein Redner" && DemoState().Equals(original), "Renaming changed camera state");
+            Func<CancellationToken, Task> editorZoom = token => (Task)demoService.GetType().GetMethod("Zoom")!.Invoke(demoService,
+                new object[] { Enum.Parse(zoomType, "ZoomIn"), token })!;
+            PumpUntil(EditorTask("StartMotionAsync", editorZoom));
+            demo.GetType().GetMethod("Advance")!.Invoke(demo, new object[] { TimeSpan.FromMilliseconds(500) });
+            PumpUntil(EditorTask("RunPositionAsync", true));
+            var stored = DemoState();
+            Check(!DemoFlag("Zooming") && !DemoFlag("Moving"), "Saving did not stop manual channels first");
+            PumpUntil((Task)demoService.GetType().GetMethod("MoveToPosition")!.Invoke(demoService,
+                new object[] { Enum.Parse(demoPositionType, "Tisch"), CancellationToken.None })!);
+            PumpUntil(EditorTask("RunPositionAsync", false));
+            Check(DemoState().GetType().GetProperty("Zoom")!.GetValue(DemoState())!.Equals(
+                stored.GetType().GetProperty("Zoom")!.GetValue(stored)), "Editor failed to recall custom zoom");
+            PumpUntil(EditorTask("StartMotionAsync", editorZoom));
+            presetType.GetMethod("OnDeactivate", flags)!.Invoke(editor, new object[] { EventArgs.Empty });
+            PumpUntilCondition(() => !DemoFlag("Zooming"));
+            Check(!DemoFlag("Moving"), "Editor focus loss left motion active");
+            presetType.GetMethod("OnActivated", flags)!.Invoke(editor, new object[] { EventArgs.Empty });
+            PumpUntil(EditorTask("StartMotionAsync", editorZoom));
+            editor.Close();
+            PumpUntilCondition(() => !DemoFlag("Zooming"));
+            Check(!DemoFlag("Moving"), "Editor close left motion active");
+            using var saveHandler = new FailingHandler();
+            using var saveClient = new HttpClient(saveHandler);
+            var fakeService = Activator.CreateInstance(demoService.GetType(), flags, null,
+                new object[] { saveClient, "192.168.188.24" }, null)!;
+            using var failedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
+                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner",
+                    new Action<string>(_ => throw new IOException("Test write failure")), null! }, null)!;
+            _ = failedEditor.Handle;
+            PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(failedEditor, new object[] { true })!);
+            var saveStatus = (Label)presetType.GetField("status", flags)!.GetValue(failedEditor)!;
+            Check(saveStatus.Text.Contains("HTTP 500") && !saveStatus.Text.Contains("erfolgreich"), "Failed stop falsely reported preset saved");
+            Check(saveHandler.Requests.All(uri => !uri.Query.Contains("posset")), "Save proceeded despite failed stop");
+            saveHandler.Respond = (uri, _) => Task.FromResult(new HttpResponseMessage(
+                uri.Query.Contains("posset") ? HttpStatusCode.Forbidden : HttpStatusCode.OK));
+            PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(failedEditor, new object[] { true })!);
+            Check(saveStatus.Text.Contains("HTTP 403") && !saveStatus.Text.Contains("erfolgreich"), "Rejected preset save falsely reported success");
+            var failedName = (TextBox)presetType.GetField("name", flags)!.GetValue(failedEditor)!;
+            failedName.Text = "Neuer Name";
+            presetType.GetMethod("SaveName", flags)!.Invoke(failedEditor, null);
+            Check(saveStatus.Text.Contains("nicht gespeichert"), "Name write failure was not shown");
         }
 
         PumpUntil(Run(() => Task.FromException(new HttpRequestException("test", null, HttpStatusCode.Forbidden)), "Position"));

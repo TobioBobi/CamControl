@@ -9,6 +9,8 @@ namespace CamControl
         private readonly DemoCamera demoCamera = new();
         private readonly DemoCameraView demoView;
         private HttpClient? demoClient;
+        private Dictionary<int, string> presetNames = PresetSettings.Load();
+        private readonly Dictionary<int, string> demoPresetNames = PresetSettings.Defaults();
         internal bool IsDemoMode { get; private set; }
         private bool settingsDialogOpen;
         private readonly Label cameraErrorLabel;
@@ -75,6 +77,7 @@ namespace CamControl
             };
             Controls.Add(demoView);
             if (useDemo) SetDemoMode(true);
+            RefreshPresetLabels();
             foreach (var button in new[] { buttonUp, buttonDown, buttonLeft, buttonRight, buttonZoomIn, buttonZoomOut })
                 button.MouseCaptureChanged += CameraButton_MouseCaptureChanged;
         }
@@ -105,6 +108,30 @@ namespace CamControl
             modeLabel.Text = enabled ? "DEMO-MODUS · Keine Kamera verbunden" : "Kameramodus";
             modeLabel.ForeColor = enabled ? Color.DarkBlue : Color.DimGray;
             Text = enabled ? "CamControl – Demo" : "CamControl";
+            RefreshPresetLabels();
+        }
+
+        private void RefreshPresetLabels()
+        {
+            var names = IsDemoMode ? demoPresetNames : presetNames;
+            var buttons = new[] { buttonRedner, buttonRednerLeser, buttonTisch, buttonKompletteBuehne, buttonRednerBildschirm, buttonDemoStehend };
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                buttons[i].Text = $"{names[i + 1]} ({i + 1})";
+                buttons[i].AccessibleName = names[i + 1];
+            }
+        }
+
+        private void SavePresetName(int number, string value)
+        {
+            if (IsDemoMode) demoPresetNames[number] = value;
+            else
+            {
+                var updated = new Dictionary<int, string>(presetNames) { [number] = value };
+                PresetSettings.Save(updated);
+                presetNames[number] = value;
+            }
+            RefreshPresetLabels();
         }
 
         private bool CanControlCamera => !IsDisposed && !Disposing && !finalClose && ControlBox &&
@@ -218,7 +245,10 @@ namespace CamControl
             {
                 if (!await PrepareCameraSettingsAsync())
                     return;
-                using var dialog = new CameraSettingsDialog(camControlService.CameraIp, demoModeActive: IsDemoMode);
+                demoView.Visible = false;
+                using var dialog = new CameraSettingsDialog(camControlService.CameraIp, demoModeActive: IsDemoMode,
+                    service: camControlService, presetNames: IsDemoMode ? demoPresetNames : presetNames,
+                    savePresetName: SavePresetName, demo: IsDemoMode ? demoCamera : null);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     camControlService.SetCameraIp(dialog.CameraIp);
@@ -229,6 +259,7 @@ namespace CamControl
             finally
             {
                 settingsDialogOpen = false;
+                demoView.Visible = IsDemoMode;
                 UpdateCameraControls();
             }
         }

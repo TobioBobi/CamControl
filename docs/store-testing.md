@@ -25,7 +25,13 @@ demo selection is not saved across restarts. The window clearly labels demo mode
    Buttons are blocked during this sequence. Open settings to cancel it.
 6. Review the read-only camera configuration and the help page. Editing requires
    **Konfiguration bearbeiten**. Cancel a changed IP and verify it is not saved.
-7. Close the demo. It stops simulated channels and exits without a standby delay.
+7. Open **Einstellungen > Buttons & Presets > Bearbeiten …** for one button.
+   Save a different name with **Nur Namen speichern**. Hold direction/zoom
+   buttons to choose a new frame, then save the position and confirm replacement.
+   Move elsewhere and use **Gespeicherte Position anfahren** to verify recall.
+   Close settings: the renamed main button recalls the new position too.
+   Restart demo to restore defaults; real camera configuration is unchanged.
+8. Close the demo. It stops simulated channels and exits without a standby delay.
 
 To leave demo mode, open **Einstellungen > Demo-Modus > Kamera einrichten und
 Demo beenden**, review/edit the IP, then save. This deliberately activates camera
@@ -33,8 +39,8 @@ control; physical hardware is required to verify the real commands.
 
 ## Current limitations
 
-- Presets 1–6 and 9 and their labels are currently fixed. Creating/saving presets
-  on a physical camera has not been implemented; the required API is unverified.
+- Preset numbers 1–6 and 9 remain fixed. Names and positions for 1–6 are editable;
+  saving to a physical camera uses `posset` and still requires hardware validation.
 - “Demo stehend” is the name of preset 6, separate from the hardware-free mode.
 - The model list remains to be confirmed. The app currently targets the HTTP
   `/cgi-bin/ptzctrl.cgi` command endpoint on port 80 with an IPv4 camera address.

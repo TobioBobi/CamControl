@@ -1,5 +1,9 @@
 # Settings checks
 
+Preset checks cover name validation and persistence, documented `posset` URLs,
+HTTP/network failures when saving, standby protection, and recall of a custom
+demo position including its zoom. Temporary files do not change user settings.
+
 Run on Windows with the .NET 10 SDK:
 
 ```powershell

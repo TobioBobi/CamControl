@@ -53,6 +53,14 @@ namespace CamControl
             }, cancellationToken, directionGate, zoomGate);
         }
 
+        public Task SavePosition(Position position, CancellationToken cancellationToken = default)
+        {
+            if ((int)position < 1 || (int)position > 6)
+                throw new ArgumentOutOfRangeException(nameof(position));
+            return ExecuteSerializedAsync(target => SendCommandAsync(target,
+                $"posset&{(int)position}", cancellationToken), cancellationToken, directionGate, zoomGate);
+        }
+
         public Task MoveInDirection(Direction direction, CancellationToken cancellationToken = default)
         {
             return ExecuteSerializedAsync(target => SendCommandAsync(target,

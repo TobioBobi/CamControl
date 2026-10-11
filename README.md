@@ -60,10 +60,16 @@ current camera compatibility limits, setup, preset numbers, keyboard/mouse
 controls, startup/standby behavior and troubleshooting. The confirmed camera
 model list and the preset-save API still need to be verified on the camera.
 
-The dialog uses separate pages so camera preset management and button labels
-can be added later. Future preset management should also save the camera's
-current position on the camera itself, after its REST command is verified.
-Preset editing and saving are not implemented yet.
+Settings > **Buttons & Presets** lists the six position buttons. **Bearbeiten …**
+opens a separate editor with held direction/zoom controls, preset recall, and
+confirmed position saving using `ptzcmd&posset&N`. Names are saved independently
+in `%LOCALAPPDATA%/CamControl/buttons.json`; renaming sends no preset-save command.
+Preset numbers 1–6 remain fixed and standby (9) cannot be overwritten here.
+The camera stores physical positions. Demo names and saved positions stay in
+memory for the session and do not change the real configuration. Closing an
+editor discards an unsaved name, but does not undo camera motion or saved presets.
+The save command is documented by PTZOptics and SMTAV; it still requires testing
+with the actual camera. A successful HTTP response is not independent readback.
 
 Manual movement and zoom stop on key/mouse release, loss of mouse capture,
 window deactivation, settings opening and application closing. Pending commands

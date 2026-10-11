@@ -9,6 +9,7 @@ namespace CamControl
         private int horizontal, vertical, zoomDirection;
         private bool focusing;
         private string lastAction = "Bereit";
+        private readonly Dictionary<int, (float X, float Y, float Zoom, string Name)> savedPresets = new();
 
         public record Snapshot(float X, float Y, float Zoom, bool Moving, bool Zooming, bool Focusing, string Action)
         {
@@ -40,6 +41,12 @@ namespace CamControl
             {
                 switch (parts[1])
                 {
+                    case "posset":
+                        if (parts.Length != 3 || !int.TryParse(parts[2], out int saveNumber) || saveNumber < 1 || saveNumber > 6)
+                            return false;
+                        savedPresets[saveNumber] = (x, y, zoom, $"Eigenes Preset {saveNumber}");
+                        lastAction = $"Preset {saveNumber} gespeichert";
+                        break;
                     case "poscall":
                         if (parts.Length != 3 || !int.TryParse(parts[2], out int preset)) return false;
                         var target = preset switch
@@ -53,6 +60,7 @@ namespace CamControl
                             9 => (.5f, .85f, 2f, "Standby"),
                             _ => (0f, 0f, 0f, "")
                         };
+                        if (savedPresets.TryGetValue(preset, out var saved)) target = saved;
                         if (target.Item3 == 0) return false;
                         (x, y, zoom, lastAction) = target;
                         horizontal = vertical = zoomDirection = 0;
