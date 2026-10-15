@@ -12,6 +12,8 @@ internal sealed class CameraSettingsDialog : AppWindow
     internal readonly TextBox Address;
     internal readonly Button SaveAddress, DemoAction, SaveAutomatic;
     internal readonly ComboBox StartPreset = new() { Name = "startPreset" }, ExitPreset = new() { Name = "exitPreset" };
+    internal readonly ComboBox AppearanceChoice = new() { Name = "appearanceChoice" };
+    internal readonly Button SaveAppearance;
     internal readonly ListBox Navigation = new() { Name = "settingsNavigation" };
     private readonly ContentControl page = new();
     private readonly TextBlock feedback = Ui.Text(""), automaticFeedback = Ui.Text(""), supportFeedback = Ui.Text("");
@@ -24,7 +26,7 @@ internal sealed class CameraSettingsDialog : AppWindow
     public bool? RequestedDemoMode { get; private set; }
     internal event Action<string>? PresetStopFailed;
 
-    internal CameraSettingsDialog(string cameraIp, CameraSession? session = null, string? settingsPath = null)
+    internal CameraSettingsDialog(string cameraIp, CameraSession? session = null, string? settingsPath = null, string? appearancePath = null)
     {
         this.session = session; this.settingsPath = settingsPath; CameraIp = cameraIp;
         savedAutomatic = session?.Automatic ?? new();
@@ -48,6 +50,29 @@ internal sealed class CameraSettingsDialog : AppWindow
         });
         supportFeedback.SetResourceReference(TextBlock.ForegroundProperty, "ErrorBrush");
         pages["Info & Datenschutz"] = Ui.Stack(Ui.Heading("Info & Datenschutz"), Ui.Text($"CamControl · Version {AppInformation.Version}\n{AppInformation.Description}\nHerausgeber: {AppInformation.Publisher}"), support, supportFeedback, ReadOnlyText(AppInformation.PrivacyText, "privacyInformation"));
+        AppearanceChoice.Items.Add(new AppearanceChoiceItem(Appearance.Dark, "Dunkel"));
+        AppearanceChoice.Items.Add(new AppearanceChoiceItem(Appearance.Light, "Hell"));
+        AppearanceChoice.Items.Add(new AppearanceChoiceItem(Appearance.System, "Windows-Einstellung verwenden"));
+        Appearance selectedAppearance = Theme.Preference;
+        AppearanceChoice.SelectedItem = AppearanceChoice.Items.Cast<AppearanceChoiceItem>().Single(item => item.Value == selectedAppearance);
+        var appearanceFeedback = Ui.Text("");
+        SaveAppearance = Ui.Button("Darstellung übernehmen", () =>
+        {
+            if (AppearanceChoice.SelectedItem is not AppearanceChoiceItem choice) return;
+            try
+            {
+                Theme.SetPreference(choice.Value, appearancePath); selectedAppearance = choice.Value;
+                SaveAppearance!.IsEnabled = false; appearanceFeedback.Text = "Darstellung gespeichert.";
+                appearanceFeedback.SetResourceReference(TextBlock.ForegroundProperty, "SuccessBrush");
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            { appearanceFeedback.Text = "Darstellung konnte nicht gespeichert werden: " + e.Message; appearanceFeedback.SetResourceReference(TextBlock.ForegroundProperty, "ErrorBrush"); }
+        }, "saveAppearance");
+        SaveAppearance.IsEnabled = false;
+        AppearanceChoice.SelectionChanged += (_, _) => SaveAppearance.IsEnabled = AppearanceChoice.SelectedItem is AppearanceChoiceItem item && item.Value != selectedAppearance;
+        AutomationProperties.SetName(AppearanceChoice, "Farbschema");
+        pages["Darstellung"] = Ui.Stack(Ui.Heading("Darstellung"), Ui.Text("Farbschema"), AppearanceChoice, SaveAppearance, appearanceFeedback,
+            Ui.Text("Gilt für alle Fenster und bleibt nach einem Neustart erhalten. Windows-Kontrastdesigns haben Vorrang.", "MutedBrush"));
         foreach (string title in pages.Keys) Navigation.Items.Add(new ListBoxItem { Content = new TextBlock { Text = title, TextWrapping = TextWrapping.Wrap }, Tag = title });
         Navigation.SelectionChanged += (_, _) => { var key = (string)((ListBoxItem)Navigation.SelectedItem).Tag; if (page.Content is ScrollViewer previous) previous.Content = null; page.Content = Ui.Scroll(pages[key]); UpdateAddress(); };
         var body = new Grid(); body.ColumnDefinitions.Add(new() { Width = new(185) }); body.ColumnDefinitions.Add(new());
@@ -96,6 +121,7 @@ internal sealed class CameraSettingsDialog : AppWindow
         }
     }
     private sealed record PresetChoice(int? Number, string Caption) { public override string ToString() => Caption; }
+    private sealed record AppearanceChoiceItem(Appearance Value, string Caption) { public override string ToString() => Caption; }
     private static int? Selection(ComboBox combo) => (combo.SelectedItem as PresetChoice)?.Number;
     internal void RefreshAutomatic()
     {

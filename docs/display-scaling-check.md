@@ -13,7 +13,9 @@ Geprüft werden sieben Presets, vier Richtungs- und zwei Zoomtasten, ein
 32 Zeichen langer Name, kleine Fenster, um 50 % vergrößerte Schrift sowie
 helle und dunkle Ressourcen. Einstellungen und Fehlerstatus bleiben außerhalb
 des scrollbaren Bedienbereichs. Bei normaler Größe ist kein Scrollen nötig;
-bei Platzmangel werden Bedienelemente nicht verkleinert oder entfernt.
+bei Platzmangel werden Bedienelemente nicht verkleinert oder entfernt. Eine
+zweizeilige Kamerafehlermeldung ist als Regression abgedeckt: Sie nutzt den
+reservierten Statusbereich und erzeugt bei normaler Größe keinen Scrollbalken.
 
 Die gemeinsame Fensterklasse begrenzt Fenster auf die Arbeitsfläche des
 aktuellen Monitors. Das Anwendungsmanifest aktiviert PerMonitorV2. Vergrößerte

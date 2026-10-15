@@ -6,8 +6,10 @@ Windows app for PTZ cameras that support the HTTP-CGI command interface
 The WPF interface uses a compact two-column preset panel and a tightly grouped
 direction/zoom panel. The default camera window is 636 × 468 WPF logical units
 including the Windows frame. All settings, the preset editor, first-run setup
-and overwrite confirmation share the same styles and follow the Windows light,
-dark and high-contrast appearance. Windows scaling can increase the physical
+and overwrite confirmation share the same styles. Dark is the default;
+**Einstellungen > Darstellung** saves a choice of dark, light or the Windows
+appearance in `appearance.json`. Windows high-contrast settings take priority.
+Windows scaling can increase the physical
 window size. Restricted work areas and enlarged text allow scrolling rather
 than shrinking camera controls.
 

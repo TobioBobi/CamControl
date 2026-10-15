@@ -4,10 +4,10 @@
   <Border DockPanel.Dock="Top" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="12,5">
    <DockPanel><Button x:Name="SettingsButton" Content="⚙ Einstellungen" DockPanel.Dock="Right" Click="SettingsClick" /><TextBlock x:Name="ModeLabel" Text="CamControl" FontWeight="SemiBold" VerticalAlignment="Center" /></DockPanel>
   </Border>
-  <Border DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="12,8"><TextBlock x:Name="Status" Text="Kameramodus" FontSize="12" AutomationProperties.LiveSetting="Polite" /></Border>
+  <Border DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="12,6" MinHeight="50"><TextBlock x:Name="Status" Text="Kameramodus" FontSize="12" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" /></Border>
   <ScrollViewer x:Name="ControlsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-   <Border MinWidth="558" Width="{Binding ViewportWidth, ElementName=ControlsScroll}">
-   <StackPanel Margin="12">
+   <Border MinWidth="554" Width="{Binding ViewportWidth, ElementName=ControlsScroll}">
+   <StackPanel Margin="10">
     <Grid MinWidth="534">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="14" /><ColumnDefinition Width="174" /></Grid.ColumnDefinitions>
      <StackPanel><TextBlock Text="Positionen" FontWeight="SemiBold" Margin="0,0,0,9" /><Grid x:Name="Presets"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /></Grid.RowDefinitions></Grid></StackPanel>

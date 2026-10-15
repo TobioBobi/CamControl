@@ -142,7 +142,7 @@ internal static class Program
         Check(Descendants(window).OfType<Button>().Single(b => b.Name == "preset3").Tag as string == "Requested", "Requested preset highlight missing");
 
         var settings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(settings); await Layout();
-        Check(settings.Navigation.Items.Count == 6 && !settings.SaveAddress.IsEnabled, "Settings sections or save guard missing");
+        Check(settings.Navigation.Items.Count == 7 && !settings.SaveAddress.IsEnabled, "Settings sections or save guard missing");
         settings.Address.Text = "invalid"; Check(!settings.SaveAddress.IsEnabled && !settings.DemoAction.IsEnabled, "Invalid IP allowed save or mode switch");
         settings.Address.Text = "192.168.188.25"; Check(settings.SaveAddress.IsEnabled && settings.SaveAddress.IsDefault, "Valid changed address not editable");
         settings.Navigation.SelectedIndex = 4; await Layout(); Check(!settings.SaveAddress.IsDefault, "Help retained default camera save");
@@ -193,6 +193,11 @@ internal static class Program
         Screenshot(window, System.IO.Path.Combine(output, "main-compact.png"));
         var scroll = Descendants(window).OfType<ScrollViewer>().First();
         Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Default compact window requires scrolling: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
+        session.Controller.ReportStopFailure("Keine Verbindung zur Kamera. IP-Adresse, Netzwerk und Stromversorgung prüfen."); await Layout();
+        Check(window.Status.ActualHeight > 20, "Regression did not reproduce a wrapped camera error");
+        Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Wrapped camera error introduced scrollbars: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
+        Theme.Apply(true); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-dark-error.png"));
+        await session.Controller.SetActiveAsync(true); await session.Controller.RecallAsync(3);
         window.FontSize = 21; window.Width = 580; await Layout();
         Check(scroll.ExtentHeight > 0 && window.SettingsButton.IsVisible && window.Status.IsVisible, "Large text hid settings/status");
         Screenshot(window, System.IO.Path.Combine(output, "main-large-text.png"));
@@ -209,8 +214,18 @@ internal static class Program
         Check(((SolidColorBrush)darkSettings.Address.Foreground).Color == ((SolidColorBrush)Application.Current.Resources["InkBrush"]).Color, "Input did not follow dark palette");
         darkSettings.Close(); Theme.Apply(false);
         var allSettings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(allSettings);
-        for (int i = 0; i < 6; i++) { allSettings.Navigation.SelectedIndex = i; await Layout(); Screenshot(allSettings, System.IO.Path.Combine(output, $"settings-{i}.png")); }
+        for (int i = 0; i < 7; i++) { allSettings.Navigation.SelectedIndex = i; await Layout(); Screenshot(allSettings, System.IO.Path.Combine(output, $"settings-{i}.png")); }
         allSettings.Close();
+        string appearancePath = System.IO.Path.Combine(output, "appearance-test.json");
+        var previousAppearance = Theme.Preference;
+        var appearanceDialog = new CameraSettingsDialog(session.Service.CameraIp, session, appearancePath: appearancePath); ShowOffscreen(appearanceDialog); appearanceDialog.Navigation.SelectedIndex = 6; await Layout();
+        Check(!appearanceDialog.SaveAppearance.IsEnabled && appearanceDialog.AppearanceChoice.Items.Count == 3, "Appearance selection/default save state missing");
+        appearanceDialog.AppearanceChoice.SelectedIndex = previousAppearance == Appearance.Dark ? 1 : 0;
+        Check(appearanceDialog.SaveAppearance.IsEnabled, "Appearance change did not enable save");
+        appearanceDialog.SaveAppearance.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Layout();
+        Check(!appearanceDialog.SaveAppearance.IsEnabled && AppearanceSettings.Load(appearancePath) == Theme.Preference, "Appearance did not persist");
+        Check(((SolidColorBrush)window.Background).Color == ((SolidColorBrush)Application.Current.Resources["CanvasBrush"]).Color, "Changing appearance did not update the main window");
+        appearanceDialog.Close(); Theme.SetPreference(previousAppearance, appearancePath); System.IO.File.Delete(appearancePath);
         var editorPreview = new PresetEditorDialog(session, 1); ShowOffscreen(editorPreview); await Layout(); Screenshot(editorPreview, System.IO.Path.Combine(output, "preset-editor.png"));
         await editorPreview.Controller.SetActiveAsync(true); await editorPreview.Controller.StartDirectionAsync(Direction.Left);
         typeof(Window).GetMethod("OnDeactivated", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(editorPreview, [EventArgs.Empty]); await Layout();

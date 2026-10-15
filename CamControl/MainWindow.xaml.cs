@@ -21,7 +21,7 @@ public partial class MainWindow : AppWindow
         for (int i = 0; i < CameraSession.Buttons.Length; i++)
         {
             int number = CameraSession.Buttons[i];
-            var button = new Button { Name = "preset" + number, Style = (Style)FindResource("PresetButton"), Margin = new(i == 6 ? 0 : i % 2 == 0 ? 0 : 4, 0, i == 6 ? 0 : i % 2 == 0 ? 4 : 0, 8) };
+            var button = new Button { Name = "preset" + number, Style = (Style)FindResource("PresetButton"), Margin = new(i == 6 ? 0 : i % 2 == 0 ? 0 : 4, 0, i == 6 ? 0 : i % 2 == 0 ? 4 : 0, i == 6 ? 0 : 6) };
             Grid.SetRow(button, i / 2); Grid.SetColumn(button, i % 2); if (i == 6) { Grid.SetColumn(button, 0); Grid.SetColumnSpan(button, 2); }
             button.Click += async (_, _) => await RecallAsync(number);
             buttons[number] = button; Presets.Children.Add(button);

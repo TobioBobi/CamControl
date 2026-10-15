@@ -13,6 +13,21 @@ foreach (var invalid in new[] { "", "192.168.1", "192.168.1.256", "-1.2.3.4", "1
 Check(CameraSettings.TryNormalizeIp(" 192.168.188.024 ", out var normalized) && normalized == "192.168.188.24", "Normalization failed");
 
 var testPath = Path.Combine(AppContext.BaseDirectory, "test-settings.json");
+var appearancePath = Path.Combine(AppContext.BaseDirectory, "test-appearance.json");
+File.Delete(appearancePath);
+Check(AppearanceSettings.Load(appearancePath) == Appearance.Dark && !File.Exists(appearancePath), "Fresh appearance did not default to dark without writing settings");
+foreach (var appearance in Enum.GetValues<Appearance>())
+{
+    AppearanceSettings.Save(appearance, appearancePath);
+    Check(AppearanceSettings.Load(appearancePath) == appearance, "Appearance did not survive reload");
+}
+File.WriteAllText(appearancePath, "broken");
+Check(AppearanceSettings.Load(appearancePath) == Appearance.Dark, "Damaged appearance prevented dark fallback");
+File.WriteAllText(appearancePath, "\"Unknown\"");
+Check(AppearanceSettings.Load(appearancePath) == Appearance.Dark, "Invalid appearance accepted");
+try { AppearanceSettings.Save((Appearance)99, appearancePath); throw new Exception("Invalid appearance saved"); }
+catch (ArgumentOutOfRangeException) { checks++; }
+File.Delete(appearancePath);
 File.Delete(testPath);
 Check(!CameraSettings.TryLoad(testPath, out _), "Missing configuration bypassed first-run choice");
 Check(CameraSettings.Load(testPath) == CameraSettings.DefaultCameraIp, "Missing settings fallback failed");

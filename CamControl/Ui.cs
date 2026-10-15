@@ -32,6 +32,7 @@ public class AppWindow : Window
     {
         SetResourceReference(StyleProperty, typeof(Window));
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        SourceInitialized += (_, _) => Theme.UpdateTitleBar(this);
         Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/CamControl;component/resources/Camera.ico"));
         Loaded += (_, _) => Fit();
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(Fit);
