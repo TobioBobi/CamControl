@@ -1,14 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../CamControl/AppInformation.cs" Link="AppInformation.cs" />
-    <Compile Include="../../CamControl/WindowLayout.cs" Link="WindowLayout.cs" />
     <EmbeddedResource Include="../../docs/privacy.md" LogicalName="CamControl.PrivacyPolicy" />
     <Compile Include="../../CamControl/CameraSettings.cs" Link="CameraSettings.cs" />
     <Compile Include="../../CamControl/CamControlService.cs" Link="CamControlService.cs" />
@@ -16,12 +14,9 @@
     <Compile Include="../../CamControl/Position.cs" Link="Position.cs" />
     <Compile Include="../../CamControl/Direction.cs" Link="Direction.cs" />
     <Compile Include="../../CamControl/Zoom.cs" Link="Zoom.cs" />
-    <Compile Include="../../CamControl/CameraSettingsDialog.cs" Link="CameraSettingsDialog.cs" />
     <Compile Include="../../CamControl/CameraHelp.cs" Link="CameraHelp.cs" />
     <Compile Include="../../CamControl/DemoCamera.cs" Link="DemoCamera.cs" />
-    <Compile Include="../../CamControl/DemoCameraView.cs" Link="DemoCameraView.cs" />
     <Compile Include="../../CamControl/PresetSettings.cs" Link="PresetSettings.cs" />
     <Compile Include="../../CamControl/AutomaticPositions.cs" Link="AutomaticPositions.cs" />
-    <Compile Include="../../CamControl/PresetEditorDialog.cs" Link="PresetEditorDialog.cs" />
   </ItemGroup>
 </Project>

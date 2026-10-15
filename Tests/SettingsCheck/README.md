@@ -1,29 +1,18 @@
-# Settings checks
-
-Preset checks cover name validation and persistence, documented `posset` URLs,
-HTTP/network failures when saving, seven configurable positions, and recall of a custom
-demo position including its zoom. Temporary files do not change user settings.
-
-Run on Windows with the .NET 10 SDK:
+# Settings and camera service checks
 
 ```powershell
 dotnet run --project Tests/SettingsCheck/SettingsCheck.csproj -c Release
 ```
 
-Use Release: Debug intentionally routes requests to the existing camera dummy.
-The checks use a fake HTTP handler and a temporary settings file in the build
-directory. They do not send camera commands or change the user's saved settings.
-They cover IPv4 validation, persistence and fallback, explicit edit mode,
-saving and discarding dialog edits, address changes after the first request, and the destination of
-an already running preset request. They also cover HTTP 400/403/500 errors,
-network failures and timeouts for position, standby, movement, zoom and stop
-commands, response disposal and recovery after
-errors. Cancellation checks cover pending and queued starts,
-all stop channels being attempted despite a failure, and new commands waiting
-for all stop responses. Movement and zoom are checked as independent channels;
-cancelled presets must release every acquired gate. Automatic-position checks
-cover new-install defaults, migration, persistence, damaged settings, fixed
-preset validation and save enabled only for changed selections.
-Demo checks drive the simulation through the production HTTP command service,
-verify preset framing and movement/zoom stops, reject unknown commands, and
-ensure entering or cancelling demo mode preserves camera configuration.
+Uses .NET 10 without a UI framework. Source links exercise the production
+settings, HTTP service, error runner and demo simulation. Fake handlers and
+temporary files in the build directory prevent real camera commands or changes
+to user configuration. Use Release because Debug intentionally selects CamDummy.
+
+Covers IPv4 validation and normalization; settings persistence, fallback and
+migration; configurable preset names/numbers; automatic-position defaults and
+persistence; exact command URLs; HTTP failures, timeouts and response disposal;
+independent direction/zoom serialization; cancellation of pending and queued
+starts; all-channel stops despite individual failures; and custom demo preset
+positions including zoom. WPF dialog and controller checks live in
+`Tests/CameraUiCheck`.

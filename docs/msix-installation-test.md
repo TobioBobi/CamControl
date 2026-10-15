@@ -1,5 +1,8 @@
 # Lokaler MSIX-Installationstest
 
+Historischer Test der WinForms-Version. Die WPF-Umstellung benötigt einen neuen
+Installationstest; die folgenden Ergebnisse bestätigen nicht die neue Oberfläche.
+
 Durchgeführt am 11. Oktober 2026 auf Tobias' Windows-PC (x64), App-Code aus
 Commit `39ea0e5`. Der Test ersetzt weder das Windows App Certification Kit noch
 die Microsoft-Store-Zertifizierung oder einen Test mit echter Kamera.

@@ -21,7 +21,7 @@ namespace CamControl
             Kamera ausrichten und „Position speichern“ wählen. Das überschreibt nach Bestätigung das zugeordnete Kamerapreset. Mit „Position anfahren“ prüfen. Namen und Zuordnungen bleiben pro Windows-Konto lokal; Positionen speichert die Kamera.
 
             Automatische Positionen
-            Unter „Buttons & Presets“ eine Start- oder Endposition wählen und „Automatik speichern“. Ohne eigene Auswahl gibt es keine automatische Fahrt. Beim Beenden wird die Endposition nur nach bestätigtem Stopp angefahren. Eine HTTP-Antwort bestätigt nicht, dass die Kamera ihr Ziel erreicht hat.
+            Unter „Einstellungen > Automatische Positionen“ eine Start- oder Endposition wählen und „Automatik speichern“. Ohne eigene Auswahl gibt es keine automatische Fahrt. Beim Beenden wird die Endposition nur nach bestätigtem Stopp angefahren. Eine HTTP-Antwort bestätigt nicht, dass die Kamera ihr Ziel erreicht hat.
 
             Demo-Modus
             Unter „Demo-Modus“ ohne Kamera ausprobieren. Links: Bühne mit Bildausschnitt; rechts: simuliertes Kamerabild, kein Live-Video. Es werden keine Netzwerkbefehle gesendet. Demo-Namen, Zuordnungen, Positionen und Automatik gelten nur für die Sitzung; deine Kameraeinstellungen bleiben erhalten.

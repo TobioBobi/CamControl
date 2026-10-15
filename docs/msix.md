@@ -76,7 +76,7 @@ unter `artifacts/msix/store/x64/` ist unsigniert für die Store-Einreichung.
 Microsoft signiert das MSIX im Veröffentlichungsprozess nach erfolgreicher
 Zertifizierung; dafür ist kein gekauftes Codesignatur-Zertifikat nötig.
 
-Die Manifest-Capability `runFullTrust` ist für die klassische WinForms-App
+Die Manifest-Capability `runFullTrust` ist für die klassische WPF-Desktop-App
 erforderlich. Sie startet mit normalen Benutzerrechten, nicht erhöhten
 Administratorrechten. Die App steuert ausschließlich auf Benutzeraktionen
 beziehungsweise konfigurierte Start-/Endpositionen hin die Kamera über HTTP.

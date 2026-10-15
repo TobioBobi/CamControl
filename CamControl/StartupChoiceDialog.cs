@@ -1,47 +1,20 @@
-﻿namespace CamControl
-{
-    internal sealed class StartupChoiceDialog : Form
-    {
-        public bool UseDemo { get; private set; }
+using System.Windows;
 
-        public StartupChoiceDialog()
+namespace CamControl;
+
+internal sealed class StartupChoiceDialog : AppWindow
+{
+    public bool UseDemo { get; private set; }
+    public StartupChoiceDialog()
+    {
+        Title = "Willkommen bei CamControl"; Width = 480; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        var demo = Ui.Button("Ohne Kamera ausprobieren", () => { UseDemo = true; DialogResult = true; }); demo.MinHeight = 54;
+        var setup = Ui.Button("Kamera einrichten", () =>
         {
-            Text = "Willkommen bei CamControl";
-            StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = MinimizeBox = false;
-            AutoScaleDimensions = new SizeF(7, 15);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(500, 270);
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(20), ColumnCount = 1, RowCount = 4 };
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            layout.Controls.Add(new Label
-            {
-                AutoSize = true, MaximumSize = new Size(450, 0),
-                Text = "PTZ-Kamera mit HTTP-CGI einrichten oder ohne Kamera ausprobieren."
-            }, 0, 0);
-            var demo = new Button { Text = "Ohne Kamera ausprobieren", Dock = DockStyle.Fill, Height = 54, Margin = new Padding(0, 16, 0, 8) };
-            var setup = new Button { Text = "Kamera einrichten", Dock = DockStyle.Fill, Height = 54, Margin = new Padding(0, 0, 0, 8) };
-            demo.Click += (_, _) => { UseDemo = true; DialogResult = DialogResult.OK; };
-            setup.Click += (_, _) =>
-            {
-                using var settings = new CameraSettingsDialog("");
-                if (settings.ShowDialog(this) == DialogResult.OK)
-                {
-                    UseDemo = settings.RequestedDemoMode == true;
-                    DialogResult = DialogResult.OK;
-                }
-            };
-            var close = new Button { Text = "Schließen", AutoSize = true, Anchor = AnchorStyles.Right, DialogResult = DialogResult.Cancel };
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 78));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.Controls.Add(demo, 0, 1);
-            layout.Controls.Add(setup, 0, 2);
-            layout.Controls.Add(close, 0, 3);
-            Controls.Add(layout);
-            CancelButton = close;
-        }
+            var settings = new CameraSettingsDialog("") { Owner = this };
+            if (settings.ShowDialog() == true) { UseDemo = settings.RequestedDemoMode == true; DialogResult = true; }
+        }); setup.MinHeight = 54;
+        var close = Ui.Button("Schließen", () => DialogResult = false); close.IsCancel = true;
+        var panel = Ui.Stack(Ui.Heading("Willkommen bei CamControl"), Ui.Text("PTZ-Kamera mit HTTP-CGI einrichten oder ohne Kamera ausprobieren."), demo, setup, close); panel.Margin = new(20); Content = Ui.Scroll(panel);
     }
 }

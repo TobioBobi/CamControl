@@ -1,33 +1,32 @@
-# Camera UI checks
-
-Preset editor checks cover independent renaming, stop-before-save, custom demo
-recall, focus-loss/close stops, rejected save commands and local write failures.
-An offscreen modal dialog also verifies that one Close click after saving a
-demo preset exits the dialog when stop requests complete synchronously.
-Regression checks cancel recall/save during preparatory stops and in-flight
-requests on focus loss, allow fresh actions after cancellation, and preserve
-failed-stop errors through the modal editor's close event.
-
-Run on Windows with the .NET 10 SDK:
+# WPF camera UI and lifecycle checks
 
 ```powershell
 dotnet run --project Tests/CameraUiCheck/CameraUiCheck.csproj -c Release
 ```
 
-These checks instantiate the real form without showing a visible window, inject a fake
-camera HTTP handler and exercise button and keyboard handlers via reflection.
-They verify error display, usable controls after failures, preset cleanup,
-recovery, closing while the camera fails, and that an older successful request
-does not clear a newer error. They also cover focus loss, reactivation during a
-pending stop, lost mouse capture, release before a start response arrives,
-blocked overlapping presets, settings preparation, and closing during a preset.
-Regression checks cover stops while the other channel has an unanswered start,
-and presets cancelled during preparation by focus loss or settings opening.
-No camera commands are sent over the network.
-The checks also verify visible settings access separated from camera controls,
-updated error hints, and availability during presets without duplicate dialogs.
-Demo checks exercise the real form's movement, zoom and preset handlers, focus
-loss and switching between modes without contacting real hardware.
-Automatic-position checks exercise startup with None or a selected preset,
-exit with None or presets 6/9, stop-before-exit ordering and suppression of
-exit movement when a stop fails. Preset 9 sends no special focus sequence.
+Runs on Windows with .NET 10. Every camera command uses a recording HTTP handler
+or the integrated demo handler; no real network transport is used. User settings
+are read but never modified. Dialog persistence tests use an isolated file under
+the ignored `artifacts/ui-preview` directory.
+
+The shared controller checks cover independent direction/zoom channels, held
+inputs, early release during a delayed response, all-channel lifecycle stops,
+shared concurrent stops, cancellation during preset preparation and recall,
+blocked overlapping presets, focus reactivation during a pending stop, settings
+suspension, recovery, stale successes after newer errors, and exit presets only
+after successful stops.
+
+WPF integration checks construct the actual windows, exercise keyboard routing,
+mouse capture loss and editor deactivation, verify the seven presets and six
+manual controls, and check compact layout with a 32-character name and enlarged
+text. Settings checks cover all six sections, address validation/save/cancel and
+write failure, read-only help/privacy, demo entry, duplicate/reserved preset
+numbers, explicit mapping/automation saves, custom demo save/recall, and mapped
+startup/exit presets. Editors must stop and close on one close request, including
+synchronous demo responses.
+
+Most windows render offscreen. Local modal save/cancel, demo and welcome dialogs
+open briefly. The checks save actual WPF renders under `artifacts/ui-preview` for
+visual review, including light/dark main windows, settings, the preset editor,
+long names and enlarged text. These checks do not replace physical camera tests,
+real DPI/monitor changes or a fresh MSIX installation test.

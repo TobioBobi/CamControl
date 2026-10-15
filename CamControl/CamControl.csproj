@@ -4,40 +4,17 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>1.1.0</Version>
     <ApplicationIcon>../packaging/Assets/CamControl.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="CameraUiCheck" />
+    <Resource Include="../packaging/Assets/CamControl.ico" Link="resources/Camera.ico" />
     <EmbeddedResource Include="../docs/privacy.md" LogicalName="CamControl.PrivacyPolicy" />
-    <None Remove="resources\GlyphDown_16x.png" />
-    <None Remove="resources\GlyphLeft_16x.png" />
-    <None Remove="resources\GlyphRight_16x.png" />
-    <None Remove="resources\GlyphUp_16x.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="resources\GlyphDown_16x.png" />
-    <EmbeddedResource Include="resources\GlyphLeft_16x.png" />
-    <EmbeddedResource Include="resources\GlyphRight_16x.png" />
-    <EmbeddedResource Include="resources\GlyphUp_16x.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

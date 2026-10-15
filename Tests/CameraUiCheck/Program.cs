@@ -1,709 +1,264 @@
-﻿using System.Reflection;
-using System.Net;
 using CamControl;
+using System.Net;
+using System.Net.Http;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 internal static class Program
 {
+    private static int checks;
+    private static void Check(bool value, string message) { if (!value) throw new Exception(message); checks++; }
     [STAThread]
-    private static void Main()
+    private static int Main()
     {
-        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
-        ApplicationConfiguration.Initialize();
-        using var form = new Form1();
-        _ = form.Handle;
-        var type = typeof(Form1);
-        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-        var execute = type.GetMethod("ExecuteCameraCommandAsync", flags)!;
-        var label = (Label)type.GetField("cameraErrorLabel", flags)!.GetValue(form)!;
-        var settingsButton = (Button)type.GetField("settingsButton", flags)!.GetValue(form)!;
-        int checks = 0;
-        void Check(bool ok, string name)
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("pack://application:,,,/CamControl;component/Theme.xaml") });
+        int exit = 0;
+        app.Dispatcher.BeginInvoke(async () =>
         {
-            if (!ok) throw new Exception(name);
-            checks++;
-        }
-        Check(settingsButton.Text.Contains("Einstellungen") && settingsButton.Enabled,
-            "Visible settings access missing");
-        Check(settingsButton.Parent is Panel { Dock: DockStyle.Top } &&
-            ((Panel)type.GetField("cameraScroll", flags)!.GetValue(form)!).Top >= settingsButton.Parent.Bottom,
-            "Settings access overlaps camera controls");
-        Task Run(Func<Task> command, string action) =>
-            (Task)execute.Invoke(form, new object[] { new Func<CancellationToken, Task>(_ => command()), action, CancellationToken.None })!;
-        void PumpUntil(Task task)
-        {
-            var deadline = DateTime.UtcNow.AddSeconds(5);
-            while (!task.IsCompleted && DateTime.UtcNow < deadline)
-            {
-                Application.DoEvents();
-                Thread.Sleep(1);
-            }
-            Check(task.IsCompleted, "UI command did not finish");
-            task.GetAwaiter().GetResult();
-            Application.DoEvents();
-        }
+            try { await ControllerChecks(); await WindowChecks(); Console.WriteLine($"Passed {checks} WPF/controller checks."); }
+            catch (Exception e) { Console.Error.WriteLine(e); exit = 1; }
+            finally { app.Shutdown(); }
+        });
+        app.Run();
+        return exit;
+    }
+    private static async Task ControllerChecks()
+    {
+        using var handler = new RecordingHandler(); using var client = new HttpClient(handler);
+        using var service = new CamControlService(client, "192.168.188.24");
+        using var controller = new CameraController(service);
+        await controller.StartDirectionAsync(Direction.Left); await controller.StartDirectionAsync(Direction.Right);
+        Check(handler.Commands.SequenceEqual(["left&10&10"]), "Held direction repeated or changed while held");
+        await controller.StartZoomAsync(Zoom.ZoomIn);
+        Check(handler.Commands.Last() == "zoomin&5", "Independent zoom did not start");
+        await controller.StopDirectionAsync();
+        Check(handler.Commands.Last() == "ptzstop&10&10" && controller.IsMoving, "Direction release failed or stopped independent zoom");
+        await controller.StopZoomAsync(); Check(!controller.IsMoving && handler.Commands.Last() == "zoomstop&5", "Zoom release failed");
 
-        void PumpUntilCondition(Func<bool> condition)
-        {
-            var deadline = DateTime.UtcNow.AddSeconds(5);
-            while (!condition() && DateTime.UtcNow < deadline)
-            {
-                Application.DoEvents();
-                Thread.Sleep(1);
-            }
-            Check(condition(), "UI lifecycle did not finish");
-        }
+        handler.Commands.Clear(); await controller.RecallAsync(20);
+        Check(handler.Commands.Count == 4 && handler.Commands.Take(3).ToHashSet().SetEquals(["ptzstop&10&10", "zoomstop&5", "focusstop&5"]) && handler.Commands.Last() == "poscall&20", "Preset did not stop before custom recall");
+        handler.Commands.Clear(); await controller.SaveAsync(0);
+        Check(handler.Commands.Last() == "posset&0" && handler.Commands.Count == 4, "Preset save changed protocol or skipped stops");
 
-        // Exercise font autoscaling and restricted screen space without camera transport.
-        IEnumerable<Control> Children(Control parent) => parent.Controls.Cast<Control>()
-            .SelectMany(child => new[] { child }.Concat(Children(child)));
-        void ShowOffscreen(Form window)
+        await controller.StartDirectionAsync(Direction.Right); await controller.SetActiveAsync(false);
+        Check(!controller.IsMoving && !controller.ControlsEnabled && handler.Commands.Last() == "focusstop&5", "Focus loss did not stop all channels");
+        int count = handler.Commands.Count; await controller.StartZoomAsync(Zoom.ZoomIn); Check(handler.Commands.Count == count, "Inactive window sent movement");
+        await controller.SetActiveAsync(true); await controller.SuspendAsync(); count = handler.Commands.Count;
+        await controller.RecallAsync(1); Check(handler.Commands.Count == count, "Settings suspension allowed a preset"); controller.Resume();
+
+        // Release before a delayed start completes must cancel it and send stop.
+        var pendingStart = new TaskCompletionSource<HttpResponseMessage>();
+        handler.Respond = (command, token) => command == "up&10&10" ? pendingStart.Task.WaitAsync(token) : Ok();
+        Task start = controller.StartDirectionAsync(Direction.Up);
+        Check(!start.IsCompleted, "Delayed start test did not delay");
+        await controller.StopDirectionAsync(); await start;
+        Check(handler.Commands.Last() == "ptzstop&10&10" && controller.Error == "", "Early release failed or deliberate cancellation reported error");
+
+        // Cancel a preset while preparatory stops are pending; no recall may leak.
+        var pendingStop = new TaskCompletionSource<HttpResponseMessage>();
+        handler.Respond = (command, _) => command == "ptzstop&10&10" ? pendingStop.Task : Ok();
+        handler.Commands.Clear(); Task<bool> preset = controller.RecallAsync(3);
+        Check(!controller.ControlsEnabled, "Preset left controls active");
+        Task deactivate = controller.SetActiveAsync(false);
+        await controller.SetActiveAsync(true);
+        Check(!controller.ControlsEnabled, "Reactivation bypassed a pending stop");
+        pendingStop.SetResult(new(HttpStatusCode.OK)); await deactivate; await preset;
+        Check(!handler.Commands.Any(c => c.StartsWith("poscall")) && controller.ControlsEnabled, "Cancelled preparation leaked recall or left controls locked");
+
+        // Cancellation of an in-flight recall must also block overlapping presets.
+        var pendingPreset = new TaskCompletionSource<HttpResponseMessage>();
+        handler.Respond = (command, token) => command.StartsWith("poscall") ? pendingPreset.Task.WaitAsync(token) : Ok();
+        handler.Commands.Clear(); preset = controller.RecallAsync(1); await controller.RecallAsync(2);
+        Check(handler.Commands.Count(c => c.StartsWith("poscall")) == 1, "Overlapping preset was sent");
+        await controller.SuspendAsync(); await preset; controller.Resume();
+        Check(controller.ControlsEnabled && controller.Error == "", "Cancelled recall did not recover");
+
+        // Stop failure must attempt every stop and prevent the preset.
+        handler.Respond = (command, _) => command.StartsWith("ptzstop") ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)) : Ok();
+        handler.Commands.Clear(); await controller.RecallAsync(1);
+        Check(handler.Commands.Count == 3 && controller.Error.Contains("503") && controller.ControlsEnabled, "Failed stop skipped channels, moved anyway, or failed to recover");
+        using (var closing = new CameraController(service))
         {
-            window.ShowInTaskbar = false;
-            window.StartPosition = FormStartPosition.Manual;
-            window.Location = new Point(-32000, -32000);
-            window.Show();
-            Application.DoEvents();
-        }
-        using (var cameraLayout = new Form1())
-        {
-            // Suppress startup motion while exercising the real camera layout.
-            type.GetField("automaticPositions", flags)!.SetValue(cameraLayout,
-                Activator.CreateInstance(type.Assembly.GetType("CamControl.AutomaticPositions")!, true));
-            ShowOffscreen(cameraLayout);
-            var scroll = (Panel)type.GetField("cameraScroll", flags)!.GetValue(cameraLayout)!;
-            Check(!scroll.HorizontalScroll.Visible && !scroll.VerticalScroll.Visible,
-                "Normal camera startup showed unnecessary scrollbars");
-        }
-        using (var layoutMain = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!)
-        {
-            ShowOffscreen(layoutMain);
-            Check(Children(layoutMain).OfType<Button>().Count(button =>
-                new[] { "Preset 1", "Preset 2", "Preset 3", "Preset 4", "Preset 5", "Preset 6", "Preset 9" }.Contains(button.Text)) == 7,
-                "Demo buttons did not show generic preset names without duplicate numbering");
-            var startupScroll = (Panel)type.GetField("cameraScroll", flags)!.GetValue(layoutMain)!;
-            Check(!startupScroll.HorizontalScroll.Visible && !startupScroll.VerticalScroll.Visible,
-                "Normal demo startup showed unnecessary scrollbars");
-            var originalSize = layoutMain.Size;
-            layoutMain.Size = new Size(originalSize.Width / 2, originalSize.Height / 2);
-            Application.DoEvents();
-            Check(startupScroll.HorizontalScroll.Visible && startupScroll.VerticalScroll.Visible,
-                "Shrinking the window did not make camera content scrollable");
-            layoutMain.Size = originalSize;
-            Application.DoEvents();
-            Check(!startupScroll.HorizontalScroll.Visible && !startupScroll.VerticalScroll.Visible,
-                "Restoring available space left unnecessary scrollbars behind");
-            layoutMain.Font = new Font(layoutMain.Font.FontFamily, layoutMain.Font.Size * 2);
-            layoutMain.PerformAutoScale();
-            Application.DoEvents();
-            var area = Screen.FromControl(layoutMain).WorkingArea;
-            Check(layoutMain.Height <= area.Height && layoutMain.Width <= area.Width,
-                "Scaled demo window exceeded the screen working area");
-            var preview = (Control)type.GetField("demoView", flags)!.GetValue(layoutMain)!;
-            var error = (Control)type.GetField("cameraErrorLabel", flags)!.GetValue(layoutMain)!;
-            var mainScroll = (Panel)type.GetField("cameraScroll", flags)!.GetValue(layoutMain)!;
-            Check(preview.Height > 0 && mainScroll.Bottom <= error.Top && error.Bottom <= layoutMain.ClientSize.Height,
-                $"Resized demo preview covered the error area or escaped the window: preview={preview.Bounds}, error={error.Bounds}, client={layoutMain.ClientSize}");
-            int scaledDemoHeight = layoutMain.Height;
-            for (int switchCount = 0; switchCount < 3; switchCount++)
-            {
-                type.GetMethod("SetDemoMode", flags)!.Invoke(layoutMain, new object[] { false });
-                type.GetMethod("SetDemoMode", flags)!.Invoke(layoutMain, new object[] { true });
-                Application.DoEvents();
-            }
-            Check(layoutMain.Height == scaledDemoHeight, "Switching modes changed the capped demo window height cumulatively");
-            layoutMain.Size = new Size(Math.Min(1024, area.Width), Math.Min(728, area.Height));
-            Application.DoEvents();
-            Check(mainScroll.HorizontalScroll.Visible && mainScroll.VerticalScroll.Visible && preview.Height > 0,
-                "Small screen did not make oversized camera controls and preview scrollable");
-            var lastPreset = (Button)type.GetField("buttonStandBy", flags)!.GetValue(layoutMain)!;
-            mainScroll.ScrollControlIntoView(lastPreset);
-            Application.DoEvents();
-            Check(mainScroll.ClientRectangle.Contains(mainScroll.RectangleToClient(lastPreset.RectangleToScreen(lastPreset.ClientRectangle))),
-                "Scrolling did not make the last camera preset reachable");
-            var layoutService = type.GetField("camControlService", flags)!.GetValue(layoutMain)!;
-            var layoutDemo = type.GetField("demoCamera", flags)!.GetValue(layoutMain)!;
-            using var editor = (Form)Activator.CreateInstance(type.Assembly.GetType("CamControl.PresetEditorDialog")!,
-                new object[] { layoutService, Enum.Parse(type.Assembly.GetType("CamControl.Position")!, "Redner"),
-                    new string('W', 32), new Action<string>(_ => { }), layoutDemo })!;
-            ShowOffscreen(editor);
-            editor.Font = new Font(editor.Font.FontFamily, editor.Font.Size * 2);
-            editor.PerformAutoScale();
-            editor.Width = Math.Min(1024, area.Width);
-            editor.Height = Math.Min(600, area.Height);
-            Application.DoEvents();
-            var close = (Button)editor.CancelButton!;
-            var closeBounds = editor.RectangleToClient(close.RectangleToScreen(close.ClientRectangle));
-            Check(editor.Height <= area.Height && editor.ClientRectangle.Contains(closeBounds),
-                "Preset close button was not reachable on a restricted screen");
-            var scroll = Children(editor).OfType<Panel>().Single(control => control.Name == "presetEditorContent");
-            Check(scroll.AutoScroll && scroll.VerticalScroll.Visible, "Preset contents could not scroll at large font sizes");
-            var storeButton = Children(editor).Single(control => control.Name == "storePreset");
-            scroll.ScrollControlIntoView(storeButton);
-            Application.DoEvents();
-            Check(scroll.ClientRectangle.Contains(scroll.RectangleToClient(storeButton.RectangleToScreen(storeButton.ClientRectangle))),
-                "Scrolling did not make the preset save button reachable");
-            using var settings = (Form)Activator.CreateInstance(type.Assembly.GetType("CamControl.CameraSettingsDialog")!,
-                new object?[] { "192.168.188.24", null, true, null, null, null, null })!;
-            ShowOffscreen(settings);
-            settings.Font = new Font(settings.Font.FontFamily, settings.Font.Size * 2);
-            settings.PerformAutoScale();
-            settings.Size = new Size(Math.Min(1024, area.Width), Math.Min(728, area.Height));
-            Application.DoEvents();
-            var settingsClose = (Button)settings.CancelButton!;
-            Check(settings.Height <= area.Height && settings.ClientRectangle.Contains(
-                settings.RectangleToClient(settingsClose.RectangleToScreen(settingsClose.ClientRectangle))),
-                "Scaled settings window hid its close button");
+            handler.Commands.Clear(); await closing.CloseAsync(9);
+            Check(handler.Commands.Count == 3 && !handler.Commands.Any(c => c.StartsWith("poscall")), "Failed close stop allowed exit preset");
         }
 
-        using (var demoForm = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!)
+        // An old successful response must not hide a newer error.
+        var oldSuccess = new TaskCompletionSource<HttpResponseMessage>();
+        handler.Respond = (command, token) => command.StartsWith("left") ? oldSuccess.Task.WaitAsync(token) : command.StartsWith("zoomin") ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)) : Ok();
+        start = controller.StartDirectionAsync(Direction.Left); await controller.StartZoomAsync(Zoom.ZoomIn);
+        Check(controller.Error.Contains("400"), "New HTTP error missing"); oldSuccess.SetResult(new(HttpStatusCode.OK)); await start;
+        Check(controller.Error.Contains("400"), "Old success erased newer error");
+        handler.Respond = (_, _) => Ok(); await controller.StopAsync(); await controller.RecallAsync(6);
+        Check(controller.Error == "" && controller.ControlsEnabled, "Recovery failed after network error");
+
+        using (var closing = new CameraController(service))
         {
-            _ = demoForm.Handle;
-            Check(demoForm.Text.Contains("Demo") &&
-                (bool)type.GetProperty("IsDemoMode", flags)!.GetValue(demoForm)!, "Demo entry was not marked");
-            var demo = type.GetField("demoCamera", flags)!.GetValue(demoForm)!;
-            object DemoState() => demo.GetType().GetProperty("State")!.GetValue(demo)!;
-            bool DemoFlag(string name) => (bool)DemoState().GetType().GetProperty(name)!.GetValue(DemoState())!;
-            var directionType = type.Assembly.GetType("CamControl.Direction")!;
-            var zoomType = type.Assembly.GetType("CamControl.Zoom")!;
-            PumpUntil((Task)type.GetMethod("StartDirectionAsync", flags)!.Invoke(demoForm,
-                new object[] { Enum.Parse(directionType, "Up"), true })!);
-            PumpUntil((Task)type.GetMethod("StartZoomAsync", flags)!.Invoke(demoForm,
-                new object[] { Enum.Parse(zoomType, "ZoomIn"), true })!);
-            Check(DemoFlag("Moving") && DemoFlag("Zooming"), "Actual UI did not drive demo channels");
-            type.GetMethod("OnDeactivate", flags)!.Invoke(demoForm, new object[] { EventArgs.Empty });
-            PumpUntilCondition(() => type.GetField("stopControlTask", flags)!.GetValue(demoForm) == null);
-            Check(!DemoFlag("Moving") && !DemoFlag("Zooming") && !DemoFlag("Focusing"), "Demo ignored focus-loss stops");
-            type.GetMethod("OnActivated", flags)!.Invoke(demoForm, new object[] { EventArgs.Empty });
-            type.GetMethod("buttonRedner_Click", flags)!.Invoke(demoForm, new object[] { demoForm, EventArgs.Empty });
-            Check((string)DemoState().GetType().GetProperty("Action")!.GetValue(DemoState())! == "Preset 1",
-                "Preset button did not reach the demo handler");
-            int demoHeight = demoForm.ClientSize.Height;
-            PumpUntil((Task)type.GetMethod("PrepareCameraSettingsAsync", flags)!.Invoke(demoForm, null)!);
-            type.GetMethod("SetDemoMode", flags)!.Invoke(demoForm, new object[] { false });
-            Check(!demoForm.Text.Contains("Demo") && demoForm.ClientSize.Height < demoHeight, "Leaving demo retained its view or label");
-            type.GetMethod("SetDemoMode", flags)!.Invoke(demoForm, new object[] { true });
-            Check(demoForm.ClientSize.Height == demoHeight, "Repeated demo entry accumulated window height");
-            var presetType = type.Assembly.GetType("CamControl.PresetEditorDialog")!;
-            var demoPositionType = type.Assembly.GetType("CamControl.Position")!;
-            var demoService = type.GetField("camControlService", flags)!.GetValue(demoForm)!;
-            // Exercise the actual modal message loop: Close() on an unshown form
-            // does not reproduce the synchronous demo-stop reentrancy.
-            using (var modalEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                null, new object[] { demoService, Enum.Parse(demoPositionType, "Redner"), "Redner",
-                    new Action<string>(_ => { }), demo }, null)!)
-            {
-                modalEditor.StartPosition = FormStartPosition.Manual;
-                modalEditor.Location = new Point(-32000, -32000);
-                bool timedOut = false;
-                using var watchdog = new System.Windows.Forms.Timer { Interval = 2000 };
-                watchdog.Tick += (_, _) =>
-                {
-                    timedOut = true;
-                    watchdog.Stop();
-                    presetType.GetField("finalClose", flags)!.SetValue(modalEditor, true);
-                    modalEditor.Close();
-                };
-                modalEditor.Shown += async (_, _) =>
-                {
-                    await (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(modalEditor, new object[] { true })!;
-                    watchdog.Start();
-                    ((Button)modalEditor.CancelButton!).PerformClick();
-                };
-                modalEditor.ShowDialog();
-                watchdog.Stop();
-                Check(!timedOut, "Modal demo editor needed a second close after saving a preset");
-                Check(!DemoFlag("Moving") && !DemoFlag("Zooming"), "Modal editor closed without stopping demo channels");
-            }
-            string? savedName = null;
-            using var editor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                null, new object[] { demoService, Enum.Parse(demoPositionType, "Redner"), "Redner",
-                    new Action<string>(value => savedName = value), demo }, null)!;
-            _ = editor.Handle;
-            Task EditorTask(string method, params object[] args) => (Task)presetType.GetMethod(method, flags)!.Invoke(editor, args)!;
-            PumpUntil(EditorTask("RunPositionAsync", false));
-            var original = DemoState();
-            var editorName = (TextBox)presetType.GetField("name", flags)!.GetValue(editor)!;
-            editorName.Text = "Mein Redner";
-            presetType.GetMethod("SaveName", flags)!.Invoke(editor, null);
-            Check(savedName == "Mein Redner" && DemoState().Equals(original), "Renaming changed camera state");
-            Func<CancellationToken, Task> editorZoom = token => (Task)demoService.GetType().GetMethod("Zoom")!.Invoke(demoService,
-                new object[] { Enum.Parse(zoomType, "ZoomIn"), token })!;
-            PumpUntil(EditorTask("StartMotionAsync", editorZoom));
-            demo.GetType().GetMethod("Advance")!.Invoke(demo, new object[] { TimeSpan.FromMilliseconds(500) });
-            PumpUntil(EditorTask("RunPositionAsync", true));
-            var stored = DemoState();
-            Check(!DemoFlag("Zooming") && !DemoFlag("Moving"), "Saving did not stop manual channels first");
-            PumpUntil((Task)demoService.GetType().GetMethod("MoveToPosition")!.Invoke(demoService,
-                new object[] { Enum.Parse(demoPositionType, "Tisch"), CancellationToken.None })!);
-            PumpUntil(EditorTask("RunPositionAsync", false));
-            Check(DemoState().GetType().GetProperty("Zoom")!.GetValue(DemoState())!.Equals(
-                stored.GetType().GetProperty("Zoom")!.GetValue(stored)), "Editor failed to recall custom zoom");
-            PumpUntil(EditorTask("StartMotionAsync", editorZoom));
-            presetType.GetMethod("OnDeactivate", flags)!.Invoke(editor, new object[] { EventArgs.Empty });
-            PumpUntilCondition(() => !DemoFlag("Zooming"));
-            Check(!DemoFlag("Moving"), "Editor focus loss left motion active");
-            presetType.GetMethod("OnActivated", flags)!.Invoke(editor, new object[] { EventArgs.Empty });
-            PumpUntil(EditorTask("StartMotionAsync", editorZoom));
-            editor.Close();
-            PumpUntilCondition(() => !DemoFlag("Zooming"));
-            Check(!DemoFlag("Moving"), "Editor close left motion active");
-            using var saveHandler = new FailingHandler();
-            using var saveClient = new HttpClient(saveHandler);
-            var fakeService = Activator.CreateInstance(demoService.GetType(), flags, null,
-                new object[] { saveClient, "192.168.188.24" }, null)!;
-            foreach (bool saving in new[] { false, true })
-            {
-                using var waitingEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                    null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner", new Action<string>(_ => { }), null! }, null)!;
-                _ = waitingEditor.Handle;
-                saveHandler.Requests.Clear();
-                var waitingStop = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-                saveHandler.Respond = (uri, _) => uri.Query.Contains("ptzstop") ? waitingStop.Task
-                    : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-                Task waitingOperation = (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(waitingEditor, new object[] { saving })!;
-                Check(!waitingOperation.IsCompleted, "Preset preparation did not wait for stop");
-                presetType.GetMethod("OnDeactivate", flags)!.Invoke(waitingEditor, new object[] { EventArgs.Empty });
-                presetType.GetMethod("OnActivated", flags)!.Invoke(waitingEditor, new object[] { EventArgs.Empty });
-                waitingStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
-                PumpUntil(waitingOperation);
-                PumpUntilCondition(() => presetType.GetField("stopping", flags)!.GetValue(waitingEditor) == null);
-                Check(saveHandler.Requests.All(uri => !uri.Query.Contains("poscall") && !uri.Query.Contains("posset")),
-                    "Focus loss/return resumed a cancelled preset action");
-                saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-                PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(waitingEditor, new object[] { saving })!);
-                Check(saveHandler.Requests.Last().Query.Contains(saving ? "posset" : "poscall"), "New preset action did not recover after cancellation");
-
-                CancellationToken pendingPresetToken = default;
-                saveHandler.Respond = async (uri, token) =>
-                {
-                    if (uri.Query.Contains(saving ? "posset" : "poscall"))
-                    {
-                        pendingPresetToken = token;
-                        await Task.Delay(Timeout.Infinite, token);
-                    }
-                    return new HttpResponseMessage(HttpStatusCode.OK);
-                };
-                Task pendingPreset = (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(waitingEditor, new object[] { saving })!;
-                presetType.GetMethod("OnDeactivate", flags)!.Invoke(waitingEditor, new object[] { EventArgs.Empty });
-                PumpUntil(pendingPreset);
-                PumpUntilCondition(() => presetType.GetField("stopping", flags)!.GetValue(waitingEditor) == null);
-                Check(pendingPresetToken.IsCancellationRequested, "Focus loss did not cancel an in-flight preset request");
-            }
-            saveHandler.Requests.Clear();
-            var delayedCloseStop = new TaskCompletionSource<HttpResponseMessage>();
-            saveHandler.Respond = (_, _) => saveHandler.Requests.Count == 1
-                ? delayedCloseStop.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-            using (var delayedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Preset 1", new Action<string>(_ => { }), null! }, null)!)
-            {
-                delayedEditor.StartPosition = FormStartPosition.Manual;
-                delayedEditor.Location = new Point(-32000, -32000);
-                bool timedOut = false;
-                using var watchdog = new System.Windows.Forms.Timer { Interval = 2000 };
-                watchdog.Tick += (_, _) =>
-                {
-                    timedOut = true;
-                    delayedCloseStop.TrySetResult(new HttpResponseMessage(HttpStatusCode.OK));
-                };
-                delayedEditor.Shown += (_, _) =>
-                {
-                    watchdog.Start();
-                    var closeButton = (Button)delayedEditor.CancelButton!;
-                    closeButton.PerformClick();
-                    Check(!closeButton.Enabled && !delayedEditor.ControlBox && closeButton.Text.Contains("geschlossen"),
-                        "Closing did not immediately disable repeated clicks and show feedback");
-                    closeButton.PerformClick();
-                    delayedEditor.Close();
-                    Check(saveHandler.Requests.Count == 3, "Repeated close started another stop routine");
-                    delayedCloseStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
-                };
-                delayedEditor.ShowDialog();
-                watchdog.Stop();
-                Check(!timedOut && !delayedEditor.Visible, "Delayed stop did not close after one click");
-                Check(saveHandler.Requests.Count == 3, "Closing did not send exactly one complete safety stop");
-            }
-            saveHandler.Requests.Clear();
-            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-            using (var savedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Preset 1", new Action<string>(_ => { }), null! }, null)!)
-            {
-                savedEditor.StartPosition = FormStartPosition.Manual;
-                savedEditor.Location = new Point(-32000, -32000);
-                int requestsBeforeClose = -1;
-                savedEditor.Shown += async (_, _) =>
-                {
-                    await (Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(savedEditor, new object[] { true })!;
-                    requestsBeforeClose = saveHandler.Requests.Count;
-                    ((Button)savedEditor.CancelButton!).PerformClick();
-                };
-                savedEditor.ShowDialog();
-                Check(requestsBeforeClose == 4 && saveHandler.Requests.Count == requestsBeforeClose,
-                    "Closing after saving an already stopped camera sent redundant stops");
-            }
-            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-            using (var closeErrorEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner", new Action<string>(_ => { }), null! }, null)!)
-            {
-                string? forwardedStopError = null;
-                presetType.GetEvent("CloseStopFailed", flags)!.GetAddMethod(true)!.Invoke(closeErrorEditor,
-                    new object[] { new Action<string>(error => forwardedStopError = error) });
-                closeErrorEditor.StartPosition = FormStartPosition.Manual;
-                closeErrorEditor.Location = new Point(-32000, -32000);
-                bool closeTimedOut = false;
-                using var closeWatchdog = new System.Windows.Forms.Timer { Interval = 2000 };
-                closeWatchdog.Tick += (_, _) =>
-                {
-                    closeTimedOut = true;
-                    closeWatchdog.Stop();
-                    presetType.GetField("finalClose", flags)!.SetValue(closeErrorEditor, true);
-                    closeErrorEditor.Close();
-                };
-                closeErrorEditor.Shown += (_, _) => { closeWatchdog.Start(); ((Button)closeErrorEditor.CancelButton!).PerformClick(); };
-                closeErrorEditor.ShowDialog();
-                closeWatchdog.Stop();
-                Check(!closeTimedOut && !closeErrorEditor.Visible, "Failed stop prevented closing the modal editor");
-                Check(forwardedStopError?.Contains("HTTP 500") == true, "Closing lost the failed stop error instead of forwarding it");
-            }
-            saveHandler.Requests.Clear();
-            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-            using (var mappedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Preset 1", new Action<string>(_ => { }), null! }, null)!)
-            {
-                _ = mappedEditor.Handle;
-                int configured = 1;
-                presetType.GetMethod("ConfigurePresetNumber", flags)!.Invoke(mappedEditor,
-                    new object[] { 1, new Action<string, int>((_, value) => configured = value), new Func<int, bool>(value => value == 2) });
-                var numeric = (NumericUpDown)presetType.GetField("number", flags)!.GetValue(mappedEditor)!;
-                var recallButton = (Button)presetType.GetField("recall", flags)!.GetValue(mappedEditor)!;
-                var mappedStatus = (Label)presetType.GetField("status", flags)!.GetValue(mappedEditor)!;
-                numeric.Value = 2;
-                presetType.GetMethod("SaveName", flags)!.Invoke(mappedEditor, null);
-                Check(configured == 1 && mappedStatus.Text.Contains("anderen Button"), "Duplicate camera number was accepted");
-                numeric.Value = 90;
-                presetType.GetMethod("SaveName", flags)!.Invoke(mappedEditor, null);
-                Check(configured == 1, "Reserved camera number was accepted");
-                var storeButton = (Button)presetType.GetField("store", flags)!.GetValue(mappedEditor)!;
-                Check(!storeButton.Enabled, "Reserved number enabled position saving");
-                numeric.Value = 2;
-                Check(!storeButton.Enabled, "Duplicate number enabled position saving");
-                numeric.Value = 20;
-                Check(!recallButton.Enabled && storeButton.Enabled, "New number disabled position saving or allowed unsaved recall");
-                PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(mappedEditor, new object[] { true })!);
-                Check(configured == 20 && recallButton.Enabled, "Position saving did not apply the new mapping");
-                Check(saveHandler.Requests.Last().Query == "?ptzcmd&posset&20", "Editor saved to original button number");
-                PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(mappedEditor, new object[] { false })!);
-                Check(saveHandler.Requests.Last().Query == "?ptzcmd&poscall&20", "Editor recalled original button number");
-            }
-            saveHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-            saveHandler.Requests.Clear();
-            using var failedEditor = (Form)Activator.CreateInstance(presetType, BindingFlags.Public | BindingFlags.Instance,
-                null, new object[] { fakeService, Enum.Parse(demoPositionType, "Redner"), "Redner",
-                    new Action<string>(_ => throw new IOException("Test write failure")), null! }, null)!;
-            _ = failedEditor.Handle;
-            PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(failedEditor, new object[] { true })!);
-            var saveStatus = (Label)presetType.GetField("status", flags)!.GetValue(failedEditor)!;
-            Check(saveStatus.Text.Contains("HTTP 500") && !saveStatus.Text.Contains("erfolgreich"), "Failed stop falsely reported preset saved");
-            Check(saveHandler.Requests.All(uri => !uri.Query.Contains("posset")), "Save proceeded despite failed stop");
-            saveHandler.Respond = (uri, _) => Task.FromResult(new HttpResponseMessage(
-                uri.Query.Contains("posset") ? HttpStatusCode.Forbidden : HttpStatusCode.OK));
-            PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(failedEditor, new object[] { true })!);
-            Check(saveStatus.Text.Contains("HTTP 403") && !saveStatus.Text.Contains("erfolgreich"), "Rejected preset save falsely reported success");
-            var failedName = (TextBox)presetType.GetField("name", flags)!.GetValue(failedEditor)!;
-            failedName.Text = "Neuer Name";
-            presetType.GetMethod("SaveName", flags)!.Invoke(failedEditor, null);
-            Check(saveStatus.Text.Contains("nicht gespeichert"), "Name write failure was not shown");
-            var failedNumber = (NumericUpDown)presetType.GetField("number", flags)!.GetValue(failedEditor)!;
-            failedNumber.Value = 21;
-            int beforeFailedSave = saveHandler.Requests.Count;
-            PumpUntil((Task)presetType.GetMethod("RunPositionAsync", flags)!.Invoke(failedEditor, new object[] { true })!);
-            Check(saveHandler.Requests.Count == beforeFailedSave && saveStatus.Text.Contains("nicht gespeichert"),
-                "Failed mapping persistence still sent a position save command");
-
+            handler.Commands.Clear(); await closing.CloseAsync(9);
+            Check(handler.Commands.Count == 4 && handler.Commands.Last() == "poscall&9", "Successful close did not call exit after stops");
         }
+        // Separate channels: a slow zoom must not delay a direction stop.
+        var slowZoom = new TaskCompletionSource<HttpResponseMessage>();
+        handler.Respond = (command, token) => command == "zoomin&5" ? slowZoom.Task.WaitAsync(token) : Ok();
+        Task zoom = controller.StartZoomAsync(Zoom.ZoomIn); await controller.StartDirectionAsync(Direction.Down); await controller.StopDirectionAsync();
+        Check(!zoom.IsCompleted && handler.Commands.Last() == "ptzstop&10&10", "Slow zoom delayed direction stop");
+        await controller.StopZoomAsync(); await zoom;
 
-        PumpUntil(Run(() => Task.FromException(new HttpRequestException("test", null, HttpStatusCode.Forbidden)), "Position"));
-        var automaticType = type.Assembly.GetType("CamControl.AutomaticPositions")!;
-        foreach (var exitCase in new[] { (Number: (int?)null, Stop: true), (Number: (int?)6, Stop: true),
-            (Number: (int?)9, Stop: true), (Number: (int?)6, Stop: false) })
-        {
-            int? exitNumber = exitCase.Number;
-            using var automaticForm = (Form1)Activator.CreateInstance(type, flags, null, new object[] { true }, null)!;
-            _ = automaticForm.Handle;
-            using var automaticHandler = new FailingHandler { Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)) };
-            using var automaticClient = new HttpClient(automaticHandler);
-            var automaticServiceType = type.Assembly.GetType("CamControl.CamControlService")!;
-            var automaticService = Activator.CreateInstance(automaticServiceType, flags, null, new object[] { automaticClient, "192.168.188.24" }, null)!;
-            type.GetField("camControlService", flags)!.SetValue(automaticForm, automaticService);
-            var mappedNumbers = (Dictionary<int, int>)type.GetField("demoPresetNumbers", flags)!.GetValue(automaticForm)!;
-            mappedNumbers[2] = 22;
-            mappedNumbers[6] = 26;
-            mappedNumbers[9] = 29;
-            type.GetMethod("SavePresetConfiguration", flags)!.Invoke(automaticForm, new object[] { 1, "Personal", 20 });
-            Check(mappedNumbers[1] == 20 && ((Dictionary<int, string>)type.GetField("demoPresetNames", flags)!.GetValue(automaticForm)!)[1] == "Personal",
-                "Demo configuration did not update both name and camera number");
-            try
-            {
-                type.GetMethod("SavePresetConfiguration", flags)!.Invoke(automaticForm, new object[] { 3, "Duplicate", 20 });
-                throw new Exception("Demo accepted a duplicate mapping");
-            }
-            catch (TargetInvocationException error) when (error.InnerException is ArgumentException) { checks++; }
-            type.GetMethod("buttonRedner_Click", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
-            Check(automaticHandler.Requests.Last().Query == "?ptzcmd&poscall&20", "Main button ignored camera number mapping");
-            automaticHandler.Requests.Clear();
-            object automaticChoices = Activator.CreateInstance(automaticType, true)!;
-            type.GetField("demoAutomaticPositions", flags)!.SetValue(automaticForm, automaticChoices);
-            type.GetMethod("Form1_Load", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
-            Check(automaticHandler.Requests.Count == 0, "None startup selection still moved camera");
-            automaticType.GetProperty("StartPreset")!.SetValue(automaticChoices, 2);
-            type.GetMethod("Form1_Load", flags)!.Invoke(automaticForm, new object[] { automaticForm, EventArgs.Empty });
-            Check(automaticHandler.Requests.Last().Query == "?ptzcmd&poscall&22", "Startup ignored selected preset mapping");
-            automaticHandler.Requests.Clear();
-            if (!exitCase.Stop) automaticHandler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-            automaticType.GetProperty("ExitPreset")!.SetValue(automaticChoices, exitNumber);
-            type.GetMethod("Form1_FormClosingAsync", flags)!.Invoke(automaticForm,
-                new object[] { automaticForm, new FormClosingEventArgs(CloseReason.UserClosing, false) });
-            PumpUntilCondition(() => (bool)type.GetField("finalClose", flags)!.GetValue(automaticForm)!);
-            Check(automaticHandler.Requests.Count == (exitNumber.HasValue && exitCase.Stop ? 4 : 3), "Exit selection sent unexpected commands");
-            Check(automaticHandler.Requests.Take(3).All(uri => uri.Query.Contains("stop")), "Exit preset ran before all stops");
-            if (exitNumber.HasValue && exitCase.Stop) Check(automaticHandler.Requests.Last().Query == $"?ptzcmd&poscall&{mappedNumbers[exitNumber.Value]}", "Exit ignored selected preset mapping");
-            Check(automaticHandler.Requests.All(uri => !uri.Query.Contains("focusin")), "Normal presets still sent special focus motion");
-        }
-        Check(label.Text.Contains("HTTP 403"), "HTTP error not displayed");
-        Check(!label.Text.Contains("Einstellungen") && !label.Text.Contains('\n'), "Camera error retained redundant navigation instructions");
-        Check(((Panel)type.GetField("cameraContent", flags)!.GetValue(form)!).Controls.OfType<Button>().All(button => button.Enabled), "Controls disabled after error");
-        PumpUntil(Run(() => Task.FromException(new TaskCanceledException()), "Zoom"));
-        Check(label.Text.Contains("nicht rechtzeitig"), "Timeout not displayed");
-
-        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Task olderRequest = Run(() => pending.Task, "Older request");
-        Check(!olderRequest.IsCompleted, "Pending request blocked UI");
-        PumpUntil(Run(() => Task.FromException(new HttpRequestException("test")), "Bewegungsstopp nicht bestätigt"));
-        Check(label.Text.Contains("Bewegungsstopp nicht bestätigt"), "Stop failure not displayed");
-        pending.SetResult();
-        PumpUntil(olderRequest);
-        Check(label.Text.Contains("Bewegungsstopp nicht bestätigt"), "Older success hid newer failure");
-        PumpUntil(Run(() => Task.CompletedTask, "Retry"));
-        Check(label.Text.Length == 0, "Successful retry did not clear error");
-
-        // Inject a fake service, then exercise the actual button handlers.
-        using var handler = new FailingHandler();
-        using var client = new HttpClient(handler);
-        var serviceType = type.Assembly.GetType("CamControl.CamControlService")!;
-        var service = Activator.CreateInstance(serviceType, flags, null, new object[] { client, "192.168.188.24" }, null)!;
-        type.GetField("camControlService", flags)!.SetValue(form, service);
-        foreach (var name in new[] { "buttonRedner_Click", "buttonRednerLeser_Click", "buttonTisch_Click", "buttonKompletteBuehne_Click", "buttonRednerBildschirm_Click", "buttonDemoStehend_Click", "buttonStandBy_Click", "buttonUp_MouseDown", "buttonDown_MouseDown", "buttonLeft_MouseDown", "buttonRight_MouseDown", "buttonZoomIn_MouseDown", "buttonZoomOut_MouseDown", "button_MouseUpStopDirectionalMovement", "button_MouseUpStopZooming" })
-        {
-            label.Text = "";
-            object args = name.Contains("Mouse") ? new MouseEventArgs(MouseButtons.Left, 1, 0, 0, 0) : EventArgs.Empty;
-            type.GetMethod(name, flags)!.Invoke(form, new[] { (object)form, args });
-            Check(label.Text.Contains("HTTP 500"), name + " did not display failure");
-        }
-        Check(((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled, "Standby button remained disabled");
-        foreach (var key in new[] { Keys.Add, Keys.Subtract, Keys.Up, Keys.Down, Keys.Left, Keys.Right })
-        {
-            foreach (var name in new[] { "Form1_KeyDown", "Form1_KeyUp" })
-            {
-                label.Text = "";
-                type.GetMethod(name, flags)!.Invoke(form, new object[] { form, new KeyEventArgs(key) });
-                Check(label.Text.Contains("HTTP 500"), name + " did not handle " + key);
-            }
-        }
-        foreach (var key in new[] { Keys.Up, Keys.Down, Keys.Left, Keys.Right })
-        {
-            label.Text = "";
-            var args = new object[] { Message.Create(form.Handle, 0x100, (IntPtr)(int)key, IntPtr.Zero), key };
-            Check((bool)type.GetMethod("ProcessCmdKey", flags)!.Invoke(form, args)!, "Arrow key not handled");
-            Check(label.Text.Contains("HTTP 500"), "Arrow key failure not displayed");
-            type.GetMethod("Form1_KeyUp", flags)!.Invoke(form, new object[] { form, new KeyEventArgs(key) });
-        }
-
-        var keyDown = type.GetMethod("Form1_KeyDown", flags)!;
-        var keyUp = type.GetMethod("Form1_KeyUp", flags)!;
-        var deactivate = type.GetMethod("OnDeactivate", flags)!;
-        var activate = type.GetMethod("OnActivated", flags)!;
-        var stopTaskField = type.GetField("stopControlTask", flags)!;
-        var positionType = type.Assembly.GetType("CamControl.Position")!;
-        var movePosition = type.GetMethod("MoveToPositionAsync", flags)!;
-        var prepareSettings = type.GetMethod("PrepareCameraSettingsAsync", flags)!;
-        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-        bool AllStopsSince(int index) => new[] { "ptzstop", "zoomstop", "focusstop" }
-            .All(stop => handler.Requests.Skip(index).Any(uri => uri.Query.Contains(stop)));
-        bool Pressed(string field) => (bool)type.GetField(field, flags)!.GetValue(form)!;
-
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Add) });
-        int before = handler.Requests.Count;
-        deactivate.Invoke(form, new object[] { EventArgs.Empty });
-        PumpUntilCondition(() => stopTaskField.GetValue(form) == null);
-        Check(AllStopsSince(before), "Focus loss did not stop all camera channels");
-        Check(!Pressed("keyDirectionIsPressed") && !Pressed("keyZoomIsPressed"), "Focus loss retained pressed keys");
-        before = handler.Requests.Count;
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        Check(handler.Requests.Count == before, "Inactive window started movement");
-        activate.Invoke(form, new object[] { EventArgs.Empty });
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        Check(handler.Requests.Count == before + 1, "Direction could not restart after focus loss");
-        keyUp.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-
-        // Releasing a key cancels an unanswered start and sends a stop promptly.
-        handler.Respond = async (uri, token) =>
-        {
-            if (uri.Query.Contains("&up&"))
-                await Task.Delay(Timeout.InfiniteTimeSpan, token);
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        };
-        label.Text = "";
-        before = handler.Requests.Count;
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        keyUp.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        PumpUntilCondition(() => handler.Requests.Skip(before).Any(uri => uri.Query.Contains("ptzstop")));
-        Check(label.Text.Length == 0, "Key release cancellation was reported as timeout");
-        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-
-        // A pending response on the other channel must not delay a release stop.
-        foreach (var scenario in new[]
-        {
-            (First: Keys.Up, Other: Keys.Add, Pending: "zoomin", Stop: "ptzstop", Release: "StopDirectionAsync"),
-            (First: Keys.Add, Other: Keys.Up, Pending: "&up&", Stop: "zoomstop", Release: "StopZoomAsync")
-        })
-        {
-            var otherReply = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-            handler.Respond = (uri, _) => uri.Query.Contains(scenario.Pending)
-                ? otherReply.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-            keyDown.Invoke(form, new object[] { form, new KeyEventArgs(scenario.First) });
-            keyDown.Invoke(form, new object[] { form, new KeyEventArgs(scenario.Other) });
-            before = handler.Requests.Count;
-            Task release = (Task)type.GetMethod(scenario.Release, flags)!.Invoke(form, null)!;
-            PumpUntil(release);
-            Check(!otherReply.Task.IsCompleted && handler.Requests.Skip(before).Any(uri => uri.Query.Contains(scenario.Stop)),
-                "Release stop waited for the other channel: " + scenario.Stop);
-            // The released channel can restart without overtaking its stop.
-            before = handler.Requests.Count;
-            keyDown.Invoke(form, new object[] { form, new KeyEventArgs(scenario.First) });
-            Check(handler.Requests.Count == before + 1, "Released channel could not restart independently");
-            PumpUntil((Task)type.GetMethod(scenario.Release, flags)!.Invoke(form, null)!);
-            otherReply.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
-            Application.DoEvents();
-            keyUp.Invoke(form, new object[] { form, new KeyEventArgs(scenario.Other) });
-        }
-        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-
-        // Lost mouse capture must stop even if no MouseUp is delivered.
-        type.GetMethod("buttonUp_MouseDown", flags)!.Invoke(form,
-            new object[] { form, new MouseEventArgs(MouseButtons.Left, 1, 0, 0, 0) });
-        before = handler.Requests.Count;
-        type.GetMethod("CameraButton_MouseCaptureChanged", flags)!.Invoke(form,
-            new object[] { type.GetField("buttonUp", flags)!.GetValue(form)!, EventArgs.Empty });
-        PumpUntilCondition(() => stopTaskField.GetValue(form) == null);
-        Check(AllStopsSince(before) && !Pressed("mouseDirectionIsPressed"), "Lost mouse capture did not stop/reset movement");
-
-        // Reactivation cannot restart motion while a stop response is pending.
-        var slowStop = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        handler.Respond = (uri, _) => uri.Query.Contains("zoomstop")
-            ? slowStop.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-        before = handler.Requests.Count;
-        deactivate.Invoke(form, new object[] { EventArgs.Empty });
-        activate.Invoke(form, new object[] { EventArgs.Empty });
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        Check(handler.Requests.Count == before + 3 && !((Button)type.GetField("buttonUp", flags)!.GetValue(form)!).Enabled,
-            "Reactivation allowed movement before pending stop completed");
-        Task sharedStop = (Task)type.GetMethod("StopCameraControlAsync", flags)!.Invoke(form, null)!;
-        Check(handler.Requests.Count == before + 3, "Concurrent lifecycle events duplicated stop requests");
-        slowStop.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
-        PumpUntil(sharedStop);
-        Check(((Button)type.GetField("buttonUp", flags)!.GetValue(form)!).Enabled,
-            "Controls stayed disabled after stop acknowledgement");
-        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-
-        // Cancel a preset while its preparatory stops are still pending.
-        foreach (bool openSettings in new[] { false, true })
-        {
-            var preparationReply = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-            handler.Respond = (uri, _) => uri.Query.Contains("zoomstop")
-                ? preparationReply.Task : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-            before = handler.Requests.Count;
-            Task waitingPreset = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "Redner") })!;
-            Check(!waitingPreset.IsCompleted, "Preset did not wait for preparation");
-            Task? settingsPreparation = null;
-            if (openSettings)
-                settingsPreparation = (Task)prepareSettings.Invoke(form, null)!;
-            else
-            {
-                deactivate.Invoke(form, new object[] { EventArgs.Empty });
-                activate.Invoke(form, new object[] { EventArgs.Empty });
-            }
-            preparationReply.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
-            PumpUntil(waitingPreset);
-            if (settingsPreparation != null)
-            {
-                PumpUntil(settingsPreparation);
-                type.GetField("settingsDialogOpen", flags)!.SetValue(form, false);
-                activate.Invoke(form, new object[] { EventArgs.Empty });
-            }
-            Check(handler.Requests.Skip(before).All(uri => !uri.Query.Contains("poscall")),
-                "Cancelled preset started after preparation: settings=" + openSettings);
-            Check(((Button)type.GetField("buttonRedner", flags)!.GetValue(form)!).Enabled,
-                "Cancelled preparation left controls disabled");
-            handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-            before = handler.Requests.Count;
-            PumpUntil((Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "Redner") })!);
-            Check(handler.Requests.Skip(before).Any(uri => uri.Query.Contains("poscall")),
-                "New preset could not start after cancelled preparation");
-        }
-
-        // Presets cannot overlap, and settings cancel standby before opening.
-        handler.Respond = async (uri, token) =>
-        {
-            if (uri.Query.Contains("poscall")) await Task.Delay(Timeout.Infinite, token);
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        };
-        Task standby = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "StandBy") })!;
-        Check(settingsButton.Enabled, "Settings unavailable during a preset");
-        Check(!standby.IsCompleted && !(bool)((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled,
-            "Standby did not block overlapping commands");
-        before = handler.Requests.Count;
-        PumpUntil((Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "Redner") })!);
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        Check(handler.Requests.Count == before, "A second preset or manual movement overlapped standby");
-        PumpUntil((Task)prepareSettings.Invoke(form, null)!);
-        Check(!settingsButton.Enabled, "Settings button allowed duplicate dialogs");
-        PumpUntil(standby);
-        Check(AllStopsSince(before) && handler.Requests.Skip(before).All(uri => !uri.Query.Contains("focusin")),
-            "Settings did not cancel and stop standby before delayed focus");
-        before = handler.Requests.Count;
-        keyDown.Invoke(form, new object[] { form, new KeyEventArgs(Keys.Up) });
-        Check(handler.Requests.Count == before, "Movement started while settings were open");
-        type.GetField("settingsDialogOpen", flags)!.SetValue(form, false);
-        activate.Invoke(form, new object[] { EventArgs.Empty });
-        Check(((Button)type.GetField("buttonStandBy", flags)!.GetValue(form)!).Enabled,
-            "Controls did not recover after cancelled standby");
-
-        // Close during another standby; all stops must be attempted even on failure.
-        Task closingStandby = (Task)movePosition.Invoke(form, new[] { Enum.Parse(positionType, "StandBy") })!;
-        handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        before = handler.Requests.Count;
-        var closing = new FormClosingEventArgs(CloseReason.UserClosing, false);
-        type.GetMethod("Form1_FormClosingAsync", flags)!.Invoke(form, new object[] { form, closing });
-        PumpUntilCondition(() => (bool)type.GetField("finalClose", flags)!.GetValue(form)!);
-        PumpUntil(closingStandby);
-        Check((bool)type.GetField("finalClose", flags)!.GetValue(form)!, "Camera error prevented closing");
-        Check(AllStopsSince(before) && handler.Requests.Skip(before).All(uri => !uri.Query.Contains("poscall") && !uri.Query.Contains("focusin")),
-            "Closing sent motion after failed stop or left delayed focus running");
-        var finalClosing = new FormClosingEventArgs(CloseReason.UserClosing, false);
-        type.GetMethod("Form1_FormClosingAsync", flags)!.Invoke(form, new object[] { form, finalClosing });
-        Check(!finalClosing.Cancel, "Final close was cancelled");
-        Console.WriteLine($"Passed {checks} UI checks without showing a window or contacting a camera.");
+        // Concurrent lifecycle stops share one transport sequence.
+        pendingStop = new(); handler.Commands.Clear(); handler.Respond = (command, _) => command.StartsWith("ptzstop") ? pendingStop.Task : Ok();
+        Task<bool> a = controller.StopAsync(), b = controller.StopAsync(); Check(ReferenceEquals(a, b) && handler.Commands.Count == 3, "Lifecycle stops were duplicated"); pendingStop.SetResult(new(HttpStatusCode.OK)); await a;
     }
 
-    private sealed class FailingHandler : HttpMessageHandler
+    private static async Task WindowChecks()
     {
-        public List<Uri> Requests { get; } = new();
-        public Func<Uri, CancellationToken, Task<HttpResponseMessage>> Respond { get; set; } =
-            (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        using var session = new CameraSession(true);
+        session.SaveMapping(1, new string('W', 32), 20);
+        Check(session.Names[1].Length == 32 && session.Numbers[1] == 20, "Session mapping missing");
+        var window = new MainWindow(session); ShowOffscreen(window); await Layout();
+        Check(window.Width <= 640 && window.Height < 700 && window.DemoPreview.IsVisible, "Compact main/demo layout missing");
+        Check(Descendants(window).OfType<Button>().Count(b => b.Name.StartsWith("preset")) == 7, "Seven preset buttons missing");
+        Check(Descendants(window).OfType<Button>().Count(b => b.Name.StartsWith("move")) == 4 && Descendants(window).OfType<Button>().Count(b => b.Name.StartsWith("Zoom")) == 2, "Direction or zoom controls missing");
+        Check(window.SettingsButton.IsEnabled && window.ManualControls.ActualWidth >= 150, "Settings inaccessible or motion targets undersized");
+        await session.Controller.SetActiveAsync(true);
+        await window.Input.PressKeyAsync(Key.Right); Check(session.Demo.State.Moving, "WPF input did not start direction");
+        await window.Input.PressKeyAsync(Key.Right); await window.Input.ReleaseKeyAsync(Key.Right); Check(!session.Demo.State.Moving, "WPF key release did not stop");
+        await window.Input.PressKeyAsync(Key.Add); await window.Input.PressKeyAsync(Key.Left); Check(session.Demo.State.Zooming && session.Demo.State.Moving, "Keyboard channels not independent");
+        await window.Input.ReleaseKeyAsync(Key.Left); Check(!session.Demo.State.Moving && session.Demo.State.Zooming, "PTZ release stopped wrong channel");
+        await window.Input.ReleaseKeyAsync(Key.Add); Check(!session.Demo.State.Zooming, "Numpad zoom release failed");
+        await session.Controller.SetActiveAsync(false); window.Input.Reset(); Check(!session.Demo.State.Moving, "Deactivation did not clear demo motion");
+        await session.Controller.SetActiveAsync(true);
+        var controls = Descendants(window).OfType<Button>().ToArray(); var left = controls.Single(b => b.Name == "moveLeft");
+        left.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = Mouse.PreviewMouseDownEvent });
+        Check(session.Demo.State.Moving && CameraInput.GetIsHeld(left), "Mouse press did not start or show held state");
+        left.ReleaseMouseCapture(); await Layout(); Check(!session.Demo.State.Moving && !CameraInput.GetIsHeld(left), "Lost capture did not stop motion");
+        var keySource = PresentationSource.FromVisual(window);
+        window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, keySource!, Environment.TickCount, Key.D3) { RoutedEvent = Keyboard.PreviewKeyDownEvent }); await Layout();
+        Check(session.Demo.State.Action == "Preset 3" && window.Status.Text.Contains("Zuletzt angefordert"), "Preset keyboard route did not recall or report request");
+        Check(Descendants(window).OfType<Button>().Single(b => b.Name == "preset3").Tag as string == "Requested", "Requested preset highlight missing");
+
+        var settings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(settings); await Layout();
+        Check(settings.Navigation.Items.Count == 6 && !settings.SaveAddress.IsEnabled, "Settings sections or save guard missing");
+        settings.Address.Text = "invalid"; Check(!settings.SaveAddress.IsEnabled && !settings.DemoAction.IsEnabled, "Invalid IP allowed save or mode switch");
+        settings.Address.Text = "192.168.188.25"; Check(settings.SaveAddress.IsEnabled && settings.SaveAddress.IsDefault, "Valid changed address not editable");
+        settings.Navigation.SelectedIndex = 4; await Layout(); Check(!settings.SaveAddress.IsDefault, "Help retained default camera save");
+        Check(Descendants(settings).OfType<TextBox>().Any(t => t.Name == "cameraHelp" && t.IsReadOnly && t.Text.Contains("HTTP-CGI")), "Help missing/read-write");
+        settings.Navigation.SelectedIndex = 5; await Layout(); Check(Descendants(settings).OfType<TextBox>().Any(t => t.Name == "privacyInformation" && t.Text == AppInformation.PrivacyText && t.IsReadOnly), "Privacy text missing or editable");
+        settings.Navigation.SelectedIndex = 0; settings.Address.Text = settings.CameraIp; Check(!settings.SaveAddress.IsEnabled, "Revert failed to disable save");
+        settings.Navigation.SelectedIndex = 2;
+        Check(settings.StartPreset.Items.Count == 8 && settings.ExitPreset.Items.Count == 8 && !settings.SaveAutomatic.IsEnabled, "Automatic choices missing/default changed");
+        settings.StartPreset.SelectedIndex = 3; settings.ExitPreset.SelectedIndex = 7; Check(settings.SaveAutomatic.IsEnabled && session.Automatic.StartPreset == null, "Automatic changes applied before save");
+        settings.StoreAutomatic(); Check(session.Automatic.StartPreset == 3 && session.Automatic.ExitPreset == 9 && !settings.SaveAutomatic.IsEnabled, "Automatic choices not saved");
+        settings.RefreshAutomatic(); Check(!settings.SaveAutomatic.IsEnabled, "Refreshing names changed saved automation");
+        settings.Navigation.SelectedIndex = 1; await Layout();
+        Check(Descendants(settings).OfType<Button>().Count(b => b.Name.StartsWith("editPreset")) == 7, "Preset editors inaccessible");
+        double demoHeight = window.Height;
+        for (int i = 0; i < 2; i++)
         {
-            Requests.Add(request.RequestUri!);
-            return Respond(request.RequestUri!, cancellationToken);
+            var completion = new TaskCompletionSource();
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+            timer.Tick += (_, _) =>
+            {
+                var dialog = Application.Current.Windows.OfType<CameraSettingsDialog>().FirstOrDefault(w => w.Owner == window);
+                if (dialog == null) return;
+                timer.Stop(); Check(!session.Demo.State.Moving && !session.Demo.State.Zooming, "Opening settings did not stop demo"); dialog.Close(); completion.SetResult();
+            };
+            timer.Start(); window.SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await completion.Task; await Layout();
+            Check(window.Height == demoHeight && window.DemoPreview.IsVisible, "Repeated settings changed demo height or hid preview");
         }
+        await session.Controller.SetActiveAsync(true);
+
+        var editor = new PresetEditorDialog(session, 2); ShowOffscreen(editor); await Layout(); await editor.Controller.SetActiveAsync(true);
+        editor.PresetName.Text = "Testposition"; editor.PresetNumber.Text = "20"; Check(!editor.Store.IsEnabled, "Duplicate number allowed preset save");
+        editor.PresetNumber.Text = "90"; Check(!editor.SaveMapping.IsEnabled, "Reserved number allowed");
+        editor.PresetNumber.Text = "21"; Check(editor.SaveMapping.IsEnabled && !editor.Recall.IsEnabled, "Unsaved mapping allowed recall");
+        var before = session.Demo.State;
+        Check(editor.SaveName() && session.Names[2] == "Testposition" && session.Numbers[2] == 21 && before == session.Demo.State, "Mapping save moved camera or failed");
+        await editor.Controller.StartZoomAsync(Zoom.ZoomIn); session.Demo.Advance(TimeSpan.FromMilliseconds(500));
+        await editor.RunPositionAsync(true); var saved = session.Demo.State;
+        await editor.Controller.RecallAsync(4); await editor.RunPositionAsync(false);
+        Check(session.Demo.State.X == saved.X && session.Demo.State.Zoom == saved.Zoom && !session.Demo.State.Moving && !session.Demo.State.Zooming, "Editor save/recall did not preserve position or stop");
+        await editor.Input.PressKeyAsync(Key.Down); editor.Close(); await Layout();
+        Check(!session.Demo.State.Moving && !editor.IsVisible, "One editor close did not stop and close");
+
+        // Render the actual WPF windows for review, including enlarged text.
+        string output = System.IO.Path.GetFullPath("artifacts/ui-preview"); System.IO.Directory.CreateDirectory(output);
+        Screenshot(window, System.IO.Path.Combine(output, "main-demo.png"));
+        settings.Navigation.SelectedIndex = 1; await Layout(); Screenshot(settings, System.IO.Path.Combine(output, "settings-presets.png"));
+        window.DemoPreview.Visibility = Visibility.Collapsed; window.Height = 468; await Layout();
+        Screenshot(window, System.IO.Path.Combine(output, "main-compact.png"));
+        var scroll = Descendants(window).OfType<ScrollViewer>().First();
+        Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Default compact window requires scrolling: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
+        window.FontSize = 21; window.Width = 580; await Layout();
+        Check(scroll.ExtentHeight > 0 && window.SettingsButton.IsVisible && window.Status.IsVisible, "Large text hid settings/status");
+        Screenshot(window, System.IO.Path.Combine(output, "main-large-text.png"));
+        Check(Descendants(window.ManualControls).OfType<Button>().Where(b => b.Name.StartsWith("Zoom")).All(b => b.ActualHeight >= 58), "Large text shrank zoom controls");
+        window.FontSize = 14; window.Width = 636; await Layout();
+        Screenshot(window, System.IO.Path.Combine(output, "main-long-name.png"));
+        string[] examples = ["Redner", "Redner & Leser", "Tisch", "Gesamte Bühne", "Redner & Bildschirm", "Demo stehend", "Standby"];
+        for (int i = 0; i < CameraSession.Buttons.Length; i++) { int n = CameraSession.Buttons[i]; session.SaveMapping(n, examples[i], session.Numbers[n]); }
+        window.Refresh(); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-compact.png"));
+        Theme.Apply(true); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-dark.png"));
+        Check(((SolidColorBrush)window.Background).Color == ((SolidColorBrush)Application.Current.Resources["CanvasBrush"]).Color, "Window did not follow dark palette");
+        var darkSettings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(darkSettings); darkSettings.Navigation.SelectedIndex = 2; await Layout();
+        darkSettings.StartPreset.IsDropDownOpen = true; await Layout(); Screenshot(darkSettings, System.IO.Path.Combine(output, "settings-dark.png")); darkSettings.StartPreset.IsDropDownOpen = false;
+        Check(((SolidColorBrush)darkSettings.Address.Foreground).Color == ((SolidColorBrush)Application.Current.Resources["InkBrush"]).Color, "Input did not follow dark palette");
+        darkSettings.Close(); Theme.Apply(false);
+        var allSettings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(allSettings);
+        for (int i = 0; i < 6; i++) { allSettings.Navigation.SelectedIndex = i; await Layout(); Screenshot(allSettings, System.IO.Path.Combine(output, $"settings-{i}.png")); }
+        allSettings.Close();
+        var editorPreview = new PresetEditorDialog(session, 1); ShowOffscreen(editorPreview); await Layout(); Screenshot(editorPreview, System.IO.Path.Combine(output, "preset-editor.png"));
+        await editorPreview.Controller.SetActiveAsync(true); await editorPreview.Controller.StartDirectionAsync(Direction.Left);
+        typeof(Window).GetMethod("OnDeactivated", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(editorPreview, [EventArgs.Empty]); await Layout();
+        Check(!session.Demo.State.Moving && !editorPreview.Controller.ControlsEnabled, "Editor deactivation wiring did not stop input"); editorPreview.Close(); await Layout();
+        settings.Close(); window.Close(); await Layout();
+        Check(!window.IsVisible && !session.Demo.State.Moving && !session.Demo.State.Zooming, "Main close left demo moving");
+
+        // Modal IP save/cancel checks write only to an isolated test file.
+        string path = System.IO.Path.Combine(output, "settings-test.json"); System.IO.File.Delete(path);
+        var saveDialog = new CameraSettingsDialog("192.168.188.24", settingsPath: path);
+        saveDialog.ContentRendered += (_, _) => { saveDialog.Address.Text = "192.168.188.025"; saveDialog.SaveCamera(); };
+        Check(saveDialog.ShowDialog() == true && CameraSettings.Load(path) == "192.168.188.25", "Modal save did not persist normalized IP");
+        var cancelDialog = new CameraSettingsDialog("192.168.188.25", settingsPath: path);
+        cancelDialog.ContentRendered += (_, _) => { cancelDialog.Address.Text = "192.168.188.26"; cancelDialog.Close(); };
+        cancelDialog.ShowDialog(); Check(CameraSettings.Load(path) == "192.168.188.25", "Cancel persisted edits"); System.IO.File.Delete(path);
+        var failedDialog = new CameraSettingsDialog("192.168.188.24", settingsPath: output);
+        failedDialog.ContentRendered += (_, _) => { failedDialog.Address.Text = "192.168.188.25"; failedDialog.SaveCamera(); Check(failedDialog.CameraIp == "192.168.188.24" && failedDialog.IsVisible, "Failed write applied address or closed dialog"); failedDialog.Close(); }; failedDialog.ShowDialog();
+        var demoDialog = new CameraSettingsDialog("192.168.188.24", settingsPath: path);
+        demoDialog.ContentRendered += (_, _) => demoDialog.DemoAction.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(demoDialog.ShowDialog() == true && demoDialog.RequestedDemoMode == true && !System.IO.File.Exists(path), "Demo action saved camera configuration");
+        using var startupSession = new CameraSession(true);
+        startupSession.SaveMapping(2, "Startposition", 50); await startupSession.Service.SavePreset(50);
+        startupSession.SaveAutomatic(new() { StartPreset = 2, ExitPreset = 9 });
+        var startupWindow = new MainWindow(startupSession); ShowOffscreen(startupWindow); await Layout();
+        Check(startupSession.Demo.State.Action == "Eigenes Preset 50", "Startup ignored custom preset mapping");
+        startupWindow.Close(); await Layout(); Check(startupSession.Demo.State.Action == "Preset 9", "Exit preset not applied by window lifecycle");
+        var welcome = new StartupChoiceDialog(); welcome.ContentRendered += (_, _) => Descendants(welcome).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == "Ohne Kamera ausprobieren").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(welcome.ShowDialog() == true && welcome.UseDemo, "First-run demo choice failed");
+    }
+    private static void ShowOffscreen(Window window) { window.ShowInTaskbar = false; window.ShowActivated = false; window.WindowStartupLocation = WindowStartupLocation.Manual; window.Left = -10000; window.Top = -10000; window.Show(); }
+    private static async Task Layout() { await Dispatcher.Yield(DispatcherPriority.ApplicationIdle); }
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++) { var child = VisualTreeHelper.GetChild(parent, i); yield return child; foreach (var descendant in Descendants(child)) yield return descendant; }
+    }
+    private static void Screenshot(Window window, string path)
+    {
+        var element = (FrameworkElement)window.Content; element.UpdateLayout();
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        var background = new DrawingVisual(); using (var dc = background.RenderOpen()) dc.DrawRectangle(window.Background, null, new Rect(0, 0, element.ActualWidth, element.ActualHeight)); bitmap.Render(background); bitmap.Render(element);
+        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var file = System.IO.File.Create(path); encoder.Save(file);
+    }
+    private static Task<HttpResponseMessage> Ok() => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+    private sealed class RecordingHandler : HttpMessageHandler
+    {
+        internal readonly List<string> Commands = new();
+        internal Func<string, CancellationToken, Task<HttpResponseMessage>> Respond = (_, _) => Ok();
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        { string command = request.RequestUri!.Query.Replace("?ptzcmd&", ""); Commands.Add(command); return Respond(command, token); }
     }
 }

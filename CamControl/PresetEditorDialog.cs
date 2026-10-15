@@ -1,304 +1,102 @@
-﻿namespace CamControl;
+using System.ComponentModel;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Controls;
 
-internal sealed class PresetEditorDialog : Form
+namespace CamControl;
+
+internal sealed class PresetEditorDialog : AppWindow
 {
-    private readonly CamControlService service;
-    private readonly Action<string> saveName;
-    private readonly TextBox name;
-    private readonly NumericUpDown number;
+    private readonly CameraSession session;
+    private readonly int buttonNumber;
+    internal readonly CameraController Controller;
+    internal readonly CameraInput Input;
+    internal readonly TextBox PresetName, PresetNumber;
+    internal readonly Button SaveMapping, Recall, Store;
+    private readonly Button close;
+    private readonly FrameworkElement motion;
+    internal readonly TextBlock Status = Ui.Text("");
     private int savedNumber;
-    private Action<string, int>? saveConfiguration;
-    private Func<int, bool>? numberInUse;
-
-    internal void ConfigurePresetNumber(int current, Action<string, int> save, Func<int, bool> inUse)
-    {
-        savedNumber = current;
-        number.Value = current;
-        saveConfiguration = save;
-        numberInUse = inUse;
-        UpdateActions();
-    }
-    private readonly Label status;
-    private readonly FlowLayoutPanel movement;
-    private readonly Button recall, store, rename, close;
-    private CancellationTokenSource motionCancellation = new();
-    private CancellationTokenSource? positionCancellation;
+    private bool closing, finalClose, confirming;
     internal event Action<string>? CloseStopFailed;
-    private Task<bool>? stopping;
-    private bool busy, closing, finalClose, motionHeld, active = true;
-    private string savedName;
-    private bool resourcesDisposed;
-    private bool stopRequired = true;
-
-    public PresetEditorDialog(CamControlService service, Position position, string currentName,
-        Action<string> saveName, DemoCamera? demo = null)
+    internal PresetEditorDialog(CameraSession session, int buttonNumber)
     {
-        this.service = service;
-        this.saveName = saveName;
-        savedName = currentName;
-        savedNumber = (int)position;
-        Text = $"Preset {(int)position} bearbeiten";
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        StartPosition = FormStartPosition.CenterParent;
-        MaximizeBox = MinimizeBox = false;
-        ShowInTaskbar = false;
-        KeyPreview = true;
-        AutoScaleMode = AutoScaleMode.Font;
-        AutoScaleDimensions = new SizeF(7, 15);
-        ClientSize = new Size(640, demo == null ? 420 : 610);
-        Padding = new Padding(16);
-
-        var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 8 };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (int i = 0; i < 8; i++) layout.RowStyles.Add(new RowStyle(i == 6 && demo != null ? SizeType.Absolute : SizeType.AutoSize, i == 6 && demo != null ? 180 : 0));
-        layout.Controls.Add(new Label { AutoSize = true, Text = "Buttonname (1–32 Zeichen)" }, 0, 0);
-        var nameRow = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 2 };
-        nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        name = new TextBox { Name = "presetName", Text = currentName, MaxLength = 32, Dock = DockStyle.Fill, AccessibleName = "Buttonname" };
-        rename = new Button { Name = "savePresetName", Text = "Zuordnung speichern", AutoSize = true };
-        rename.Click += (_, _) => SaveName();
-        nameRow.Controls.Add(name, 0, 0);
-        nameRow.Controls.Add(rename, 1, 0);
-        layout.Controls.Add(nameRow, 0, 1);
-        var numberRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = true, Margin = new Padding(3, 12, 3, 8) };
-        numberRow.Controls.Add(new Label { AutoSize = true, Text = "Kamerapreset-Nummer", Margin = new Padding(0, 5, 12, 0) });
-        number = new NumericUpDown { Name = "cameraPresetNumber", Minimum = 0, Maximum = 254, Value = savedNumber, Width = 80, AccessibleName = "Kamerapreset-Nummer" };
-        numberRow.Controls.Add(number);
-        numberRow.Controls.Add(new Label { AutoSize = true, Text = "0–89 oder 100–254", Margin = new Padding(12, 5, 0, 0) });
-        layout.Controls.Add(numberRow, 0, 2);
-        movement = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = true };
-        AddMotion("←", "Nach links", token => service.MoveInDirection(Direction.Left, token));
-        AddMotion("↑", "Nach oben", token => service.MoveInDirection(Direction.Up, token));
-        AddMotion("↓", "Nach unten", token => service.MoveInDirection(Direction.Down, token));
-        AddMotion("→", "Nach rechts", token => service.MoveInDirection(Direction.Right, token));
-        AddMotion("Zoom +", "Vergrößern", token => service.Zoom(Zoom.ZoomIn, token));
-        AddMotion("Zoom −", "Verkleinern", token => service.Zoom(Zoom.ZoomOut, token));
-        layout.Controls.Add(movement, 0, 3);
-        recall = new Button { Name = "recallPreset", Text = "Position anfahren", AutoSize = true, Margin = new Padding(3, 12, 3, 8) };
-        recall.Click += async (_, _) => await RunPositionAsync(false);
-        layout.Controls.Add(recall, 0, 4);
-        store = new Button { Name = "storePreset", Text = "Position speichern", Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 48) };
-        store.Click += async (_, _) =>
+        this.session = session; this.buttonNumber = buttonNumber; savedNumber = session.Numbers[buttonNumber];
+        Controller = new(session.Service);
+        Title = $"Preset {buttonNumber} bearbeiten"; Width = 610; Height = session.IsDemo ? 730 : 540; MinWidth = 510; MinHeight = 400; ShowInTaskbar = false;
+        Input = new(this, () => Controller);
+        PresetName = new() { Text = session.Names[buttonNumber], MaxLength = 32, Name = "presetName", Margin = new(0, 0, 0, 12) };
+        PresetNumber = new() { Text = savedNumber.ToString(CultureInfo.InvariantCulture), MaxLength = 3, Name = "cameraPresetNumber", Margin = new(0, 0, 0, 8) };
+        System.Windows.Automation.AutomationProperties.SetName(PresetName, "Buttonname"); System.Windows.Automation.AutomationProperties.SetName(PresetNumber, "Kamerapreset-Nummer");
+        SaveMapping = Ui.Button("Zuordnung speichern", () => SaveName(), "savePresetName");
+        Recall = Ui.Button("Position anfahren", async () => await RunPositionAsync(false), "recallPreset");
+        Store = Ui.Button("Position speichern …", async () =>
         {
-            if (MessageBox.Show(this, $"Kamerapreset {(int)number.Value} für „{name.Text.Trim()}“ überschreiben?",
-                "Position speichern", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
-                MessageBoxDefaultButton.Button2) == DialogResult.Yes)
-                await RunPositionAsync(true);
-        };
-        layout.Controls.Add(store, 0, 5);
-        if (demo != null) layout.Controls.Add(new DemoCameraView(demo) { Dock = DockStyle.Fill, MinimumSize = new Size(0, 180) }, 0, 6);
-        status = new Label { Name = "presetStatus", AutoSize = true, MaximumSize = new Size(600, 0), Dock = DockStyle.Top, Margin = new Padding(3, 10, 3, 8) };
-        var footer = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        footer.Controls.Add(status);
-        close = new Button { Text = "Schließen", AutoSize = true };
-        close.Click += (_, _) => Close();
-        layout.Controls.Add(footer, 0, 7);
-        var scroll = new Panel { Name = "presetEditorContent", Dock = DockStyle.Fill, AutoScroll = true };
-        scroll.Controls.Add(layout);
-        var container = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
-        container.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        container.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        container.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        container.Controls.Add(scroll, 0, 0);
-        container.Controls.Add(close, 0, 1);
-        Controls.Add(container);
-        number.ValueChanged += (_, _) => UpdateActions();
-        name.TextChanged += (_, _) => UpdateActions();
-        CancelButton = close;
-        AcceptButton = null;
-        WindowLayout.FitToScreen(this);
-    }
-
-    private void AddMotion(string text, string description, Func<CancellationToken, Task> command)
-    {
-        var button = new Button { Text = text, AccessibleName = description, Size = new Size(88, 44), TabStop = true };
-        button.MouseDown += async (_, e) => { if (e.Button == MouseButtons.Left) await StartMotionAsync(command); };
-        button.MouseUp += async (_, _) => { if (motionHeld) await StopAsync(); };
-        button.MouseCaptureChanged += async (_, _) => { if (!button.Capture && motionHeld) await StopAsync(); };
-        button.KeyDown += async (_, e) =>
-        {
-            if (e.KeyCode is Keys.Space or Keys.Enter)
+            if (!Controller.ControlsEnabled || !ValidNumber(out var selected)) return;
+            confirming = true; await Controller.SuspendAsync(); Input.Reset();
+            try
             {
-                e.SuppressKeyPress = true;
-                await StartMotionAsync(command);
+                bool accepted = new ConfirmationDialog(this, $"Kamerapreset {selected} für „{PresetName.Text.Trim()}“ überschreiben?").ShowDialog() == true;
+                Controller.Resume(); await Controller.SetActiveAsync(IsActive);
+                if (accepted) await RunPositionAsync(true);
             }
-        };
-        button.KeyUp += async (_, e) => { if (e.KeyCode is Keys.Space or Keys.Enter) { e.SuppressKeyPress = true; await StopAsync(); } };
-        button.Leave += async (_, _) => { if (motionHeld) await StopAsync(); };
-        movement.Controls.Add(button);
+            finally { confirming = false; Controller.Resume(); UpdateActions(); }
+        }, "storePreset");
+        motion = Input.CreatePanel();
+        var edit = Ui.Stack(Ui.Text("Buttonname (1–32 Zeichen)"), PresetName, Ui.Text("Kamerapreset-Nummer"), PresetNumber, Ui.Text("0–89 oder 100–254 · Nummern müssen je Benutzer eindeutig sein.", "MutedBrush"), SaveMapping, Recall, Store);
+        var grid = new Grid(); grid.ColumnDefinitions.Add(new()); grid.ColumnDefinitions.Add(new() { Width = new(188) });
+        edit.Margin = new(0, 0, 18, 0); grid.Children.Add(edit); Grid.SetColumn(motion, 1); grid.Children.Add(motion);
+        var content = Ui.Stack(Ui.Heading($"Preset {buttonNumber} bearbeiten"), grid);
+        if (session.IsDemo) content.Children.Add(new DemoCameraView(session.Demo) { Height = 180, Margin = new(0, 16, 0, 0) });
+        content.Children.Add(Status); content.Margin = new(18);
+        close = Ui.Button("Schließen", Close); close.IsCancel = true;
+        var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(12, 8, 12, 8) }; footer.Children.Add(close);
+        var layout = new DockPanel(); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer); layout.Children.Add(Ui.Scroll(content)); Content = layout;
+        Controller.Changed += () => { if (Controller.Error.Length > 0) { Status.Text = Controller.Error; Status.SetResourceReference(TextBlock.ForegroundProperty, "ErrorBrush"); } UpdateActions(); };
+        PresetName.TextChanged += (_, _) => UpdateActions(); PresetNumber.TextChanged += (_, _) => UpdateActions();
+        Activated += async (_, _) => { if (!closing) await Controller.SetActiveAsync(true); };
+        Deactivated += async (_, _) => { Input.Reset(); if (!closing) await Controller.SetActiveAsync(false); };
+        Closing += ClosingAsync; Closed += (_, _) => Controller.Dispose(); UpdateActions();
     }
-
-    private async Task StartMotionAsync(Func<CancellationToken, Task> command)
+    private bool ValidNumber(out int value)
     {
-        if (busy || closing || motionHeld || !active || stopping != null || resourcesDisposed || Disposing || IsDisposed) return;
-        motionHeld = true;
-        stopRequired = true;
-        var token = motionCancellation.Token;
-        await CameraCommandRunner.RunAsync(() => command(token), ReportError, token);
+        if (!int.TryParse(PresetNumber.Text, NumberStyles.None, CultureInfo.InvariantCulture, out value) || !PresetSettings.IsValidNumber(value)) return false;
+        int selected = value;
+        return !session.Numbers.Any(p => p.Key != buttonNumber && p.Value == selected);
     }
-
-    private void ReportError(string error)
-    {
-        if (IsDisposed) return;
-        status.ForeColor = Color.DarkRed;
-        status.Text = error;
-    }
-
     private void UpdateActions()
     {
-        bool enabled = !busy && !closing && stopping == null;
-        movement.Enabled = rename.Enabled = name.Enabled = number.Enabled = enabled;
-        recall.Enabled = enabled && (int)number.Value == savedNumber;
-        store.Enabled = enabled && PresetSettings.IsValidName(name.Text) &&
-            PresetSettings.IsValidNumber((int)number.Value) && numberInUse?.Invoke((int)number.Value) != true;
+        bool enabled = Controller.ControlsEnabled && !closing && !confirming;
+        PresetName.IsEnabled = PresetNumber.IsEnabled = motion.IsEnabled = enabled;
+        SaveMapping.IsEnabled = enabled && PresetSettings.IsValidName(PresetName.Text) && ValidNumber(out _);
+        Recall.IsEnabled = enabled && ValidNumber(out int n) && n == savedNumber;
+        Store.IsEnabled = SaveMapping.IsEnabled;
     }
-
-    private async Task<bool> StopAsync()
+    internal bool SaveName()
     {
-        if (finalClose || IsDisposed || Disposing || resourcesDisposed) return false;
-        motionHeld = false;
-        if (stopping != null) return await stopping;
-        var previous = motionCancellation;
-        previous.Cancel();
-        motionCancellation = new();
-        // Starts cancelled before this stop cannot be queued behind it.
-        stopping = CameraCommandRunner.RunAsync(() => service.StopAll(), ReportError);
-        UpdateActions();
+        if (!PresetSettings.IsValidName(PresetName.Text) || !ValidNumber(out int number)) { Status.Text = "Gültigen Namen und eine freie Nummer von 0–89 oder 100–254 eingeben."; Status.SetResourceReference(TextBlock.ForegroundProperty, "ErrorBrush"); return false; }
         try
         {
-            bool stopped = await stopping;
-            stopRequired = !stopped;
-            return stopped;
+            session.SaveMapping(buttonNumber, PresetName.Text, number); savedNumber = number;
+            Status.Text = "Zuordnung gespeichert; Kameraposition unverändert."; Status.SetResourceReference(TextBlock.ForegroundProperty, "SuccessBrush"); UpdateActions(); return true;
         }
-        finally { stopping = null; previous.Dispose(); if (!IsDisposed) UpdateActions(); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { Status.Text = "Zuordnung konnte nicht gespeichert werden: " + e.Message; Status.SetResourceReference(TextBlock.ForegroundProperty, "ErrorBrush"); return false; }
     }
-
-    private async Task RunPositionAsync(bool save)
+    internal async Task RunPositionAsync(bool save)
     {
-        if (busy || closing || !active || resourcesDisposed) return;
-        if (!save && (int)number.Value != savedNumber) return;
-        if (save && ((int)number.Value != savedNumber || name.Text.Trim() != savedName) && !SaveName()) return;
-        using var cancellation = new CancellationTokenSource();
-        positionCancellation = cancellation;
-        busy = true;
-        UpdateActions();
-        try
-        {
-            if (!await StopAsync() || cancellation.IsCancellationRequested || closing || !active) return;
-            var token = cancellation.Token;
-            if (!save) stopRequired = true;
-            bool success = await CameraCommandRunner.RunAsync(() => save
-                ? service.SavePreset(savedNumber, token) : service.MoveToPreset(savedNumber, token), ReportError, token);
-            if (success && !closing && !token.IsCancellationRequested)
-            {
-                status.ForeColor = Color.DarkGreen;
-                status.Text = save ? "Speicherbefehl gesendet. Mit „Position anfahren“ prüfen."
-                    : "Positionsbefehl gesendet.";
-            }
-        }
-        finally { positionCancellation = null; busy = false; if (!IsDisposed) UpdateActions(); }
+        if (!Controller.ControlsEnabled || closing) return;
+        if (!save && (!ValidNumber(out int n) || n != savedNumber)) return;
+        if (save && !SaveName()) return;
+        if (await (save ? Controller.SaveAsync(savedNumber) : Controller.RecallAsync(savedNumber)))
+        { Status.Text = save ? "Speicherbefehl gesendet. Mit „Position anfahren“ prüfen." : "Positionsbefehl gesendet."; Status.SetResourceReference(TextBlock.ForegroundProperty, "SuccessBrush"); }
     }
-
-    private bool SaveName()
+    private async void ClosingAsync(object? sender, CancelEventArgs e)
     {
-        if (!PresetSettings.IsValidName(name.Text)) { ReportError("Bitte einen Namen mit 1 bis 32 Zeichen eingeben."); return false; }
-        int selectedNumber = (int)number.Value;
-        if (!PresetSettings.IsValidNumber(selectedNumber)) { ReportError("Nummer 0–89 oder 100–254 wählen."); return false; }
-        if (numberInUse?.Invoke(selectedNumber) == true) { ReportError("Diese Nummer ist bereits einem anderen Button zugeordnet."); return false; }
-        try
-        {
-            if (saveConfiguration != null) saveConfiguration(name.Text.Trim(), selectedNumber);
-            else saveName(name.Text.Trim());
-            savedNumber = selectedNumber;
-            savedName = name.Text.Trim();
-            status.ForeColor = Color.DarkGreen;
-            status.Text = "Zuordnung gespeichert; Kameraposition unverändert.";
-            UpdateActions();
-            return true;
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { ReportError("Zuordnung konnte nicht gespeichert werden: " + e.Message); return false; }
-    }
-
-    protected override async void OnDeactivate(EventArgs e)
-    {
-        base.OnDeactivate(e);
-        active = false;
-        if (closing) return;
-        positionCancellation?.Cancel();
-        await StopAsync();
-    }
-
-    protected override void OnActivated(EventArgs e) { base.OnActivated(e); active = true; }
-
-    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-    {
-        if (!name.ContainsFocus)
-        {
-            Direction? direction = keyData switch
-            {
-                Keys.Left => Direction.Left, Keys.Right => Direction.Right,
-                Keys.Up => Direction.Up, Keys.Down => Direction.Down, _ => null
-            };
-            if (direction is { } value)
-            {
-                _ = StartMotionAsync(token => service.MoveInDirection(value, token));
-                return true;
-            }
-        }
-        return base.ProcessCmdKey(ref msg, keyData);
-    }
-
-    protected override async void OnKeyDown(KeyEventArgs e)
-    {
-        base.OnKeyDown(e);
-        if (!name.ContainsFocus && e.Modifiers == Keys.None && e.KeyCode is Keys.Add or Keys.Subtract)
-        {
-            e.SuppressKeyPress = true;
-            await StartMotionAsync(token => service.Zoom(e.KeyCode == Keys.Add ? Zoom.ZoomIn : Zoom.ZoomOut, token));
-        }
-    }
-
-    protected override async void OnKeyUp(KeyEventArgs e)
-    {
-        base.OnKeyUp(e);
-        if (motionHeld && e.KeyCode is Keys.Left or Keys.Right or Keys.Up or Keys.Down or Keys.Add or Keys.Subtract)
-        {
-            e.SuppressKeyPress = true;
-            await StopAsync();
-        }
-    }
-
-    protected override async void OnFormClosing(FormClosingEventArgs e)
-    {
-        base.OnFormClosing(e);
         if (finalClose) return;
         e.Cancel = true;
         if (closing) return;
-        closing = true;
-        close.Enabled = false;
-        close.Text = "Wird geschlossen …";
-        ControlBox = false;
-        status.ForeColor = SystemColors.ControlText;
-        status.Text = "Kamera wird gestoppt …";
-        positionCancellation?.Cancel();
-        UpdateActions();
-        if ((stopRequired || stopping != null) && !await StopAsync())
-            CloseStopFailed?.Invoke(status.Text);
-        finalClose = true;
-        // Demo stops may complete synchronously. Let the initial, cancelled
-        // FormClosing event unwind before requesting the final modal close.
-        if (!IsDisposed && IsHandleCreated)
-            BeginInvoke(new Action(() => { if (!IsDisposed) Close(); }));
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing && !resourcesDisposed)
-        {
-            resourcesDisposed = true;
-            positionCancellation?.Cancel(); motionCancellation.Cancel(); motionCancellation.Dispose();
-        }
-        base.Dispose(disposing);
+        closing = true; close.IsEnabled = false; Input.Reset(); UpdateActions();
+        if (!await Controller.CloseAsync()) CloseStopFailed?.Invoke(Controller.Error);
+        finalClose = true; _ = Dispatcher.BeginInvoke(Close);
     }
 }

@@ -3,6 +3,21 @@
 Windows app for PTZ cameras that support the HTTP-CGI command interface
 `/cgi-bin/ptzctrl.cgi?ptzcmd&…`, regardless of manufacturer or model.
 
+The WPF interface uses a compact two-column preset panel and a tightly grouped
+direction/zoom panel. The default camera window is 636 × 468 WPF logical units
+including the Windows frame. All settings, the preset editor, first-run setup
+and overwrite confirmation share the same styles and follow the Windows light,
+dark and high-contrast appearance. Windows scaling can increase the physical
+window size. Restricted work areas and enlarged text allow scrolling rather
+than shrinking camera controls.
+
+`CameraController` owns cancellation, independent movement/zoom inputs and
+stop-before-preset/close sequencing. `CameraInput` connects WPF mouse capture
+and keyboard events to it. `CamControlService` retains the HTTP protocol and
+serialization. `CameraSession` preserves the existing settings formats and
+keeps demo configuration separate. A highlighted preset means **last requested**,
+not confirmed arrival at a physical position.
+
 ## Camera compatibility
 
 Compatibility depends on the camera's supported commands, rather than a brand
@@ -44,8 +59,9 @@ dotnet run --project Tests/SettingsCheck/SettingsCheck.csproj -c Release
 dotnet run --project Tests/CameraUiCheck/CameraUiCheck.csproj -c Release
 ```
 
-The checks use fake HTTP handlers; they do not contact a real camera or show
-a window. See [the settings and service tests](Tests/SettingsCheck/README.md)
+The checks use fake HTTP handlers and do not contact a real camera. WPF checks
+create offscreen windows and briefly open local modal dialogs. They render
+previews into `artifacts/ui-preview`. See [the settings and service tests](Tests/SettingsCheck/README.md)
 and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
 GitHub Actions builds Debug and Release on Windows with .NET 10 and runs both
@@ -96,7 +112,7 @@ Settings > **Buttons & Presets** lists all seven position buttons. **Bearbeiten 
 opens a separate editor with held direction/zoom controls, preset recall, and
 confirmed position saving using `ptzcmd&posset&N`. Names are saved independently
 in `%LOCALAPPDATA%/CamControl/buttons.json`; renaming sends no preset-save command.
-Preset numbers 1–6 and 9 remain fixed; all seven positions are editable.
+Keyboard shortcuts 1–6 and 9 remain fixed; all seven camera preset numbers and positions are editable.
 The camera stores physical positions. Demo names and saved positions stay in
 memory for the session and do not change the real configuration. Closing an
 editor discards an unsaved name, but does not undo camera motion or saved presets.
@@ -114,7 +130,7 @@ an unconfirmed stop is shown as an error while the app is open.
 Framework-dependent builds require the .NET 10 Desktop Runtime on the target
 Windows PC. MSIX packages include the .NET runtime.
 
-Automatic startup and exit presets are configured in **Buttons & Presets >
+Automatic startup and exit presets are configured in **Einstellungen >
 Automatische Positionen** and applied with **Automatik speichern**. Save becomes
 enabled only when a selection differs from its saved value. Each selection
 allows None or one of the seven buttons. Without saved choices, startup and exit

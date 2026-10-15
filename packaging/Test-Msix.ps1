@@ -15,7 +15,7 @@ function Read-Entry([string]$Name) {
 try {
     $files = @($archive.Entries | ForEach-Object FullName)
     foreach ($required in @('CamControl.exe', 'CamControl.dll', 'coreclr.dll', 'hostfxr.dll', 'hostpolicy.dll',
-        'System.Windows.Forms.dll', 'AppxManifest.xml', 'AppxBlockMap.xml',
+        'PresentationFramework.dll', 'PresentationCore.dll', 'WindowsBase.dll', 'AppxManifest.xml', 'AppxBlockMap.xml',
         'Assets/StoreLogo.png', 'Assets/Square44x44Logo.png', 'Assets/Square150x150Logo.png')) {
         Assert-Package ($files -contains $required) "Package is missing $required."
     }

@@ -30,7 +30,7 @@ demo selection is not saved across restarts. The window clearly labels demo mode
    Move elsewhere and use **Position anfahren** to verify recall.
    Close settings: the renamed main button recalls the new position too.
    Restart demo to restore defaults; real camera configuration is unchanged.
-8. Scroll down in **Buttons & Presets** to **Automatische Positionen**.
+8. Open **Einstellungen > Automatische Positionen**.
    Choose startup/exit positions (or **Keine Position**); save enables on change.
    Switch out of demo and back to verify the startup choice in the same session.
    Close demo: it stops all channels, calls the selected exit preset if any,
@@ -42,7 +42,7 @@ control; physical hardware is required to verify the real commands.
 
 ## Current limitations
 
-- Preset numbers 1–6 and 9 remain fixed. All seven names and positions are editable;
+- Keyboard shortcuts 1–6 and 9 remain fixed. All seven names, camera preset numbers and positions are editable;
   saving to a physical camera uses `posset` and still requires hardware validation.
 - Default button names are **Preset 1–6** and **Preset 9**. The app never creates
   camera presets automatically; demo positions are simulated only in memory.
