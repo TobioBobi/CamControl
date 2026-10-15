@@ -85,7 +85,8 @@ in den Prüferhinweisen erklären.
 
 Installation, Update mit Datenerhaltung und Deinstallation wurden lokal
 geprüft; Einzelheiten und Grenzen stehen im
-[Installationstest](msix-installation-test.md). Das endgültige Store-Paket mit
+[Installationstest](msix-installation-test.md) und im
+[Update-Test 1.1.0 auf 1.2.0](msix-upgrade-1.2.0-test.md). Das endgültige Store-Paket mit
 seiner eigenen Identität muss erneut getestet werden.
 
 Vor Einreichung offen: Windows App Certification Kit, Hardwaretests, bestätigte

@@ -34,12 +34,17 @@ keine echte Kamera. Sie prüfen Konfiguration/Protokoll und WPF-Bedienung samt
 Stopplogik, Farbschema, Ausrichtung und mehrzeiligen Fehlermeldungen.
 Debug-/Release-Build und Paketvalidierung gehören zur Vorbereitung.
 
-Vor Store-Einreichung manuell prüfen:
+Der lokale Windows-MSIX-Update-Test von 1.1.0 auf 1.2.0 wurde mit separater
+Testidentität und identischen Programmdateien erfolgreich durchgeführt,
+einschließlich Datenerhaltung und installierter WPF-Demo. Siehe
+[Update-Prüfbericht](msix-upgrade-1.2.0-test.md).
 
-- Update einer installierten älteren Version mit Erhalt der Einstellungen.
+Vor Store-Einreichung weiterhin manuell prüfen:
+
 - Bedienung und Stopps mit echter Kamera.
 - Windows-Skalierung und Wechsel zwischen Monitoren mit verschiedenen DPI.
 - Windows App Certification Kit und aktuelle Store-Screenshots.
 
-Der dokumentierte frühere Installationstest gilt für die WinForms-Version.
-Dieses Update wird durch das Erstellen der Pakete noch nicht veröffentlicht.
+Der frühere Installationstest gilt für die WinForms-Version; der neue
+Update-Prüfbericht deckt den Wechsel zu WPF ab. Dieses Update wird durch das
+Erstellen und lokale Testen der Pakete noch nicht veröffentlicht.

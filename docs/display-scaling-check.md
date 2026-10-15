@@ -26,4 +26,5 @@ Vor Freigabe manuell prüfen: 100 %, 150 % und 200 % Windows-Skalierung, kleine
 Arbeitsflächen, Wechsel zwischen Monitoren mit unterschiedlichen DPI,
 High-Contrast-Darstellung, Tastaturfokus und Mausbedienung. Der historische
 MSIX-Installationstest der WinForms-Version bestätigt die neue WPF-Version
-nicht; deren Installation muss erneut geprüft werden.
+nicht; der separate [Update-Test 1.1.0 auf 1.2.0](msix-upgrade-1.2.0-test.md)
+bestätigt inzwischen Installation, Datenerhaltung und Demo-Betrieb.
