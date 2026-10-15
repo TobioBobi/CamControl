@@ -5,12 +5,8 @@ MSIX-Version: **1.2.0.0**. Die Projektversion ist die Quelle für Paket-Builds.
 
 ## Text für „Neu in dieser Version“
 
-CamControl hat eine neue, kompakte Oberfläche: große Preset-Tasten und eine
-übersichtliche Steuerung für Bewegung und Zoom. Alle Einstellungen passen zum
-neuen Design. Der Dark Mode ist jetzt Standard; alternativ lassen sich ein
-helles Farbschema oder die Windows-Einstellung dauerhaft auswählen.
-Vorhandene Kameraeinstellungen, Preset-Zuordnungen und Tastenkürzel bleiben
-erhalten.
+Neuer Look, Dark Mode und mehr Platz auf deinem Desktop. Große Buttons,
+kurze Wege – volle Kontrolle beim nächsten Livestream.
 
 ## Pakete erstellen
 
