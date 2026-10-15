@@ -15,4 +15,4 @@
   im bisherigen Format weiterverwendet. Kamera-Protokoll und Tastenkürzel
   bleiben erhalten.
 
-Hinweise zur Vorbereitung und Abnahme: [Release 1.2.0](docs/releases/1.2.0.md).
+Hinweise zur Vorbereitung und Abnahme: [Release 1.2.0](docs/release-1.2.0.md).
