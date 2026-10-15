@@ -124,6 +124,16 @@ internal static class Program
         Check(Descendants(window).OfType<Button>().Count(b => b.Name.StartsWith("preset")) == 7, "Seven preset buttons missing");
         Check(Descendants(window).OfType<Button>().Count(b => b.Name.StartsWith("move")) == 4 && Descendants(window).OfType<Button>().Count(b => b.Name.StartsWith("Zoom")) == 2, "Direction or zoom controls missing");
         Check(window.SettingsButton.IsEnabled && window.ManualControls.ActualWidth >= 150, "Settings inaccessible or motion targets undersized");
+        void CheckControlAlignment()
+        {
+            var lastPreset = Descendants(window).OfType<Button>().Single(b => b.Name == "preset9");
+            double presetBottom = lastPreset.TranslatePoint(new Point(0, lastPreset.ActualHeight), window).Y;
+            double panelBottom = window.ManualPanel.TranslatePoint(new Point(0, window.ManualPanel.ActualHeight), window).Y;
+            Check(Math.Abs(presetBottom - panelBottom) <= 1, "Preset 9 and manual panel do not share a bottom edge");
+            var bounds = window.SettingsButton.TransformToAncestor(window.Header).TransformBounds(VisualTreeHelper.GetDescendantBounds(window.SettingsButton));
+            Check(bounds.Top >= 2 && bounds.Bottom <= window.Header.ActualHeight - 2, "Settings button drawing is clipped by header");
+        }
+        CheckControlAlignment();
         await session.Controller.SetActiveAsync(true);
         await window.Input.PressKeyAsync(Key.Right); Check(session.Demo.State.Moving, "WPF input did not start direction");
         await window.Input.PressKeyAsync(Key.Right); await window.Input.ReleaseKeyAsync(Key.Right); Check(!session.Demo.State.Moving, "WPF key release did not stop");
@@ -199,6 +209,7 @@ internal static class Program
         Theme.Apply(true); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-dark-error.png"));
         await session.Controller.SetActiveAsync(true); await session.Controller.RecallAsync(3);
         window.FontSize = 21; window.Width = 580; await Layout();
+        CheckControlAlignment();
         Check(scroll.ExtentHeight > 0 && window.SettingsButton.IsVisible && window.Status.IsVisible, "Large text hid settings/status");
         Screenshot(window, System.IO.Path.Combine(output, "main-large-text.png"));
         Check(Descendants(window.ManualControls).OfType<Button>().Where(b => b.Name.StartsWith("Zoom")).All(b => b.ActualHeight >= 58), "Large text shrank zoom controls");
