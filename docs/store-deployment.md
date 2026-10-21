@@ -12,7 +12,10 @@ Nach einem Merge beziehungsweise jedem Push auf `master` führt der Workflow
    einreichen. `targetPublishMode = Immediate` sorgt nach erfolgreicher
    Microsoft-Prüfung für die automatische Veröffentlichung.
 
-Pull Requests und `workflow_dispatch` führen ausschließlich den Build-Job aus.
+Änderungen werden zuerst auf `develop` gesammelt und als Release-PR nach
+`master` gebracht. Der [Branch-Ablauf](branch-workflow.md) beschreibt den Prozess.
+Pushes auf `develop`, Pull Requests nach `develop` oder `master` und
+`workflow_dispatch` führen ausschließlich den Build-Job aus.
 Der Store-Job und das Upload-Script verlangen ausdrücklich `push` auf
 `refs/heads/master`. Das Script benötigt nur Python 3.13 und dessen
 Standardbibliothek. Der Store-Job hat eine eigene Concurrency-Gruppe und bricht

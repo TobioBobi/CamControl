@@ -89,6 +89,7 @@ class SubmissionChecks(unittest.TestCase):
     def test_only_master_push_can_deploy(self):
         store.require_master_push({"GITHUB_EVENT_NAME": "push", "GITHUB_REF": "refs/heads/master"})
         for event, ref in [("pull_request", "refs/pull/1/merge"), ("pull_request_target", "refs/heads/master"),
+                           ("push", "refs/heads/develop"), ("pull_request", "refs/heads/develop"),
                            ("workflow_dispatch", "refs/heads/master"), ("push", "refs/heads/feature"),
                            ("push", "refs/tags/master"), (None, None)]:
             with self.subTest(event=event, ref=ref), self.assertRaises(store.DeploymentError):
