@@ -84,8 +84,11 @@ previews into `artifacts/ui-preview`. See [the settings and service tests](Tests
 and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
 Changes follow `feature/*` or `fix/*` → `develop` → `master`. Start work from
-`develop` and target feature/fix pull requests at `develop`. Merge a tested batch
-into `master` for a release. See [the branch and release workflow](docs/branch-workflow.md).
+`develop` and target feature/fix pull requests at `develop`. Prepare the shared
+release version, manifest, changelog and release notes in those branches. Features
+in the same release use the same target version. CI checks release preparation
+before merging; merging the tested batch into `master` is the only publication
+step. See [the branch and release workflow](docs/branch-workflow.md).
 
 GitHub Actions builds Debug and Release on Windows with .NET 10 and runs both
 check programs on each push or pull request to `develop` or `master`. The workflow can also
