@@ -20,6 +20,8 @@ WPF integration checks construct the actual windows, exercise keyboard routing,
 mouse capture loss and editor deactivation, verify the seven presets and six
 manual controls, and check compact layout with a 32-character name and enlarged
 text, including a two-line camera error without unnecessary scrollbars.
+They also verify that repeated theme application keeps shared brushes, and that
+motion, preset clicks and renaming reuse the existing preset content.
 Settings checks cover all seven sections, persistent appearance selection, address validation/save/cancel and
 write failure, read-only help/privacy, demo entry, duplicate/reserved preset
 numbers, explicit mapping/automation saves, custom demo save/recall, and mapped

@@ -19,7 +19,7 @@ Im Repository-Verzeichnis:
 ./packaging/Build-Msix.ps1
 ```
 
-Ergebnis: `artifacts/msix/test/x64/CamControl-1.2.0.0-x64-test.msix`.
+Ergebnis: `artifacts/msix/test/x64/CamControl-1.2.1.0-x64-test.msix`.
 Die Version wird aus `CamControl.csproj` gelesen. Die vierte MSIX-Versionsstelle
 ist 0. Der Anzeigename ist **CamControl (Test)**, die Paketidentität
 **CamControl.LocalTest**. Dieses Paket ist kein Store-Paket.
@@ -47,7 +47,7 @@ Import-Certificate -FilePath ./artifacts/msix/test/CamControl-Test.cer -CertStor
 Anschließend als normaler Benutzer:
 
 ```powershell
-Add-AppxPackage -Path ./artifacts/msix/test/x64/CamControl-1.2.0.0-x64-test.msix
+Add-AppxPackage -Path ./artifacts/msix/test/x64/CamControl-1.2.1.0-x64-test.msix
 ```
 
 Im Startmenü **CamControl (Test)** öffnen und **Ohne Kamera ausprobieren** wählen.

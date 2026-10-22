@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.2.1 – 21. Oktober 2026
+
+- Unnötiges Neuzeichnen bei der Kamerabedienung reduziert: Preset-Beschriftungen
+  werden weiterverwendet; unveränderte Farben und Titelleisten werden nicht
+  erneut aktualisiert.
+
 ## 1.2.0 – 15. Oktober 2026
 
 - Neue, kompakte WPF-Oberfläche mit großen Preset-Tasten und gruppierter
