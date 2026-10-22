@@ -1,10 +1,14 @@
 # Änderungen
 
-## 1.2.1 – 21. Oktober 2026
+## 1.2.1 – 22. Oktober 2026
 
 - Unnötiges Neuzeichnen bei der Kamerabedienung reduziert: Preset-Beschriftungen
   werden weiterverwendet; unveränderte Farben und Titelleisten werden nicht
   erneut aktualisiert.
+- Automatische Microsoft-Store-Einreichung nach erfolgreichen Builds und Tests
+  für Releases auf `master`; Änderungen werden zuvor auf `develop` gesammelt.
+
+Hinweise zur Vorbereitung und Abnahme: [Release 1.2.1](docs/release-1.2.1.md).
 
 ## 1.2.0 – 15. Oktober 2026
 

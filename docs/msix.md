@@ -97,9 +97,13 @@ Untergrenze; eine unterstützte Windows-Version bleibt erforderlich.
 ## GitHub Actions
 
 Der vorhandene Workflow erzeugt nach Build und Tests ein **unsigniertes x64-
-Testpaket** und stellt es als Artifact bereit. Es werden weder Zertifikate
-noch Schlüssel hochgeladen. Das Paket wird nicht automatisch veröffentlicht.
-Store- und Test-Builds sind getrennt.
+Testpaket** und stellt es als Artifact bereit. Nach einem Push auf `master`
+erstellt ein nachgelagerter Job außerdem das Store-Paket und reicht es über die
+Microsoft Store Submission API zur automatischen Veröffentlichung nach
+Zertifizierung ein. Pull Requests und manuelle Workflow-Läufe veröffentlichen
+nichts. Einrichtung und benötigte GitHub-Variablen/Secrets stehen unter
+[Automatisches Store-Deployment](store-deployment.md).
+Store- und Test-Builds verwenden getrennte Paketidentitäten.
 
 ## Microsoft-Dokumentation
 
