@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.2.2 – 22. Oktober 2026
+
+- Deutsche Store-Versionshinweise werden aus der passenden Release-Datei
+  geprüft und automatisch mit dem Paket eingereicht.
+
+Hinweise zur Vorbereitung und Abnahme: [Release 1.2.2](docs/release-1.2.2.md).
+
 ## 1.2.1 – 22. Oktober 2026
 
 - Unnötiges Neuzeichnen bei der Kamerabedienung reduziert: Preset-Beschriftungen

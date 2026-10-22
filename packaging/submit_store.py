@@ -21,6 +21,9 @@ from zipfile import BadZipFile, ZIP_STORED, ZipFile
 
 
 API = "https://manage.devcenter.microsoft.com"
+ROOT = Path(__file__).resolve().parents[1]
+RELEASE_NOTES_HEADING = '## Text für „Neu in dieser Version“'
+MAX_RELEASE_NOTES_LENGTH = 1500
 ACCEPTED = {"PreProcessing", "Certification", "PendingPublication", "Publishing", "Published", "Release"}
 FAILED = {"Canceled", "CommitFailed", "PreProcessingFailed", "CertificationFailed", "PublishFailed", "ReleaseFailed"}
 
@@ -68,6 +71,50 @@ def version(value):
     if parts[0] == 0 or any(part > 65535 for part in parts) or parts[3] != 0:
         raise DeploymentError("Invalid Store package version; the fourth component must be 0.")
     return parts
+
+
+def project_package_version(root=ROOT):
+    app_version = ET.parse(root / "CamControl/CamControl.csproj").findtext(".//Version")
+    if not app_version or not re.fullmatch(r"\d+\.\d+\.\d+", app_version):
+        raise DeploymentError("CamControl.csproj Version must have three numeric components.")
+    package_version = app_version + ".0"
+    version(package_version)
+    return package_version
+
+
+def load_release_notes(package_version, root=ROOT):
+    parts = version(package_version)
+    app_version = ".".join(map(str, parts[:3]))
+    path = root / "docs" / f"release-{app_version}.md"
+    try:
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError):
+        raise DeploymentError(f"Cannot read UTF-8 release notes: docs/{path.name}.") from None
+    if not lines or lines[0].strip() != f"# CamControl {app_version}":
+        raise DeploymentError(f"docs/{path.name} must start with '# CamControl {app_version}'.")
+    headings = [index for index, line in enumerate(lines) if line.strip() == RELEASE_NOTES_HEADING]
+    if len(headings) != 1:
+        raise DeploymentError(f"docs/{path.name} must contain exactly one '{RELEASE_NOTES_HEADING}' section.")
+    start = headings[0] + 1
+    end = next((index for index in range(start, len(lines)) if re.match(r"^\s*#{1,6}\s", lines[index])), len(lines))
+    # Unwrap prose while retaining blank paragraphs and individual list items.
+    output, paragraph = [], []
+    for line in lines[start:end] + [""]:
+        line = line.strip()
+        if not line or re.match(r"^(?:[-*+]|\d+[.)])\s", line):
+            if paragraph:
+                output.append(" ".join(paragraph))
+                paragraph = []
+            if not line and output and output[-1]:
+                output.append("")
+        if line:
+            paragraph.append(line)
+    notes = "\n".join(output).strip()
+    if not notes:
+        raise DeploymentError(f"Store release notes in docs/{path.name} must not be empty.")
+    if len(notes.encode("utf-16-le")) // 2 > MAX_RELEASE_NOTES_LENGTH:
+        raise DeploymentError(f"Store release notes in docs/{path.name} exceed {MAX_RELEASE_NOTES_LENGTH} UTF-16 characters.")
+    return notes
 
 
 def package_identity(package, expected):
@@ -129,8 +176,13 @@ class StoreClient:
         }, timeout=600)
 
 
-def replacement(submission, package, new_version):
+def replacement(submission, package, new_version, notes):
     body = copy.deepcopy(submission)
+    listings = body.get("listings")
+    german = [listing for locale, listing in listings.items() if locale.lower() == "de-de"] if isinstance(listings, dict) else []
+    if len(german) != 1 or not isinstance(german[0], dict) or not isinstance(german[0].get("baseListing"), dict):
+        raise DeploymentError("An existing de-de base listing is required for German Store release notes.")
+    german[0]["baseListing"]["releaseNotes"] = notes
     for old in body["applicationPackages"]:
         architecture = old.get("architecture", "").lower()
         if architecture not in {"x64", "x86", "arm", "arm64", "neutral"}:
@@ -149,8 +201,11 @@ def replacement(submission, package, new_version):
     return body
 
 
-def deploy(config, package, client, sleep=time.sleep, polls=60):
+def deploy(config, package, client=None, sleep=time.sleep, polls=60, release_root=ROOT):
     metadata = package_identity(package, config["identity"])
+    notes = load_release_notes(metadata["Version"], release_root)
+    if client is None:
+        client = StoreClient(config)
     app_path = "applications/" + config["STORE_APP_ID"]
     app = client.api("GET", app_path)
     if app.get("packageIdentityName") != metadata["Name"] or app.get("publisherName") != metadata["Publisher"]:
@@ -162,13 +217,13 @@ def deploy(config, package, client, sleep=time.sleep, polls=60):
         raise DeploymentError("Complete the first submission (including age ratings) in Partner Center before enabling API deployment.")
     # Validate versions and package metadata before creating a draft.
     previous = client.api("GET", app_path + "/submissions/" + published["id"])
-    replacement(previous, package, metadata["Version"])
+    replacement(previous, package, metadata["Version"], notes)
     submission = client.api("POST", app_path + "/submissions")
     submission_id = submission["id"]
     path = app_path + "/submissions/" + submission_id
     print(f"Created Store submission {submission_id} for version {metadata['Version']}.", flush=True)
     try:
-        body = replacement(submission, package, metadata["Version"])
+        body = replacement(submission, package, metadata["Version"], notes)
         client.api("PUT", path, body)
         with tempfile.TemporaryDirectory(prefix="camcontrol-store-") as directory:
             archive = Path(directory) / "submission.zip"
@@ -196,10 +251,16 @@ def deploy(config, package, client, sleep=time.sleep, polls=60):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--check-release-notes", action="store_true", help="Validate the current German release notes without credentials or network access.")
     mode.add_argument("--prepare-identity", type=Path)
     mode.add_argument("--package-dir", type=Path)
     args = parser.parse_args()
     try:
+        if args.check_release_notes:
+            package_version = project_package_version()
+            load_release_notes(package_version)
+            print(f"German Store release notes validated for package version {package_version}.")
+            return 0
         require_master_push(os.environ)
         config = configuration(os.environ)
         if args.prepare_identity:
@@ -210,8 +271,7 @@ def main():
         packages = sorted(args.package_dir.glob("*.msix"))
         if len(packages) != 1:
             raise DeploymentError("Expected exactly one freshly built Store MSIX.")
-        package_identity(packages[0], config["identity"])
-        result = deploy(config, packages[0], StoreClient(config))
+        result = deploy(config, packages[0])
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
                 summary.write(f"## Microsoft Store\n\nVersion {result['version']}, submission {result['id']}: {result['status']}.\n\n"

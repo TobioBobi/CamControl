@@ -74,6 +74,51 @@ Vor jedem Merge, der ein neues Store-Paket veröffentlichen soll,
 Manifestvorlage passend aktualisieren. Aus `1.2.1` entsteht beispielsweise
 `1.2.1.0`. Die vierte Stelle bleibt für den Store `0`.
 
+### Versionshinweise im Store
+
+Für jede App-Version eine Datei `docs/release-<App-Version>.md` pflegen,
+beispielsweise `docs/release-1.2.1.md` für das Paket `1.2.1.0`. Die Datei muss
+UTF-8-kodiert sein und mit der passenden Überschrift beginnen. Der folgende
+Abschnitt enthält ausschließlich den deutschen Text für „Neu in dieser Version“:
+
+```markdown
+# CamControl 1.2.1
+
+## Text für „Neu in dieser Version“
+
+Ruhigere Kamerabedienung und weniger unnötiges Neuzeichnen.
+
+## Pakete erstellen
+```
+
+Die Pipeline liest den Text bis zur nächsten Markdown-Überschrift oder bis zum
+Dateiende. Einfache Absätze und Aufzählungen als Klartext verwenden. Umgebrochene
+Zeilen innerhalb eines Absatzes oder Listeneintrags werden zusammengefügt;
+Leerzeilen und einzelne Listeneinträge bleiben erhalten. Der Text darf nach
+dieser Normalisierung höchstens 1500 UTF-16-Zeichen umfassen und wird bei
+Überschreitung nicht abgeschnitten.
+
+Schon der Build-Job prüft ohne Zugangsdaten, dass die Datei für die aktuelle
+Projektversion existiert, ihre erste Überschrift zur Version passt und genau
+ein nicht leerer Abschnitt für die Versionshinweise vorhanden ist:
+
+```powershell
+python packaging/submit_store.py --check-release-notes
+```
+
+Beim Deployment bestimmt die tatsächliche MSIX-Paketversion die Release-Datei.
+Der Text ersetzt `listings["de-de"].baseListing.releaseNotes` im bestehenden
+deutschen Store-Eintrag. Andere Sprachen und sonstige Listing-Felder bleiben
+erhalten. Fehlt ein deutscher Basis-Eintrag, bricht die Prüfung vor dem Anlegen
+einer neuen Einreichung ab. Neue Sprachen werden nicht automatisch angelegt.
+
+Versionshinweise werden zusammen mit dem Release-PR geprüft und anschließend
+mit dem Paket eingereicht; ein manuelles Nachtragen im Partner Center ist nicht
+erforderlich. API-Einreichungen während ihrer Bearbeitung nicht im Partner
+Center ändern.
+
+### Paketversion und Veröffentlichung
+
 Gleiche oder niedrigere bereits veröffentlichte x64-Versionen werden vor dem
 Erzeugen einer neuen Einreichung abgewiesen. Es gibt keine automatische
 Versionsänderung und keinen automatischen Versions-Commit auf `master`.
@@ -114,8 +159,9 @@ python -m unittest discover -s Tests/StoreSubmissionCheck -v
 ```
 
 Diese Tests verwenden erzeugte Test-MSIX-Dateien und nachgebildete API-Antworten.
-Sie prüfen Branch-/Event-Begrenzung, Identität, Versionsreihenfolge, Erhalt von
-Store-Daten, Upload vor Commit sowie Fehler und Timeouts ohne echte Zugangsdaten.
+Sie prüfen Branch-/Event-Begrenzung, Identität, Versionsreihenfolge, Auswahl und
+Validierung der Versionshinweise, Erhalt anderer Store-Daten, Upload vor Commit
+sowie Fehler und Timeouts ohne echte Zugangsdaten.
 Den ersten echten Store-Upload kann erst ein vollständig eingerichteter
 `master`-Push prüfen.
 

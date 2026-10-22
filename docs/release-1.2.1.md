@@ -36,5 +36,7 @@ Store-Einreichung. Die Veröffentlichung erfolgt automatisch nach erfolgreicher
 Microsoft-Zertifizierung. Ein grüner Deployment-Job bestätigt die Einreichung,
 noch nicht die Verfügbarkeit im Store. Siehe [Store-Deployment](store-deployment.md).
 
-Die Einreichung übernimmt bestehende Store-Einträge; der obige Text unter
-„Neu in dieser Version“ wird durch den Workflow nicht automatisch eingetragen.
+Die Einreichung überträgt den obigen Text unter „Neu in dieser Version“
+automatisch in die Versionshinweise des deutschen Store-Eintrags. Andere
+Listing-Felder und Sprachen werden aus der veröffentlichten Einreichung
+übernommen.
