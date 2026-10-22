@@ -24,7 +24,9 @@ feature/* oder fix/* → develop → master → Microsoft Store
 2. Einmal für die gesammelte Veröffentlichung die App-Version in
    `CamControl/CamControl.csproj` erhöhen und Changelog, MSIX-Manifestvorlage
    sowie aktuelle Paket-Anleitung passend aktualisieren. Die MSIX-Version
-   besteht aus der App-Version plus `.0`.
+   besteht aus der App-Version plus `.0`. In `docs/release-<App-Version>.md`
+   den Abschnitt `## Text für „Neu in dieser Version“` mit den deutschen
+   Versionshinweisen pflegen; die Pipeline prüft und überträgt ihn in den Store.
 3. Einen Release-PR **von `develop` nach `master`** öffnen und die CI abwarten.
 4. Den Release-PR nach `master` mergen. Bei eingerichteter Store-Automatisierung
    baut und testet dieser Push erneut, erstellt das Store-Paket und reicht es

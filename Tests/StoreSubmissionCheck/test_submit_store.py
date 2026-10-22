@@ -4,6 +4,7 @@ import copy
 from io import StringIO
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -25,12 +26,18 @@ ENV = {"STORE_TENANT_ID": "12345678-1234-1234-1234-123456789012",
        "STORE_IDENTITY_JSON": json.dumps(IDENTITY)}
 APP = {"packageIdentityName": IDENTITY["Name"], "publisherName": IDENTITY["Publisher"],
        "lastPublishedApplicationSubmission": {"id": "published"}, "pendingApplicationSubmission": None}
+NOTES = "Ruhigere Kamerabedienung: Beschriftungen und Farben werden weiterverwendet."
 PREVIOUS = {
     "applicationPackages": [
         {"fileName": "old.msix", "version": "1.2.0.0", "architecture": "X64", "fileStatus": "Uploaded"},
         {"fileName": "arm.msix", "version": "1.0.0.0", "architecture": "ARM64", "fileStatus": "Uploaded"},
     ],
-    "listings": {"de-de": {"baseListing": {"title": "CamControl", "images": [{"fileStatus": "Uploaded"}]}}},
+    "listings": {
+        "de-de": {"baseListing": {"title": "CamControl", "description": "Deutsche Beschreibung",
+                                  "releaseNotes": "Alte Hinweise", "images": [{"fileStatus": "Uploaded"}]},
+                  "platformOverrides": {"Windows81": {"description": "Plattformspezifisch"}}},
+        "en-us": {"baseListing": {"title": "CamControl", "releaseNotes": "Previous English notes"}},
+    },
     "pricing": {"priceId": "Free"}, "visibility": "Public", "targetPublishMode": "Manual",
 }
 
@@ -71,6 +78,8 @@ class SubmissionChecks(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.package = Path(self.temp.name) / "CamControl-1.2.1.0-x64-store.msix"
         self.write_package()
+        self.release_root = Path(self.temp.name)
+        self.write_release_notes()
         self.config = store.configuration(ENV)
 
     def write_package(self, name=IDENTITY["Name"], publisher=IDENTITY["Publisher"], architecture="x64", version="1.2.1.0"):
@@ -79,9 +88,17 @@ class SubmissionChecks(unittest.TestCase):
                              f'<Identity Name="{name}" Publisher="{publisher}" ProcessorArchitecture="{architecture}" Version="{version}" /></Package>')
             package.writestr("CamControl.exe", b"mock executable")
 
+    def write_release_notes(self, text=NOTES, app_version="1.2.1", title_version=None):
+        path = self.release_root / "docs" / f"release-{app_version}.md"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(f'# CamControl {title_version or app_version}\n\n'
+                        f'{store.RELEASE_NOTES_HEADING}\n\n{text}\n\n'
+                        '## Pakete erstellen\n\nNicht für den Store.\n', encoding="utf-8")
+        return path
+
     def deploy(self, client, **kwargs):
         with patch("sys.stdout", new_callable=StringIO), patch("sys.stderr", new_callable=StringIO):
-            return store.deploy(self.config, self.package, client, sleep=lambda _: None, **kwargs)
+            return store.deploy(self.config, self.package, client, sleep=lambda _: None, release_root=self.release_root, **kwargs)
 
     def assert_no_writes(self, client):
         self.assertTrue(all(method == "GET" for method, _ in client.calls))
@@ -116,7 +133,10 @@ class SubmissionChecks(unittest.TestCase):
         client = FakeClient()
         result = self.deploy(client)
         self.assertEqual(result, {"id": "new-submission", "version": "1.2.1.0", "status": "PreProcessing"})
-        self.assertEqual(client.body["listings"], PREVIOUS["listings"])
+        expected_listings = copy.deepcopy(PREVIOUS["listings"])
+        expected_listings["de-de"]["baseListing"]["releaseNotes"] = NOTES
+        self.assertEqual(client.body["listings"], expected_listings)
+        self.assertEqual(client.previous, PREVIOUS)
         self.assertEqual(client.body["pricing"], PREVIOUS["pricing"])
         self.assertEqual(client.body["applicationPackages"][1], PREVIOUS["applicationPackages"][1])
         self.assertEqual(client.body["applicationPackages"][0]["fileStatus"], "PendingDelete")
@@ -172,8 +192,104 @@ class SubmissionChecks(unittest.TestCase):
     def test_numeric_versions_are_not_compared_as_text(self):
         client = FakeClient()
         self.write_package(version="1.2.10.0")
+        self.write_release_notes(app_version="1.2.10")
         client.previous["applicationPackages"][0]["version"] = "1.2.9.0"
         self.assertEqual(self.deploy(client)["version"], "1.2.10.0")
+
+    def test_release_notes_are_plain_text_with_paragraphs_and_lists(self):
+        self.write_release_notes("Erste Zeile\nmit Umlauten: äöü.\n\n- Erster Punkt\n  mit Fortsetzung.\n- Zweiter Punkt")
+        self.assertEqual(store.load_release_notes("1.2.1.0", self.release_root),
+                         "Erste Zeile mit Umlauten: äöü.\n\n- Erster Punkt mit Fortsetzung.\n- Zweiter Punkt")
+
+    def test_release_notes_accept_windows_newlines_and_utf8_bom(self):
+        path = self.write_release_notes()
+        content = path.read_text(encoding="utf-8").replace("\n", "\r\n")
+        path.write_bytes(content.encode("utf-8-sig"))
+        self.assertEqual(store.load_release_notes("1.2.1.0", self.release_root), NOTES)
+
+    def test_release_notes_end_before_an_indented_markdown_heading(self):
+        path = self.write_release_notes()
+        content = path.read_text(encoding="utf-8").replace("## Pakete erstellen", "  ## Pakete erstellen")
+        path.write_text(content, encoding="utf-8")
+        self.assertEqual(store.load_release_notes("1.2.1.0", self.release_root), NOTES)
+
+    def test_missing_release_for_package_version_fails_before_authentication(self):
+        self.write_package(version="1.2.2.0")
+        with patch.object(store, "StoreClient") as authenticate:
+            with self.assertRaisesRegex(store.DeploymentError, "release-1.2.2.md"):
+                store.deploy(self.config, self.package, release_root=self.release_root)
+        authenticate.assert_not_called()
+
+    def test_wrong_release_title_fails_before_creating_draft(self):
+        self.write_release_notes(title_version="1.2.0")
+        client = FakeClient()
+        with self.assertRaisesRegex(store.DeploymentError, "must start"):
+            self.deploy(client)
+        self.assertEqual(client.calls, [])
+
+    def test_missing_duplicate_or_empty_notes_fail_before_creating_draft(self):
+        for content in ("# CamControl 1.2.1\n\n## Andere Hinweise\nText",
+                        f"# CamControl 1.2.1\n\n{store.RELEASE_NOTES_HEADING}\n\n## Pakete erstellen\nText",
+                        f"# CamControl 1.2.1\n\n{store.RELEASE_NOTES_HEADING}\nText\n{store.RELEASE_NOTES_HEADING}\nText"):
+            self.write_release_notes().write_text(content, encoding="utf-8")
+            client = FakeClient()
+            with self.subTest(content=content), self.assertRaises(store.DeploymentError):
+                self.deploy(client)
+            self.assertEqual(client.calls, [])
+
+    def test_release_notes_length_is_checked_without_truncating(self):
+        self.write_release_notes("ä" * 1500)
+        self.assertEqual(len(store.load_release_notes("1.2.1.0", self.release_root)), 1500)
+        for text in ("x" * 1501, "😀" * 751):
+            self.write_release_notes(text)
+            client = FakeClient()
+            with self.subTest(text=text[:2]), self.assertRaisesRegex(store.DeploymentError, "exceed"):
+                self.deploy(client)
+            self.assertEqual(client.calls, [])
+
+    def test_missing_or_invalid_german_listing_fails_before_creating_draft(self):
+        for listings in (None, {}, {"en-us": PREVIOUS["listings"]["en-us"]},
+                         {"de-de": {}}, {"de-de": {"baseListing": None}},
+                         {"de-de": PREVIOUS["listings"]["de-de"], "de-DE": PREVIOUS["listings"]["de-de"]}):
+            client = FakeClient()
+            client.previous["listings"] = listings
+            with self.subTest(listings=listings), self.assertRaisesRegex(store.DeploymentError, "de-de"):
+                self.deploy(client)
+            self.assert_no_writes(client)
+
+    def test_german_locale_matching_preserves_its_existing_spelling(self):
+        client = FakeClient()
+        client.previous["listings"]["de-DE"] = client.previous["listings"].pop("de-de")
+        self.deploy(client)
+        self.assertNotIn("de-de", client.body["listings"])
+        self.assertEqual(client.body["listings"]["de-DE"]["baseListing"]["releaseNotes"], NOTES)
+
+    def test_project_version_is_validated_for_offline_notes_check(self):
+        project = self.release_root / "CamControl/CamControl.csproj"
+        project.parent.mkdir()
+        for value in ("1.2.1", "1.2", "1.2.1.0", "0.2.1", "1.2.65536", "../1.2.1"):
+            project.write_text(f"<Project><PropertyGroup><Version>{value}</Version></PropertyGroup></Project>", encoding="utf-8")
+            if value == "1.2.1":
+                self.assertEqual(store.project_package_version(self.release_root), "1.2.1.0")
+            else:
+                with self.subTest(value=value), self.assertRaises(store.DeploymentError):
+                    store.project_package_version(self.release_root)
+
+    def test_notes_check_works_on_develop_without_credentials_or_network(self):
+        with patch.dict(os.environ, {"GITHUB_EVENT_NAME": "pull_request", "GITHUB_REF": "refs/heads/develop"}, clear=True), \
+                patch("sys.argv", ["submit_store.py", "--check-release-notes"]), \
+                patch("sys.stdout", new_callable=StringIO), patch.object(store, "request") as network:
+            self.assertEqual(store.main(), 0)
+        network.assert_not_called()
+
+    def test_notes_check_returns_failure_without_network_for_invalid_notes(self):
+        with patch.dict(os.environ, {}, clear=True), \
+                patch("sys.argv", ["submit_store.py", "--check-release-notes"]), \
+                patch.object(store, "load_release_notes", side_effect=store.DeploymentError("Release notes are empty")), \
+                patch("sys.stderr", new_callable=StringIO) as errors, patch.object(store, "request") as network:
+            self.assertEqual(store.main(), 1)
+            self.assertIn("Release notes are empty", errors.getvalue())
+        network.assert_not_called()
 
     def test_ambiguous_architecture_requires_review(self):
         client = FakeClient()

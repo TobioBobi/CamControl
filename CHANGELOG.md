@@ -7,6 +7,8 @@
   erneut aktualisiert.
 - Automatische Microsoft-Store-Einreichung nach erfolgreichen Builds und Tests
   für Releases auf `master`; Änderungen werden zuvor auf `develop` gesammelt.
+- Deutsche Store-Versionshinweise werden aus der passenden Release-Datei
+  geprüft und automatisch mit dem Paket eingereicht.
 
 Hinweise zur Vorbereitung und Abnahme: [Release 1.2.1](docs/release-1.2.1.md).
 
