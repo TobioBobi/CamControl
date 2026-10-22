@@ -2,9 +2,9 @@ name: Build and tests
 
 on:
   push:
-    branches: [master]
+    branches: [master, develop]
   pull_request:
-    branches: [master]
+    branches: [master, develop]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,17 @@ jobs:
         with:
           dotnet-version: '10.0.x'
           dotnet-quality: ga
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Check Store submission automation without credentials
+        run: python -m unittest discover -s Tests/StoreSubmissionCheck -v
+
+      - name: Validate German Store release notes for the current version
+        run: python packaging/submit_store.py --check-release-notes
 
       - name: Build Debug
         run: dotnet build CamControl.sln -c Debug
@@ -51,3 +62,56 @@ jobs:
           path: artifacts/msix/test/x64/*.msix
           if-no-files-found: error
           compression-level: 0
+
+  store:
+    name: Submit to Microsoft Store
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: windows-latest
+    timeout-minutes: 35
+    concurrency:
+      group: microsoft-store-production
+      cancel-in-progress: false
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      STORE_TENANT_ID: ${{ vars.STORE_TENANT_ID }}
+      STORE_CLIENT_ID: ${{ vars.STORE_CLIENT_ID }}
+      STORE_APP_ID: ${{ vars.STORE_APP_ID }}
+      STORE_IDENTITY_JSON: ${{ vars.STORE_IDENTITY_JSON }}
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v6
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: ga
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Validate configuration and write Store identity
+        env:
+          STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+        run: python packaging/submit_store.py --prepare-identity packaging/StoreIdentity.json
+
+      - name: Build and validate self-contained Store package
+        shell: pwsh
+        run: ./packaging/Build-Msix.ps1 -Mode Store -StoreIdentityPath ./packaging/StoreIdentity.json
+
+      - name: Upload unsigned Store package
+        uses: actions/upload-artifact@v7
+        with:
+          name: CamControl-msix-store-x64
+          path: artifacts/msix/store/x64/*.msix
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload and submit for certification
+        env:
+          STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+        run: python packaging/submit_store.py --package-dir artifacts/msix/store/x64

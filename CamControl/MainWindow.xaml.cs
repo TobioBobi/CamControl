@@ -10,6 +10,7 @@ public partial class MainWindow : AppWindow
     internal CameraSession Session { get; }
     internal CameraInput Input { get; }
     private readonly Dictionary<int, Button> buttons = new();
+    private readonly Dictionary<int, TextBlock> presetLabels = new();
     private bool finalClose, closing, settingsOpen, demoExpanded;
     private int? lastRequested;
     internal MainWindow(CameraSession session)
@@ -22,6 +23,10 @@ public partial class MainWindow : AppWindow
         {
             int number = CameraSession.Buttons[i];
             var button = new Button { Name = "preset" + number, Style = (Style)FindResource("PresetButton"), Margin = new(i == 6 ? 0 : i % 2 == 0 ? 0 : 4, 0, i == 6 ? 0 : i % 2 == 0 ? 4 : 0, i == 6 ? 0 : 6) };
+            var grid = new Grid(); grid.ColumnDefinitions.Add(new()); grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+            var label = new TextBlock { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+            grid.Children.Add(label); presetLabels[number] = label;
+            var key = new TextBlock { Text = number.ToString(), FontSize = 11, Margin = new(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center }; key.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(key, 1); grid.Children.Add(key); button.Content = grid;
             Grid.SetRow(button, i / 2); Grid.SetColumn(button, i % 2); if (i == 6) { Grid.SetColumn(button, 0); Grid.SetColumnSpan(button, 2); }
             button.Click += async (_, _) => await RecallAsync(number);
             buttons[number] = button; Presets.Children.Add(button);
@@ -47,9 +52,7 @@ public partial class MainWindow : AppWindow
     {
         foreach (var (number, button) in buttons)
         {
-            var grid = new Grid(); grid.ColumnDefinitions.Add(new()); grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-            grid.Children.Add(new TextBlock { Text = Session.Names[number], TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
-            var key = new TextBlock { Text = number.ToString(), FontSize = 11, Margin = new(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center }; key.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(key, 1); grid.Children.Add(key); button.Content = grid;
+            presetLabels[number].Text = Session.Names[number];
             AutomationProperties.SetName(button, $"{Session.Names[number]}, Taste {number}");
             button.IsEnabled = Session.Controller.ControlsEnabled && !settingsOpen;
         }

@@ -19,7 +19,7 @@ Im Repository-Verzeichnis:
 ./packaging/Build-Msix.ps1
 ```
 
-Ergebnis: `artifacts/msix/test/x64/CamControl-1.2.0.0-x64-test.msix`.
+Ergebnis: `artifacts/msix/test/x64/CamControl-1.2.2.0-x64-test.msix`.
 Die Version wird aus `CamControl.csproj` gelesen. Die vierte MSIX-Versionsstelle
 ist 0. Der Anzeigename ist **CamControl (Test)**, die Paketidentität
 **CamControl.LocalTest**. Dieses Paket ist kein Store-Paket.
@@ -47,7 +47,7 @@ Import-Certificate -FilePath ./artifacts/msix/test/CamControl-Test.cer -CertStor
 Anschließend als normaler Benutzer:
 
 ```powershell
-Add-AppxPackage -Path ./artifacts/msix/test/x64/CamControl-1.2.0.0-x64-test.msix
+Add-AppxPackage -Path ./artifacts/msix/test/x64/CamControl-1.2.2.0-x64-test.msix
 ```
 
 Im Startmenü **CamControl (Test)** öffnen und **Ohne Kamera ausprobieren** wählen.
@@ -97,9 +97,13 @@ Untergrenze; eine unterstützte Windows-Version bleibt erforderlich.
 ## GitHub Actions
 
 Der vorhandene Workflow erzeugt nach Build und Tests ein **unsigniertes x64-
-Testpaket** und stellt es als Artifact bereit. Es werden weder Zertifikate
-noch Schlüssel hochgeladen. Das Paket wird nicht automatisch veröffentlicht.
-Store- und Test-Builds sind getrennt.
+Testpaket** und stellt es als Artifact bereit. Nach einem Push auf `master`
+erstellt ein nachgelagerter Job außerdem das Store-Paket und reicht es über die
+Microsoft Store Submission API zur automatischen Veröffentlichung nach
+Zertifizierung ein. Pull Requests und manuelle Workflow-Läufe veröffentlichen
+nichts. Einrichtung und benötigte GitHub-Variablen/Secrets stehen unter
+[Automatisches Store-Deployment](store-deployment.md).
+Store- und Test-Builds verwenden getrennte Paketidentitäten.
 
 ## Microsoft-Dokumentation
 

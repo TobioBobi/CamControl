@@ -66,8 +66,12 @@ create offscreen windows and briefly open local modal dialogs. They render
 previews into `artifacts/ui-preview`. See [the settings and service tests](Tests/SettingsCheck/README.md)
 and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
+Changes follow `feature/*` or `fix/*` → `develop` → `master`. Start work from
+`develop` and target feature/fix pull requests at `develop`. Merge a tested batch
+into `master` for a release. See [the branch and release workflow](docs/branch-workflow.md).
+
 GitHub Actions builds Debug and Release on Windows with .NET 10 and runs both
-check programs on each push or pull request to `master`. The workflow can also
+check programs on each push or pull request to `develop` or `master`. The workflow can also
 be started manually. It also builds an unsigned self-contained x64 MSIX test
 package and uploads it as an artifact. See [MSIX build and installation](docs/msix.md)
 for local test signing and preparation of a Store package.

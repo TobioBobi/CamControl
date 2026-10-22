@@ -20,12 +20,24 @@ internal static class Program
         int exit = 0;
         app.Dispatcher.BeginInvoke(async () =>
         {
-            try { await ControllerChecks(); await WindowChecks(); Console.WriteLine($"Passed {checks} WPF/controller checks."); }
+            try { ThemeChecks(); await ControllerChecks(); await WindowChecks(); Console.WriteLine($"Passed {checks} WPF/controller checks."); }
             catch (Exception e) { Console.Error.WriteLine(e); exit = 1; }
             finally { app.Shutdown(); }
         });
         app.Run();
         return exit;
+    }
+    private static void ThemeChecks()
+    {
+        string[] keys = ["Canvas", "Surface", "Ink", "Muted", "Line", "Accent", "Hover", "Pressed", "Selection", "Error", "Success"];
+        foreach (bool dark in new[] { false, true, false })
+        {
+            Theme.Apply(dark);
+            var brushes = keys.ToDictionary(key => key, key => Application.Current.Resources[key + "Brush"]);
+            Theme.Apply(dark);
+            Check(keys.All(key => ReferenceEquals(brushes[key], Application.Current.Resources[key + "Brush"])),
+                "Unchanged theme replaced shared brushes and invalidated the entire window");
+        }
     }
     private static async Task ControllerChecks()
     {
@@ -143,6 +155,7 @@ internal static class Program
         await session.Controller.SetActiveAsync(false); window.Input.Reset(); Check(!session.Demo.State.Moving, "Deactivation did not clear demo motion");
         await session.Controller.SetActiveAsync(true);
         var controls = Descendants(window).OfType<Button>().ToArray(); var left = controls.Single(b => b.Name == "moveLeft");
+        var presetContents = controls.Where(b => b.Name.StartsWith("preset")).ToDictionary(b => b, b => b.Content);
         left.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = Mouse.PreviewMouseDownEvent });
         Check(session.Demo.State.Moving && CameraInput.GetIsHeld(left), "Mouse press did not start or show held state");
         left.ReleaseMouseCapture(); await Layout(); Check(!session.Demo.State.Moving && !CameraInput.GetIsHeld(left), "Lost capture did not stop motion");
@@ -150,6 +163,11 @@ internal static class Program
         window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, keySource!, Environment.TickCount, Key.D3) { RoutedEvent = Keyboard.PreviewKeyDownEvent }); await Layout();
         Check(session.Demo.State.Action == "Preset 3" && window.Status.Text.Contains("Zuletzt angefordert"), "Preset keyboard route did not recall or report request");
         Check(Descendants(window).OfType<Button>().Single(b => b.Name == "preset3").Tag as string == "Requested", "Requested preset highlight missing");
+        Check(presetContents.All(pair => ReferenceEquals(pair.Key.Content, pair.Value)), "Motion or preset recall rebuilt preset content");
+        var presetButton = controls.Single(b => b.Name == "preset6");
+        presetButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Layout();
+        Check(session.Demo.State.Action == "Preset 6" && presetButton.Tag as string == "Requested", "Preset click did not recall or highlight position");
+        Check(presetContents.All(pair => ReferenceEquals(pair.Key.Content, pair.Value)), "Preset click rebuilt preset content");
 
         var settings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(settings); await Layout();
         Check(settings.Navigation.Items.Count == 7 && !settings.SaveAddress.IsEnabled, "Settings sections or save guard missing");
@@ -218,6 +236,12 @@ internal static class Program
         string[] examples = ["Redner", "Redner & Leser", "Tisch", "Gesamte Bühne", "Redner & Bildschirm", "Demo stehend", "Standby"];
         for (int i = 0; i < CameraSession.Buttons.Length; i++) { int n = CameraSession.Buttons[i]; session.SaveMapping(n, examples[i], session.Numbers[n]); }
         window.Refresh(); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-compact.png"));
+        Check(presetContents.All(pair => ReferenceEquals(pair.Key.Content, pair.Value)), "Renaming presets replaced their content");
+        for (int i = 0; i < CameraSession.Buttons.Length; i++)
+        {
+            var button = controls.Single(b => b.Name == "preset" + CameraSession.Buttons[i]);
+            Check(Descendants(button).OfType<TextBlock>().Any(text => text.Text == examples[i]), "Reused preset label did not update after renaming");
+        }
         Theme.Apply(true); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-dark.png"));
         Check(((SolidColorBrush)window.Background).Color == ((SolidColorBrush)Application.Current.Resources["CanvasBrush"]).Color, "Window did not follow dark palette");
         var darkSettings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(darkSettings); darkSettings.Navigation.SelectedIndex = 2; await Layout();
