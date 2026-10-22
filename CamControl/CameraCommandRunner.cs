@@ -17,13 +17,13 @@ namespace CamControl
             }
             catch (OperationCanceledException)
             {
-                reportError("Kamera antwortet nicht rechtzeitig. IP-Adresse und Netzwerk prüfen.");
+                reportError(Texts.Error_Timeout);
             }
             catch (HttpRequestException exception)
             {
                 reportError(exception.StatusCode is { } statusCode
-                    ? $"Befehl abgelehnt (HTTP {(int)statusCode}). IP-Adresse und Kamerakonfiguration prüfen."
-                    : "Keine Verbindung zur Kamera. IP-Adresse, Netzwerk und Stromversorgung prüfen.");
+                    ? Texts.Format(Texts.Error_Http, (int)statusCode)
+                    : Texts.Error_Connection);
             }
 
             return false;

@@ -16,3 +16,8 @@ independent direction/zoom serialization; cancellation of pending and queued
 starts; all-channel stops despite individual failures; and custom demo preset
 positions including zoom. WPF dialog and controller checks live in
 `Tests/CameraUiCheck`.
+
+Localization checks cover language persistence and invalid settings, Windows
+language variants and English fallback, explicit overrides, startup/background
+thread UI culture, preserved regional formats, exact German/English resource
+key parity and valid format placeholders, and localized help/privacy documents.

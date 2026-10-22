@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NeutralLanguage>en</NeutralLanguage>
     <Version>1.2.2</Version>
     <ApplicationIcon>../packaging/Assets/CamControl.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -15,6 +16,7 @@
     <InternalsVisibleTo Include="CameraUiCheck" />
     <Resource Include="../packaging/Assets/CamControl.ico" Link="resources/Camera.ico" />
     <EmbeddedResource Include="../docs/privacy.md" LogicalName="CamControl.PrivacyPolicy" />
+    <EmbeddedResource Include="../docs/privacy.en.md" LogicalName="CamControl.PrivacyPolicy.en" WithCulture="false" />
   </ItemGroup>
 
 </Project>

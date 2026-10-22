@@ -2,15 +2,15 @@
  Title="CamControl" Width="636" Height="468" MinWidth="580" MinHeight="430" WindowStartupLocation="CenterScreen">
  <DockPanel Background="{DynamicResource CanvasBrush}">
   <Border x:Name="Header" DockPanel.Dock="Top" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="12,5">
-   <Grid><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="ModeLabel" Text="CamControl" FontWeight="SemiBold" VerticalAlignment="Center" /><Button x:Name="SettingsButton" Grid.Column="1" VerticalAlignment="Center" Margin="0,2" Padding="12,6" Content="⚙ Einstellungen" Click="SettingsClick" /></Grid>
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="ModeLabel" Text="CamControl" FontWeight="SemiBold" VerticalAlignment="Center" /><Button x:Name="SettingsButton" Grid.Column="1" VerticalAlignment="Center" Margin="0,2" Padding="12,6" Content="{x:Static local:Texts.Main_Settings}" Click="SettingsClick" /></Grid>
   </Border>
-  <Border DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="12,6" MinHeight="50"><TextBlock x:Name="Status" Text="Kameramodus" FontSize="12" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" /></Border>
+  <Border DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="12,6" MinHeight="50"><TextBlock x:Name="Status" Text="{x:Static local:Texts.Main_CameraMode}" FontSize="12" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" /></Border>
   <ScrollViewer x:Name="ControlsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
    <Border MinWidth="554" Width="{Binding ViewportWidth, ElementName=ControlsScroll}">
    <StackPanel Margin="10,8">
     <Grid MinWidth="534">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="14" /><ColumnDefinition Width="174" /></Grid.ColumnDefinitions>
-     <StackPanel><TextBlock Text="Positionen" FontWeight="SemiBold" Margin="0,0,0,9" /><Grid x:Name="Presets"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /></Grid.RowDefinitions></Grid></StackPanel>
+     <StackPanel><TextBlock Text="{x:Static local:Texts.Main_Positions}" FontWeight="SemiBold" Margin="0,0,0,9" /><Grid x:Name="Presets"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /></Grid.RowDefinitions></Grid></StackPanel>
      <Border x:Name="ManualPanel" Grid.Column="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="9" Padding="9"><ContentControl x:Name="ManualControls" VerticalContentAlignment="Top" /></Border>
     </Grid>
     <ContentControl x:Name="DemoPreview" Visibility="Collapsed" Margin="0,12,0,0" Height="200" />

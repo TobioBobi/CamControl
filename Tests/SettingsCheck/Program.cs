@@ -1,5 +1,11 @@
 using CamControl;
 using System.Net;
+using System.Globalization;
+using System.Resources;
+using System.Text;
+
+// These executable checks are deterministic regardless of the host's display language.
+CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-DE");
 
 int checks = 0;
 void Check(bool condition, string description)
@@ -7,6 +13,55 @@ void Check(bool condition, string description)
     if (!condition) throw new Exception(description);
     checks++;
 }
+
+var languagePath = Path.Combine(AppContext.BaseDirectory, "test-language.json");
+File.Delete(languagePath);
+Check(LanguageSettings.Load(languagePath) == AppLanguage.System && !File.Exists(languagePath), "Fresh language did not follow Windows without writing settings");
+foreach (var language in Enum.GetValues<AppLanguage>())
+{
+    LanguageSettings.Save(language, languagePath);
+    Check(LanguageSettings.Load(languagePath) == language, "Language preference did not survive reload");
+}
+foreach (string invalid in new[] { "broken", "null", "{}", "\"Unknown\"", "\"99\"" })
+{
+    File.WriteAllText(languagePath, invalid);
+    Check(LanguageSettings.Load(languagePath) == AppLanguage.System, "Invalid language prevented automatic fallback");
+}
+try { LanguageSettings.Save((AppLanguage)99, languagePath); throw new Exception("Invalid language saved"); }
+catch (ArgumentOutOfRangeException) { checks++; }
+Check(LanguageSettings.Resolve(AppLanguage.System, CultureInfo.GetCultureInfo("de-AT")).Name == "de", "German region did not resolve to German");
+Check(LanguageSettings.Resolve(AppLanguage.System, CultureInfo.GetCultureInfo("en-GB")).Name == "en", "English region did not resolve to English");
+Check(LanguageSettings.Resolve(AppLanguage.System, CultureInfo.GetCultureInfo("fr-FR")).Name == "en", "Unsupported system language did not fall back to English");
+Check(LanguageSettings.Resolve(AppLanguage.German, CultureInfo.GetCultureInfo("en-US")).Name == "de" && LanguageSettings.Resolve(AppLanguage.English, CultureInfo.GetCultureInfo("de-DE")).Name == "en", "Explicit language did not override Windows");
+var regionalCulture = CultureInfo.CurrentCulture;
+var oldDefaultUi = CultureInfo.DefaultThreadCurrentUICulture;
+LanguageSettings.Save(AppLanguage.English, languagePath);
+LanguageSettings.Initialize(languagePath);
+Check(Texts.Common_Cancel == "Cancel" && (await Task.Run(() => Texts.Settings_Title)) == "Settings", "Language initialization did not apply to startup and background tasks");
+Check(CultureInfo.CurrentCulture.Equals(regionalCulture), "UI language changed regional formats");
+var english = Texts.Manager.GetResourceSet(CultureInfo.InvariantCulture, true, false)!;
+var german = Texts.Manager.GetResourceSet(CultureInfo.GetCultureInfo("de"), true, false)!;
+var englishKeys = english.Cast<System.Collections.DictionaryEntry>().Select(e => (string)e.Key).ToHashSet();
+var germanKeys = german.Cast<System.Collections.DictionaryEntry>().Select(e => (string)e.Key).ToHashSet();
+Check(englishKeys.SetEquals(germanKeys), "German and English resources have different keys");
+foreach (string key in englishKeys)
+{
+    string en = english.GetString(key)!, de = german.GetString(key)!;
+    Check(!string.IsNullOrWhiteSpace(en) && !string.IsNullOrWhiteSpace(de), "Empty translation: " + key);
+    var enFormat = CompositeFormat.Parse(en); var deFormat = CompositeFormat.Parse(de);
+    Check(enFormat.MinimumArgumentCount == deFormat.MinimumArgumentCount, "Translation placeholders differ: " + key);
+    object[] values = Enumerable.Repeat<object>(12, enFormat.MinimumArgumentCount).ToArray();
+    _ = string.Format(CultureInfo.InvariantCulture, enFormat, values);
+    _ = string.Format(CultureInfo.InvariantCulture, deFormat, values);
+}
+Check(Texts.Manager.GetString("Common_Cancel", CultureInfo.GetCultureInfo("de-CH")) == "Abbrechen", "Regional German resource fallback failed");
+Check(Texts.Manager.GetString("Common_Cancel", CultureInfo.GetCultureInfo("fr-FR")) == "Cancel", "Unsupported resource language did not fall back to English");
+Check(AppInformation.PrivacyText.StartsWith("Privacy for CamControl"), "English privacy text missing");
+Check(CameraHelp.Text.Contains("Requirements") && CameraHelp.Text.Contains("0–89"), "English help missing");
+CultureInfo.DefaultThreadCurrentUICulture = oldDefaultUi;
+CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-DE");
+Check(AppInformation.PrivacyText.StartsWith("Datenschutz für CamControl") && CameraHelp.Text.Contains("Voraussetzungen"), "German help/privacy missing");
+File.Delete(languagePath);
 
 foreach (var invalid in new[] { "", "192.168.1", "192.168.1.256", "-1.2.3.4", "1.2.3.4.5", "localhost", "http://192.168.1.1", "1.2.3.4:8080", "1.2. 3.4", "0x7f.0.0.1", "0000.1.2.3" })
     Check(!CameraSettings.TryNormalizeIp(invalid, out _), "Invalid IP accepted: " + invalid);

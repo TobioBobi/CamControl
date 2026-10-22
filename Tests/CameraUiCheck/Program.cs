@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using System.Globalization;
 
 internal static class Program
 {
@@ -20,7 +21,16 @@ internal static class Program
         int exit = 0;
         app.Dispatcher.BeginInvoke(async () =>
         {
-            try { ThemeChecks(); await ControllerChecks(); await WindowChecks(); Console.WriteLine($"Passed {checks} WPF/controller checks."); }
+            try
+            {
+                ThemeChecks(); await ControllerChecks();
+                foreach (string language in new[] { "de-DE", "en-US" })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                    await WindowChecks();
+                }
+                Console.WriteLine($"Passed {checks} WPF/controller checks (German and English).");
+            }
             catch (Exception e) { Console.Error.WriteLine(e); exit = 1; }
             finally { app.Shutdown(); }
         });
@@ -161,7 +171,7 @@ internal static class Program
         left.ReleaseMouseCapture(); await Layout(); Check(!session.Demo.State.Moving && !CameraInput.GetIsHeld(left), "Lost capture did not stop motion");
         var keySource = PresentationSource.FromVisual(window);
         window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, keySource!, Environment.TickCount, Key.D3) { RoutedEvent = Keyboard.PreviewKeyDownEvent }); await Layout();
-        Check(session.Demo.State.Action == "Preset 3" && window.Status.Text.Contains("Zuletzt angefordert"), "Preset keyboard route did not recall or report request");
+        Check(session.Demo.State.Action == "Preset 3" && window.Status.Text.Contains(Texts.Format(Texts.Main_Requested, session.Names[3])), "Preset keyboard route did not recall or report request");
         Check(Descendants(window).OfType<Button>().Single(b => b.Name == "preset3").Tag as string == "Requested", "Requested preset highlight missing");
         Check(presetContents.All(pair => ReferenceEquals(pair.Key.Content, pair.Value)), "Motion or preset recall rebuilt preset content");
         var presetButton = controls.Single(b => b.Name == "preset6");
@@ -170,7 +180,7 @@ internal static class Program
         Check(presetContents.All(pair => ReferenceEquals(pair.Key.Content, pair.Value)), "Preset click rebuilt preset content");
 
         var settings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(settings); await Layout();
-        Check(settings.Navigation.Items.Count == 7 && !settings.SaveAddress.IsEnabled, "Settings sections or save guard missing");
+        Check(settings.Navigation.Items.Count == 8 && !settings.SaveAddress.IsEnabled, "Settings sections or save guard missing");
         settings.Address.Text = "invalid"; Check(!settings.SaveAddress.IsEnabled && !settings.DemoAction.IsEnabled, "Invalid IP allowed save or mode switch");
         settings.Address.Text = "192.168.188.25"; Check(settings.SaveAddress.IsEnabled && settings.SaveAddress.IsDefault, "Valid changed address not editable");
         settings.Navigation.SelectedIndex = 4; await Layout(); Check(!settings.SaveAddress.IsDefault, "Help retained default camera save");
@@ -214,14 +224,15 @@ internal static class Program
         Check(!session.Demo.State.Moving && !editor.IsVisible, "One editor close did not stop and close");
 
         // Render the actual WPF windows for review, including enlarged text.
-        string output = System.IO.Path.GetFullPath("artifacts/ui-preview"); System.IO.Directory.CreateDirectory(output);
+        string output = System.IO.Path.GetFullPath("artifacts/ui-preview/" + CultureInfo.CurrentUICulture.Name); System.IO.Directory.CreateDirectory(output);
         Screenshot(window, System.IO.Path.Combine(output, "main-demo.png"));
         settings.Navigation.SelectedIndex = 1; await Layout(); Screenshot(settings, System.IO.Path.Combine(output, "settings-presets.png"));
         window.DemoPreview.Visibility = Visibility.Collapsed; window.Height = 468; await Layout();
         Screenshot(window, System.IO.Path.Combine(output, "main-compact.png"));
         var scroll = Descendants(window).OfType<ScrollViewer>().First();
         Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Default compact window requires scrolling: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
-        session.Controller.ReportStopFailure("Keine Verbindung zur Kamera. IP-Adresse, Netzwerk und Stromversorgung prüfen."); await Layout();
+        // Exercise wrapping in both languages, independent of translation length.
+        session.Controller.ReportStopFailure(Texts.Error_Connection + " " + Texts.Error_Timeout); await Layout();
         Check(window.Status.ActualHeight > 20, "Regression did not reproduce a wrapped camera error");
         Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Wrapped camera error introduced scrollbars: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
         Theme.Apply(true); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-dark-error.png"));
@@ -249,7 +260,7 @@ internal static class Program
         Check(((SolidColorBrush)darkSettings.Address.Foreground).Color == ((SolidColorBrush)Application.Current.Resources["InkBrush"]).Color, "Input did not follow dark palette");
         darkSettings.Close(); Theme.Apply(false);
         var allSettings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(allSettings);
-        for (int i = 0; i < 7; i++) { allSettings.Navigation.SelectedIndex = i; await Layout(); Screenshot(allSettings, System.IO.Path.Combine(output, $"settings-{i}.png")); }
+        for (int i = 0; i < allSettings.Navigation.Items.Count; i++) { allSettings.Navigation.SelectedIndex = i; await Layout(); Screenshot(allSettings, System.IO.Path.Combine(output, $"settings-{i}.png")); }
         allSettings.Close();
         string appearancePath = System.IO.Path.Combine(output, "appearance-test.json");
         var previousAppearance = Theme.Preference;
@@ -261,6 +272,34 @@ internal static class Program
         Check(!appearanceDialog.SaveAppearance.IsEnabled && AppearanceSettings.Load(appearancePath) == Theme.Preference, "Appearance did not persist");
         Check(((SolidColorBrush)window.Background).Color == ((SolidColorBrush)Application.Current.Resources["CanvasBrush"]).Color, "Changing appearance did not update the main window");
         appearanceDialog.Close(); Theme.SetPreference(previousAppearance, appearancePath); System.IO.File.Delete(appearancePath);
+        string languagePath = System.IO.Path.Combine(output, "language-test.json"); System.IO.File.Delete(languagePath);
+        var languageDialog = new CameraSettingsDialog(session.Service.CameraIp, session, languagePath: languagePath);
+        ShowOffscreen(languageDialog); languageDialog.Navigation.SelectedIndex = 7; await Layout();
+        Check(languageDialog.LanguageChoice.Items.Count == 3 && languageDialog.LanguageChoice.SelectedIndex == 0 && !languageDialog.SaveLanguage.IsEnabled, "Language selection/default save state missing");
+        var uiCulture = CultureInfo.CurrentUICulture;
+        var names = session.Names.ToDictionary(p => p.Key, p => p.Value);
+        languageDialog.LanguageChoice.SelectedIndex = uiCulture.TwoLetterISOLanguageName == "de" ? 2 : 1;
+        Check(languageDialog.SaveLanguage.IsEnabled && !System.IO.File.Exists(languagePath), "Language applied before saving");
+        languageDialog.SaveLanguage.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Layout();
+        Check(!languageDialog.SaveLanguage.IsEnabled && LanguageSettings.Load(languagePath) == (uiCulture.TwoLetterISOLanguageName == "de" ? AppLanguage.English : AppLanguage.German), "Language preference was not saved");
+        Check(CultureInfo.CurrentUICulture.Equals(uiCulture) && names.All(p => session.Names[p.Key] == p.Value), "Saving language changed the current UI or user preset names");
+        Check(Descendants(languageDialog).OfType<TextBlock>().Any(t => t.Text == Texts.Language_Saved), "Restart guidance missing after language save");
+        Screenshot(languageDialog, System.IO.Path.Combine(output, "settings-language-saved.png")); languageDialog.Close();
+        var reopenedLanguage = new CameraSettingsDialog(session.Service.CameraIp, session, languagePath: languagePath);
+        Check(reopenedLanguage.LanguageChoice.SelectedIndex == (uiCulture.TwoLetterISOLanguageName == "de" ? 2 : 1), "Reopened settings lost pending language");
+        reopenedLanguage.LanguageChoice.SelectedIndex = 0;
+        reopenedLanguage.SaveLanguage.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(LanguageSettings.Load(languagePath) == AppLanguage.System, "Could not restore automatic language");
+        reopenedLanguage.Close(); System.IO.File.Delete(languagePath);
+        var failedLanguage = new CameraSettingsDialog(session.Service.CameraIp, session, languagePath: output);
+        failedLanguage.LanguageChoice.SelectedIndex = 1; failedLanguage.SaveLanguage.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(failedLanguage.SaveLanguage.IsEnabled && LanguageSettings.Load(output) == AppLanguage.System, "Failed language save applied preference or prevented retry");
+        failedLanguage.Close();
+        bool german = uiCulture.TwoLetterISOLanguageName == "de";
+        Check(window.SettingsButton.Content as string == (german ? "⚙ Einstellungen" : "⚙ Settings"), "XAML did not use the selected language");
+        Check(settings.Title == (german ? "Einstellungen" : "Settings"), "C# dialog did not use the selected language");
+        Check(AppInformation.PrivacyText.StartsWith(german ? "Datenschutz für CamControl" : "Privacy for CamControl"), "Privacy text used the wrong language");
+        Check(string.Equals(window.Language.IetfLanguageTag, uiCulture.IetfLanguageTag, StringComparison.OrdinalIgnoreCase), "WPF language did not follow UI culture");
         var editorPreview = new PresetEditorDialog(session, 1); ShowOffscreen(editorPreview); await Layout(); Screenshot(editorPreview, System.IO.Path.Combine(output, "preset-editor.png"));
         await editorPreview.Controller.SetActiveAsync(true); await editorPreview.Controller.StartDirectionAsync(Direction.Left);
         typeof(Window).GetMethod("OnDeactivated", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(editorPreview, [EventArgs.Empty]); await Layout();
@@ -285,9 +324,9 @@ internal static class Program
         startupSession.SaveMapping(2, "Startposition", 50); await startupSession.Service.SavePreset(50);
         startupSession.SaveAutomatic(new() { StartPreset = 2, ExitPreset = 9 });
         var startupWindow = new MainWindow(startupSession); ShowOffscreen(startupWindow); await Layout();
-        Check(startupSession.Demo.State.Action == "Eigenes Preset 50", "Startup ignored custom preset mapping");
+        Check(startupSession.Demo.State.Action == Texts.Format(Texts.Demo_CustomPreset, 50), "Startup ignored custom preset mapping");
         startupWindow.Close(); await Layout(); Check(startupSession.Demo.State.Action == "Preset 9", "Exit preset not applied by window lifecycle");
-        var welcome = new StartupChoiceDialog(); welcome.ContentRendered += (_, _) => Descendants(welcome).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == "Ohne Kamera ausprobieren").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var welcome = new StartupChoiceDialog(); welcome.ContentRendered += (_, _) => Descendants(welcome).OfType<Button>().Single(b => (b.Content as TextBlock)?.Text == Texts.Welcome_Demo).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check(welcome.ShowDialog() == true && welcome.UseDemo, "First-run demo choice failed");
     }
     private static void ShowOffscreen(Window window) { window.ShowInTaskbar = false; window.ShowActivated = false; window.WindowStartupLocation = WindowStartupLocation.Manual; window.Left = -10000; window.Top = -10000; window.Show(); }
