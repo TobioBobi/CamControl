@@ -9,7 +9,7 @@ namespace CamControl
         private float x = .5f, y = .5f, zoom = 1;
         private int horizontal, vertical, zoomDirection;
         private bool focusing;
-        private string lastAction = "Bereit";
+        private string lastAction = Texts.Demo_Ready;
         private readonly Dictionary<int, (float X, float Y, float Zoom, string Name)> savedPresets = new();
 
         public record Snapshot(float X, float Y, float Zoom, bool Moving, bool Zooming, bool Focusing, string Action)
@@ -45,8 +45,8 @@ namespace CamControl
                     case "posset":
                         if (parts.Length != 3 || !int.TryParse(parts[2], out int saveNumber) || !PresetSettings.IsValidNumber(saveNumber))
                             return false;
-                        savedPresets[saveNumber] = (x, y, zoom, $"Eigenes Preset {saveNumber}");
-                        lastAction = $"Preset {saveNumber} gespeichert";
+                        savedPresets[saveNumber] = (x, y, zoom, Texts.Format(Texts.Demo_CustomPreset, saveNumber));
+                        lastAction = Texts.Format(Texts.Demo_PresetSaved, saveNumber);
                         break;
                     case "poscall":
                         if (parts.Length != 3 || !int.TryParse(parts[2], out int preset) || !PresetSettings.IsValidNumber(preset)) return false;
@@ -66,16 +66,16 @@ namespace CamControl
                         (x, y, zoom, lastAction) = target;
                         horizontal = vertical = zoomDirection = 0;
                         break;
-                    case "up": horizontal = 0; vertical = -1; lastAction = "Nach oben"; break;
-                    case "down": horizontal = 0; vertical = 1; lastAction = "Nach unten"; break;
-                    case "left": horizontal = -1; vertical = 0; lastAction = "Nach links"; break;
-                    case "right": horizontal = 1; vertical = 0; lastAction = "Nach rechts"; break;
-                    case "ptzstop": horizontal = vertical = 0; lastAction = "Bewegung gestoppt"; break;
-                    case "zoomin": zoomDirection = 1; lastAction = "Zoom In"; break;
-                    case "zoomout": zoomDirection = -1; lastAction = "Zoom Out"; break;
-                    case "zoomstop": zoomDirection = 0; lastAction = "Zoom gestoppt"; break;
-                    case "focusin": focusing = true; lastAction = "Fokusfahrt"; break;
-                    case "focusstop": focusing = false; lastAction = "Fokus gestoppt"; break;
+                    case "up": horizontal = 0; vertical = -1; lastAction = Texts.Movement_Up; break;
+                    case "down": horizontal = 0; vertical = 1; lastAction = Texts.Movement_Down; break;
+                    case "left": horizontal = -1; vertical = 0; lastAction = Texts.Movement_Left; break;
+                    case "right": horizontal = 1; vertical = 0; lastAction = Texts.Movement_Right; break;
+                    case "ptzstop": horizontal = vertical = 0; lastAction = Texts.Demo_MovementStopped; break;
+                    case "zoomin": zoomDirection = 1; lastAction = Texts.Zoom_In; break;
+                    case "zoomout": zoomDirection = -1; lastAction = Texts.Zoom_Out; break;
+                    case "zoomstop": zoomDirection = 0; lastAction = Texts.Demo_ZoomStopped; break;
+                    case "focusin": focusing = true; lastAction = Texts.Demo_Focusing; break;
+                    case "focusstop": focusing = false; lastAction = Texts.Demo_FocusStopped; break;
                     default: return false;
                 }
                 ClampFrame();

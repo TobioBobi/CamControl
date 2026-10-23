@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Install .NET 10 SDK
         uses: actions/setup-dotnet@v5
@@ -35,8 +37,21 @@ jobs:
       - name: Check Store submission automation without credentials
         run: python -m unittest discover -s Tests/StoreSubmissionCheck -v
 
-      - name: Validate German Store release notes for the current version
-        run: python packaging/submit_store.py --check-release-notes
+      - name: Validate prepared release version, manifest and Store notes
+        shell: pwsh
+        env:
+          PREVIOUS_MASTER: ${{ github.event.before }}
+        run: |
+          if ($env:GITHUB_REF -eq 'refs/heads/master') {
+            if ($env:GITHUB_EVENT_NAME -eq 'push') {
+              python packaging/check_release.py --base-ref $env:PREVIOUS_MASTER
+            } else {
+              python packaging/check_release.py
+            }
+          } else {
+            python packaging/check_release.py --base-ref origin/master
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build Debug
         run: dotnet build CamControl.sln -c Debug

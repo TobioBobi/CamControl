@@ -1,5 +1,18 @@
 # Änderungen
 
+## 1.3.0 – vorbereitet am 22. Oktober 2026
+
+- Deutsche, englische und spanische Oberfläche einschließlich Einrichtung, Hilfe,
+  Datenschutz, Demo, Fehlermeldungen und Screenreader-Beschriftungen.
+- Automatische Spracherkennung und gespeicherte Auswahl unter
+  „Einstellungen > Sprache / Language“; Änderungen gelten beim nächsten Start.
+- Gemeinsame Sprachressourcen als Grundlage für weitere Übersetzungen.
+- Version und Release Notes werden bereits in Feature-/Fix-Branches für die
+  gemeinsame Zielversion vorbereitet. Die CI prüft Projektversion,
+  MSIX-Manifestvorlage und Store-Versionshinweise vor dem Merge.
+
+Hinweise zur Vorbereitung und Abnahme: [Release 1.3.0](docs/release-1.3.0.md).
+
 ## 1.2.2 – 22. Oktober 2026
 
 - Deutsche Store-Versionshinweise werden aus der passenden Release-Datei

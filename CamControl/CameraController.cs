@@ -22,7 +22,7 @@ internal sealed class CameraController(CamControlService service) : IDisposable
         Error = $"{action}: {error}";
         Notify();
     }
-    internal void ReportStopFailure(string error) => Report("Stopp beim Schließen nicht bestätigt", error);
+    internal void ReportStopFailure(string error) => Report(Texts.Error_CloseStop, error);
 
     private async Task<bool> ExecuteAsync(Func<CancellationToken, Task> command, string action,
         CancellationToken cancellation = default)
@@ -39,27 +39,27 @@ internal sealed class CameraController(CamControlService service) : IDisposable
     {
         if (!ControlsEnabled || directionHeld) return Task.CompletedTask;
         directionHeld = true;
-        return ExecuteAsync(t => service.MoveInDirection(value, t), "Kamera bewegen", direction.Token);
+        return ExecuteAsync(t => service.MoveInDirection(value, t), Texts.Error_Move, direction.Token);
     }
     public Task StartZoomAsync(Zoom value)
     {
         if (!ControlsEnabled || zoomHeld) return Task.CompletedTask;
         zoomHeld = true;
-        return ExecuteAsync(t => service.Zoom(value, t), "Kamera zoomen", zoom.Token);
+        return ExecuteAsync(t => service.Zoom(value, t), Texts.Error_Zoom, zoom.Token);
     }
     public Task StopDirectionAsync()
     {
         if (!directionHeld) return Task.CompletedTask;
         directionHeld = false;
         direction.Cancel(); direction.Dispose(); direction = new();
-        return ExecuteAsync(service.StopDirectionalMovement, "Bewegungsstopp nicht bestätigt");
+        return ExecuteAsync(service.StopDirectionalMovement, Texts.Error_MovementStop);
     }
     public Task StopZoomAsync()
     {
         if (!zoomHeld) return Task.CompletedTask;
         zoomHeld = false;
         zoom.Cancel(); zoom.Dispose(); zoom = new();
-        return ExecuteAsync(service.StopZooming, "Zoomstopp nicht bestätigt");
+        return ExecuteAsync(service.StopZooming, Texts.Error_ZoomStop);
     }
 
     public Task<bool> StopAsync()
@@ -86,7 +86,7 @@ internal sealed class CameraController(CamControlService service) : IDisposable
     {
         try
         {
-            bool result = await CameraCommandRunner.RunAsync(service.StopAll, e => Report("Kamerastopp nicht vollständig bestätigt", e));
+            bool result = await CameraCommandRunner.RunAsync(service.StopAll, e => Report(Texts.Error_AllStops, e));
             stopping = null;
             previous.Dispose();
             Notify();
@@ -106,7 +106,7 @@ internal sealed class CameraController(CamControlService service) : IDisposable
         {
             if (!await StopManualAsync() || cancellation.IsCancellationRequested) return false;
             return await ExecuteAsync(t => save ? service.SavePreset(number, t) : service.MoveToPreset(number, t),
-                save ? "Position speichern" : "Position anfahren", cancellation.Token);
+                save ? Texts.Preset_Save : Texts.Preset_Recall, cancellation.Token);
         }
         finally { position = null; busy = false; Notify(); }
     }
@@ -127,7 +127,7 @@ internal sealed class CameraController(CamControlService service) : IDisposable
         closing = true; Notify();
         bool stopped = await StopAsync();
         if (stopped && exitPreset.HasValue)
-            return await CameraCommandRunner.RunAsync(() => service.MoveToPreset(exitPreset.Value), e => Report("Endposition", e));
+            return await CameraCommandRunner.RunAsync(() => service.MoveToPreset(exitPreset.Value), e => Report(Texts.Error_ExitPosition, e));
         return stopped;
     }
     public void Dispose()

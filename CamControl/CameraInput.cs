@@ -69,17 +69,17 @@ internal sealed class CameraInput
         void DirectionButton(string text, Direction direction, int column, int row, int span = 1)
         {
             var button = new Button { Content = text, FontSize = 23, Padding = new(4), Margin = new(2), Name = "move" + direction };
-            Bind(button, direction switch { Direction.Left => "Nach links", Direction.Right => "Nach rechts", Direction.Up => "Nach oben", _ => "Nach unten" }, false, () => controller().StartDirectionAsync(direction));
+            Bind(button, direction switch { Direction.Left => Texts.Movement_Left, Direction.Right => Texts.Movement_Right, Direction.Up => Texts.Movement_Up, _ => Texts.Movement_Down }, false, () => controller().StartDirectionAsync(direction));
             Grid.SetColumn(button, column); Grid.SetRow(button, row); Grid.SetRowSpan(button, span); pad.Children.Add(button);
         }
         DirectionButton("←", Direction.Left, 0, 0, 2); DirectionButton("↑", Direction.Up, 1, 0);
         DirectionButton("↓", Direction.Down, 1, 1); DirectionButton("→", Direction.Right, 2, 0, 2);
         var zoom = new Grid(); zoom.ColumnDefinitions.Add(new()); zoom.ColumnDefinitions.Add(new());
-        foreach (var (text, value, column) in new[] { ("−\nHeraus", Zoom.ZoomOut, 0), ("+\nHinein", Zoom.ZoomIn, 1) })
+        foreach (var (text, value, column) in new[] { (Texts.Zoom_OutButton, Zoom.ZoomOut, 0), (Texts.Zoom_InButton, Zoom.ZoomIn, 1) })
         {
             var button = new Button { Content = new TextBlock { Text = text, TextAlignment = TextAlignment.Center }, MinHeight = 58, Padding = new(4), Margin = new(2), Name = value.ToString() };
-            Bind(button, value == Zoom.ZoomIn ? "Zoom hinein" : "Zoom heraus", true, () => controller().StartZoomAsync(value)); Grid.SetColumn(button, column); zoom.Children.Add(button);
+            Bind(button, value == Zoom.ZoomIn ? Texts.Zoom_In : Texts.Zoom_Out, true, () => controller().StartZoomAsync(value)); Grid.SetColumn(button, column); zoom.Children.Add(button);
         }
-        return Ui.Stack(Ui.Text("Bewegen"), pad, Ui.Text("Zoom"), zoom, new TextBlock { Text = "Halten zum Bewegen\nLoslassen stoppt", FontSize = 11, TextAlignment = TextAlignment.Center, Margin = new(0, 10, 0, 0) });
+        return Ui.Stack(Ui.Text(Texts.Movement_Title), pad, Ui.Text(Texts.Zoom_Title), zoom, new TextBlock { Text = Texts.Movement_HoldHint, FontSize = 11, TextAlignment = TextAlignment.Center, Margin = new(0, 10, 0, 0) });
     }
 }

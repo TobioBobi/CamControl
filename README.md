@@ -41,13 +41,31 @@ documentation and actual hardware. Protocol references:
 [HTTP-CGI requests](https://docs.ptzoptics.com/dev/guides/http-api-getting-started/),
 [preset commands](https://docs.ptzoptics.com/dev/http-api/Movement/preset-commands-get-preset-command/).
 
-The draft German Store description is in [store-listing.md](docs/store-listing.md).
+Draft Store descriptions are available in [German](docs/store-listing.md),
+[English](docs/store-listing.en.md) and [Spanish](docs/store-listing.es.md).
 
 Settings > Info & Datenschutz shows the build version, publisher TobioBobi,
 project/support link and privacy information. The app embeds the same
-[privacy text](docs/privacy.md) maintained in this repository. The GitHub link
+privacy text maintained in this repository in [German](docs/privacy.md),
+[English](docs/privacy.en.md) and [Spanish](docs/privacy.es.md). The GitHub link
 opens the browser only when clicked. A public privacy URL for the Store listing
 will be configured when preparing the Store submission.
+
+## Languages
+
+CamControl supports German, English and Spanish, including first-run setup, settings,
+help, privacy information, demo labels and accessible control names. The default
+follows the Windows display language: German and Spanish regional variants use
+their respective translations; other languages use English.
+**Settings > Language / Sprache** offers the Windows setting, Deutsch, English
+and Español. Save the choice and close/reopen the app to apply it.
+The preference is stored in `%LOCALAPPDATA%/CamControl/language.json` separately
+from camera settings. Changing languages preserves custom preset names and does
+not change regional number/date formats or the camera protocol.
+
+Translations use `CamControl/Resources/Strings.resx` (complete English fallback)
+with `Strings.de.resx` and `Strings.es.resx`. Both C# and XAML use the shared `Texts` accessors. See
+[localization.md](docs/localization.md) for adding a language and validation.
 
 ## Development
 
@@ -67,8 +85,11 @@ previews into `artifacts/ui-preview`. See [the settings and service tests](Tests
 and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
 Changes follow `feature/*` or `fix/*` → `develop` → `master`. Start work from
-`develop` and target feature/fix pull requests at `develop`. Merge a tested batch
-into `master` for a release. See [the branch and release workflow](docs/branch-workflow.md).
+`develop` and target feature/fix pull requests at `develop`. Prepare the shared
+release version, manifest, changelog and release notes in those branches. Features
+in the same release use the same target version. CI checks release preparation
+before merging; merging the tested batch into `master` is the only publication
+step. See [the branch and release workflow](docs/branch-workflow.md).
 
 GitHub Actions builds Debug and Release on Windows with .NET 10 and runs both
 check programs on each push or pull request to `develop` or `master`. The workflow can also

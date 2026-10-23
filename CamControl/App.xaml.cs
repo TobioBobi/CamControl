@@ -7,6 +7,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        LanguageSettings.Initialize();
         Theme.Initialize();
         bool demo = e.Args.Contains("--demo", StringComparer.OrdinalIgnoreCase);
         if (!demo && !CameraSettings.TryLoad(null, out _))

@@ -61,12 +61,12 @@ internal static class PresetSettings
     {
         if (numbers.Count != 7 || !DefaultNumbers().Keys.All(numbers.ContainsKey) ||
             !numbers.Values.All(IsValidNumber) || numbers.Values.Distinct().Count() != 7)
-            throw new ArgumentException("Kamerapreset-Nummern müssen gültig und eindeutig sein.");
+            throw new ArgumentException(Texts.Preset_InvalidNumbers);
         var validated = Defaults();
         foreach (int number in validated.Keys.ToArray())
         {
             if (!names.TryGetValue(number, out var name) || !IsValidName(name))
-                throw new ArgumentException("Bitte einen Namen mit 1 bis 32 Zeichen eingeben.");
+                throw new ArgumentException(Texts.Preset_InvalidName);
             validated[number] = name.Trim();
         }
         path ??= FilePath;
