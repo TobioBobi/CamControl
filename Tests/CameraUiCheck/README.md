@@ -30,11 +30,11 @@ synchronous demo responses.
 
 Most windows render offscreen. Local modal save/cancel, demo and welcome dialogs
 open briefly. The checks save actual WPF renders under `artifacts/ui-preview` for
-visual review in `de-DE` and `en-US` subdirectories, including light/dark main windows, settings, the preset editor,
+visual review in `de-DE`, `en-US` and `es-ES` subdirectories, including light/dark main windows, settings, the preset editor,
 long names and enlarged text. These checks do not replace physical camera tests,
 real DPI/monitor changes or a fresh MSIX installation test.
 
-All window checks run in German and English. Language tests cover save/reopen,
+All window checks run in German, English and Spanish. Language tests cover save/reopen,
 returning to the Windows setting, write failure, restart guidance, XAML/C# UI
 text, WPF language metadata and privacy language. Saving a preference must not
 change the current UI language or custom preset names.

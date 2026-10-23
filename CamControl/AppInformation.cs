@@ -15,8 +15,12 @@ namespace CamControl
         {
             get
             {
-                string resource = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de"
-                    ? "CamControl.PrivacyPolicy" : "CamControl.PrivacyPolicy.en";
+                string resource = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName switch
+                {
+                    "de" => "CamControl.PrivacyPolicy",
+                    "es" => "CamControl.PrivacyPolicy.es",
+                    _ => "CamControl.PrivacyPolicy.en"
+                };
                 using var stream = typeof(AppInformation).Assembly.GetManifestResourceStream(resource)
                     ?? throw new InvalidOperationException(Texts.About_PrivacyMissing);
                 using var reader = new StreamReader(stream);

@@ -2,7 +2,7 @@
 
 ## 1.3.0 – vorbereitet am 22. Oktober 2026
 
-- Deutsche und englische Oberfläche einschließlich Einrichtung, Hilfe,
+- Deutsche, englische und spanische Oberfläche einschließlich Einrichtung, Hilfe,
   Datenschutz, Demo, Fehlermeldungen und Screenreader-Beschriftungen.
 - Automatische Spracherkennung und gespeicherte Auswahl unter
   „Einstellungen > Sprache / Language“; Änderungen gelten beim nächsten Start.

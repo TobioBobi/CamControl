@@ -24,12 +24,12 @@ internal static class Program
             try
             {
                 ThemeChecks(); await ControllerChecks();
-                foreach (string language in new[] { "de-DE", "en-US" })
+                foreach (string language in new[] { "de-DE", "en-US", "es-ES" })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
                     await WindowChecks();
                 }
-                Console.WriteLine($"Passed {checks} WPF/controller checks (German and English).");
+                Console.WriteLine($"Passed {checks} WPF/controller checks (German, English and Spanish).");
             }
             catch (Exception e) { Console.Error.WriteLine(e); exit = 1; }
             finally { app.Shutdown(); }
@@ -231,7 +231,7 @@ internal static class Program
         Screenshot(window, System.IO.Path.Combine(output, "main-compact.png"));
         var scroll = Descendants(window).OfType<ScrollViewer>().First();
         Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Default compact window requires scrolling: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
-        // Exercise wrapping in both languages, independent of translation length.
+        // Exercise wrapping in all languages, independent of translation length.
         session.Controller.ReportStopFailure(Texts.Error_Connection + " " + Texts.Error_Timeout); await Layout();
         Check(window.Status.ActualHeight > 20, "Regression did not reproduce a wrapped camera error");
         Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Wrapped camera error introduced scrollbars: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
@@ -275,18 +275,22 @@ internal static class Program
         string languagePath = System.IO.Path.Combine(output, "language-test.json"); System.IO.File.Delete(languagePath);
         var languageDialog = new CameraSettingsDialog(session.Service.CameraIp, session, languagePath: languagePath);
         ShowOffscreen(languageDialog); languageDialog.Navigation.SelectedIndex = 7; await Layout();
-        Check(languageDialog.LanguageChoice.Items.Count == 3 && languageDialog.LanguageChoice.SelectedIndex == 0 && !languageDialog.SaveLanguage.IsEnabled, "Language selection/default save state missing");
+        Check(languageDialog.LanguageChoice.Items.Count == 4 && languageDialog.LanguageChoice.SelectedIndex == 0 && !languageDialog.SaveLanguage.IsEnabled, "Language selection/default save state missing");
+        Check(languageDialog.LanguageChoice.Items[3].ToString() == "Español", "Spanish choice is not discoverable by its native name");
         var uiCulture = CultureInfo.CurrentUICulture;
         var names = session.Names.ToDictionary(p => p.Key, p => p.Value);
-        languageDialog.LanguageChoice.SelectedIndex = uiCulture.TwoLetterISOLanguageName == "de" ? 2 : 1;
+        // Exercise all explicit preferences, including saving Spanish from English.
+        int nextLanguageIndex = uiCulture.TwoLetterISOLanguageName switch { "de" => 2, "en" => 3, _ => 1 };
+        var nextLanguage = nextLanguageIndex switch { 2 => AppLanguage.English, 3 => AppLanguage.Spanish, _ => AppLanguage.German };
+        languageDialog.LanguageChoice.SelectedIndex = nextLanguageIndex;
         Check(languageDialog.SaveLanguage.IsEnabled && !System.IO.File.Exists(languagePath), "Language applied before saving");
         languageDialog.SaveLanguage.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Layout();
-        Check(!languageDialog.SaveLanguage.IsEnabled && LanguageSettings.Load(languagePath) == (uiCulture.TwoLetterISOLanguageName == "de" ? AppLanguage.English : AppLanguage.German), "Language preference was not saved");
+        Check(!languageDialog.SaveLanguage.IsEnabled && LanguageSettings.Load(languagePath) == nextLanguage, "Language preference was not saved");
         Check(CultureInfo.CurrentUICulture.Equals(uiCulture) && names.All(p => session.Names[p.Key] == p.Value), "Saving language changed the current UI or user preset names");
         Check(Descendants(languageDialog).OfType<TextBlock>().Any(t => t.Text == Texts.Language_Saved), "Restart guidance missing after language save");
         Screenshot(languageDialog, System.IO.Path.Combine(output, "settings-language-saved.png")); languageDialog.Close();
         var reopenedLanguage = new CameraSettingsDialog(session.Service.CameraIp, session, languagePath: languagePath);
-        Check(reopenedLanguage.LanguageChoice.SelectedIndex == (uiCulture.TwoLetterISOLanguageName == "de" ? 2 : 1), "Reopened settings lost pending language");
+        Check(reopenedLanguage.LanguageChoice.SelectedIndex == nextLanguageIndex, "Reopened settings lost pending language");
         reopenedLanguage.LanguageChoice.SelectedIndex = 0;
         reopenedLanguage.SaveLanguage.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check(LanguageSettings.Load(languagePath) == AppLanguage.System, "Could not restore automatic language");
@@ -295,10 +299,15 @@ internal static class Program
         failedLanguage.LanguageChoice.SelectedIndex = 1; failedLanguage.SaveLanguage.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check(failedLanguage.SaveLanguage.IsEnabled && LanguageSettings.Load(output) == AppLanguage.System, "Failed language save applied preference or prevented retry");
         failedLanguage.Close();
-        bool german = uiCulture.TwoLetterISOLanguageName == "de";
-        Check(window.SettingsButton.Content as string == (german ? "⚙ Einstellungen" : "⚙ Settings"), "XAML did not use the selected language");
-        Check(settings.Title == (german ? "Einstellungen" : "Settings"), "C# dialog did not use the selected language");
-        Check(AppInformation.PrivacyText.StartsWith(german ? "Datenschutz für CamControl" : "Privacy for CamControl"), "Privacy text used the wrong language");
+        var expected = uiCulture.TwoLetterISOLanguageName switch
+        {
+            "de" => (Settings: "Einstellungen", Privacy: "Datenschutz für CamControl"),
+            "es" => (Settings: "Ajustes", Privacy: "Privacidad de CamControl"),
+            _ => (Settings: "Settings", Privacy: "Privacy for CamControl")
+        };
+        Check(window.SettingsButton.Content as string == "⚙ " + expected.Settings, "XAML did not use the selected language");
+        Check(settings.Title == expected.Settings, "C# dialog did not use the selected language");
+        Check(AppInformation.PrivacyText.StartsWith(expected.Privacy), "Privacy text used the wrong language");
         Check(string.Equals(window.Language.IetfLanguageTag, uiCulture.IetfLanguageTag, StringComparison.OrdinalIgnoreCase), "WPF language did not follow UI culture");
         var editorPreview = new PresetEditorDialog(session, 1); ShowOffscreen(editorPreview); await Layout(); Screenshot(editorPreview, System.IO.Path.Combine(output, "preset-editor.png"));
         await editorPreview.Controller.SetActiveAsync(true); await editorPreview.Controller.StartDirectionAsync(Direction.Left);

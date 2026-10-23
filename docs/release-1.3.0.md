@@ -6,7 +6,7 @@ weitere Features dieses Releases ergänzen diese Datei und den Changelog.
 
 ## Text für „Neu in dieser Version“
 
-CamControl ist jetzt auf Deutsch und Englisch verfügbar – einschließlich Hilfe,
+CamControl ist jetzt auf Deutsch, Englisch und Spanisch verfügbar – einschließlich Hilfe,
 Datenschutz, Demo und Fehlermeldungen. Die App folgt deiner Windows-Anzeigesprache.
 Unter „Einstellungen > Sprache / Language“ kannst du eine eigene Sprache wählen.
 Die gespeicherte Auswahl wird beim nächsten App-Start übernommen.
@@ -22,13 +22,13 @@ Veröffentlichungsschritt. Die Pipeline baut und testet den Stand, erstellt das
 Store-Paket und reicht es bei eingerichteter Store-Anbindung zur Zertifizierung
 ein. Die Veröffentlichung folgt nach erfolgreicher Microsoft-Zertifizierung.
 
-Die deutschen Versionshinweise werden automatisch eingereicht. Die englische
-Store-Beschreibung unter [store-listing.en.md](store-listing.en.md) ist ein Entwurf
-für einen neuen Spracheintrag in Partner Center; die Pipeline legt diesen nicht an.
+Die deutschen Versionshinweise werden automatisch eingereicht. Die
+[englische](store-listing.en.md) und [spanische Store-Beschreibung](store-listing.es.md)
+sind Entwürfe für neue Spracheinträge in Partner Center; die Pipeline legt diese nicht an.
 
 ## Abnahme
 
-- Deutsch und Englisch: Einrichtung, alle Einstellungsseiten, Preset-Editor,
+- Deutsch, Englisch und Spanisch: Einrichtung, alle Einstellungsseiten, Preset-Editor,
   Bestätigung, Hilfe, Datenschutz, Demo und Screenreader-Texte prüfen.
 - Automatische Erkennung, manuelle Auswahl, Speichern und Übernahme beim nächsten
   Start sowie englische Rückfallsprache prüfen.

@@ -12,7 +12,7 @@
     <Description>PTZ-Kamerasteuerung über kompatible HTTP-CGI-Befehle. Mit Demo-Modus.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
-  <Resources><Resource Language="de-DE" /><Resource Language="en-US" /></Resources>
+  <Resources><Resource Language="de-DE" /><Resource Language="en-US" /><Resource Language="es-ES" /></Resources>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>

@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace CamControl;
 
-internal enum AppLanguage { System, German, English }
+internal enum AppLanguage { System, German, English, Spanish }
 
 internal static class LanguageSettings
 {
@@ -35,7 +35,8 @@ internal static class LanguageSettings
         {
             AppLanguage.German => "de",
             AppLanguage.English => "en",
-            _ => systemCulture.TwoLetterISOLanguageName == "de" ? "de" : "en"
+            AppLanguage.Spanish => "es",
+            _ => systemCulture.TwoLetterISOLanguageName switch { "de" => "de", "es" => "es", _ => "en" }
         });
 
     internal static void Initialize(string? path = null)

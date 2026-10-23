@@ -397,7 +397,7 @@ Demo mode
 Try the app without a camera under “Demo mode”. Left: stage and camera frame; right: simulated camera image, no live video. No network commands are sent. Demo names, assignments, positions and automatic positions apply to this session only; your camera settings are preserved.
 
 Language
-Under “Language / Sprache”, choose the Windows setting, Deutsch or English and save. The language will be applied the next time you start the app. Unsupported Windows languages use English.
+Under “Language / Sprache”, choose the Windows setting, Deutsch, English or Español and save. The language will be applied the next time you start the app. Unsupported Windows languages use English.
 
 Connection problems
 Check the IP address, network and power supply. HTTP errors may indicate an incompatible camera interface.

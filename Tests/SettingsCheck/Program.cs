@@ -8,7 +8,7 @@ using System.Text;
 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-DE");
 
 int checks = 0;
-void Check(bool condition, string description)
+void Check([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string description)
 {
     if (!condition) throw new Exception(description);
     checks++;
@@ -31,8 +31,11 @@ try { LanguageSettings.Save((AppLanguage)99, languagePath); throw new Exception(
 catch (ArgumentOutOfRangeException) { checks++; }
 Check(LanguageSettings.Resolve(AppLanguage.System, CultureInfo.GetCultureInfo("de-AT")).Name == "de", "German region did not resolve to German");
 Check(LanguageSettings.Resolve(AppLanguage.System, CultureInfo.GetCultureInfo("en-GB")).Name == "en", "English region did not resolve to English");
+foreach (string region in new[] { "es-ES", "es-MX", "es-AR" })
+    Check(LanguageSettings.Resolve(AppLanguage.System, CultureInfo.GetCultureInfo(region)).Name == "es", "Spanish region did not resolve to Spanish: " + region);
 Check(LanguageSettings.Resolve(AppLanguage.System, CultureInfo.GetCultureInfo("fr-FR")).Name == "en", "Unsupported system language did not fall back to English");
 Check(LanguageSettings.Resolve(AppLanguage.German, CultureInfo.GetCultureInfo("en-US")).Name == "de" && LanguageSettings.Resolve(AppLanguage.English, CultureInfo.GetCultureInfo("de-DE")).Name == "en", "Explicit language did not override Windows");
+Check(LanguageSettings.Resolve(AppLanguage.Spanish, CultureInfo.GetCultureInfo("de-DE")).Name == "es", "Explicit Spanish did not override Windows");
 var regionalCulture = CultureInfo.CurrentCulture;
 var oldDefaultUi = CultureInfo.DefaultThreadCurrentUICulture;
 LanguageSettings.Save(AppLanguage.English, languagePath);
@@ -40,24 +43,35 @@ LanguageSettings.Initialize(languagePath);
 Check(Texts.Common_Cancel == "Cancel" && (await Task.Run(() => Texts.Settings_Title)) == "Settings", "Language initialization did not apply to startup and background tasks");
 Check(CultureInfo.CurrentCulture.Equals(regionalCulture), "UI language changed regional formats");
 var english = Texts.Manager.GetResourceSet(CultureInfo.InvariantCulture, true, false)!;
-var german = Texts.Manager.GetResourceSet(CultureInfo.GetCultureInfo("de"), true, false)!;
 var englishKeys = english.Cast<System.Collections.DictionaryEntry>().Select(e => (string)e.Key).ToHashSet();
-var germanKeys = german.Cast<System.Collections.DictionaryEntry>().Select(e => (string)e.Key).ToHashSet();
-Check(englishKeys.SetEquals(germanKeys), "German and English resources have different keys");
-foreach (string key in englishKeys)
+foreach (string language in new[] { "de", "es" })
 {
-    string en = english.GetString(key)!, de = german.GetString(key)!;
-    Check(!string.IsNullOrWhiteSpace(en) && !string.IsNullOrWhiteSpace(de), "Empty translation: " + key);
-    var enFormat = CompositeFormat.Parse(en); var deFormat = CompositeFormat.Parse(de);
-    Check(enFormat.MinimumArgumentCount == deFormat.MinimumArgumentCount, "Translation placeholders differ: " + key);
-    object[] values = Enumerable.Repeat<object>(12, enFormat.MinimumArgumentCount).ToArray();
-    _ = string.Format(CultureInfo.InvariantCulture, enFormat, values);
-    _ = string.Format(CultureInfo.InvariantCulture, deFormat, values);
+    var localized = Texts.Manager.GetResourceSet(CultureInfo.GetCultureInfo(language), true, false)!;
+    Check(localized != null, "Satellite resources missing: " + language);
+    var localizedKeys = localized!.Cast<System.Collections.DictionaryEntry>().Select(e => (string)e.Key).ToHashSet();
+    Check(englishKeys.SetEquals(localizedKeys), "Resource keys differ from English: " + language);
+    foreach (string key in englishKeys)
+    {
+        string en = english.GetString(key)!, translated = localized.GetString(key)!;
+        Check(!string.IsNullOrWhiteSpace(en) && !string.IsNullOrWhiteSpace(translated), "Empty translation: " + language + "/" + key);
+        var enFormat = CompositeFormat.Parse(en); var translatedFormat = CompositeFormat.Parse(translated);
+        Check(enFormat.MinimumArgumentCount == translatedFormat.MinimumArgumentCount, "Translation placeholders differ: " + language + "/" + key);
+        object[] values = Enumerable.Repeat<object>(12, enFormat.MinimumArgumentCount).ToArray();
+        _ = string.Format(CultureInfo.InvariantCulture, enFormat, values);
+        _ = string.Format(CultureInfo.InvariantCulture, translatedFormat, values);
+    }
 }
 Check(Texts.Manager.GetString("Common_Cancel", CultureInfo.GetCultureInfo("de-CH")) == "Abbrechen", "Regional German resource fallback failed");
 Check(Texts.Manager.GetString("Common_Cancel", CultureInfo.GetCultureInfo("fr-FR")) == "Cancel", "Unsupported resource language did not fall back to English");
 Check(AppInformation.PrivacyText.StartsWith("Privacy for CamControl"), "English privacy text missing");
 Check(CameraHelp.Text.Contains("Requirements") && CameraHelp.Text.Contains("0–89"), "English help missing");
+LanguageSettings.Save(AppLanguage.Spanish, languagePath);
+LanguageSettings.Initialize(languagePath);
+Check(Texts.Common_Cancel == "Cancelar" && (await Task.Run(() => Texts.Settings_Title)) == "Ajustes", "Saved Spanish did not apply on startup and background tasks");
+Check(CultureInfo.CurrentCulture.Equals(regionalCulture), "Spanish UI changed regional formats");
+Check(AppInformation.PrivacyText.StartsWith("Privacidad de CamControl") && CameraHelp.Text.Contains("Requisitos") && CameraHelp.Text.Contains("0–89"), "Spanish help/privacy missing");
+foreach (string region in new[] { "es-ES", "es-MX", "es-AR" })
+    Check(Texts.Manager.GetString("Common_Cancel", CultureInfo.GetCultureInfo(region)) == "Cancelar", "Spanish regional resource fallback failed: " + region);
 CultureInfo.DefaultThreadCurrentUICulture = oldDefaultUi;
 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-DE");
 Check(AppInformation.PrivacyText.StartsWith("Datenschutz für CamControl") && CameraHelp.Text.Contains("Voraussetzungen"), "German help/privacy missing");

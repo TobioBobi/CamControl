@@ -397,7 +397,7 @@ Demo-Modus
 Unter „Demo-Modus“ ohne Kamera ausprobieren. Links: Bühne mit Bildausschnitt; rechts: simuliertes Kamerabild, kein Live-Video. Es werden keine Netzwerkbefehle gesendet. Demo-Namen, Zuordnungen, Positionen und Automatik gelten nur für die Sitzung; deine Kameraeinstellungen bleiben erhalten.
 
 Sprache
-Unter „Sprache / Language“ Windows-Einstellung, Deutsch oder English auswählen und speichern. Die Sprache wird beim nächsten App-Start übernommen. Nicht unterstützte Windows-Sprachen verwenden Englisch.
+Unter „Sprache / Language“ Windows-Einstellung, Deutsch, English oder Español auswählen und speichern. Die Sprache wird beim nächsten App-Start übernommen. Nicht unterstützte Windows-Sprachen verwenden Englisch.
 
 Verbindungsprobleme
 IP-Adresse, Netzwerk und Stromversorgung prüfen. HTTP-Fehler können auf eine inkompatible Kamerasteuerung hinweisen.

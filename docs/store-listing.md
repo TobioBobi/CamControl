@@ -25,7 +25,7 @@ CamControl zeigt kein Live-Video an.
 Deine Einstellungen bleiben lokal. Kein Benutzerkonto, keine Werbung,
 keine Telemetrie.
 
-Die Oberfläche ist auf Deutsch und Englisch verfügbar. Die App folgt der
+Die Oberfläche ist auf Deutsch, Englisch und Spanisch verfügbar. Die App folgt der
 Windows-Anzeigesprache; eine eigene Auswahl ist in den Einstellungen möglich.
 
 ## Hinweise für die Einreichung

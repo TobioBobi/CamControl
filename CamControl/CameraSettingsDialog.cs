@@ -79,6 +79,7 @@ internal sealed class CameraSettingsDialog : AppWindow
         LanguageChoice.Items.Add(new LanguageChoiceItem(AppLanguage.System, Texts.Common_System));
         LanguageChoice.Items.Add(new LanguageChoiceItem(AppLanguage.German, "Deutsch"));
         LanguageChoice.Items.Add(new LanguageChoiceItem(AppLanguage.English, "English"));
+        LanguageChoice.Items.Add(new LanguageChoiceItem(AppLanguage.Spanish, "Español"));
         AppLanguage selectedLanguage = LanguageSettings.Load(languagePath);
         LanguageChoice.SelectedItem = LanguageChoice.Items.Cast<LanguageChoiceItem>().Single(item => item.Value == selectedLanguage);
         var languageFeedback = Ui.Text("");

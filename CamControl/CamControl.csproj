@@ -17,6 +17,7 @@
     <Resource Include="../packaging/Assets/CamControl.ico" Link="resources/Camera.ico" />
     <EmbeddedResource Include="../docs/privacy.md" LogicalName="CamControl.PrivacyPolicy" />
     <EmbeddedResource Include="../docs/privacy.en.md" LogicalName="CamControl.PrivacyPolicy.en" WithCulture="false" />
+    <EmbeddedResource Include="../docs/privacy.es.md" LogicalName="CamControl.PrivacyPolicy.es" WithCulture="false" />
   </ItemGroup>
 
 </Project>

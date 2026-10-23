@@ -19,5 +19,6 @@ positions including zoom. WPF dialog and controller checks live in
 
 Localization checks cover language persistence and invalid settings, Windows
 language variants and English fallback, explicit overrides, startup/background
-thread UI culture, preserved regional formats, exact German/English resource
+thread UI culture, preserved regional formats, exact German/English/Spanish resource
 key parity and valid format placeholders, and localized help/privacy documents.
+Spanish detection and resource fallback cover Spain, Mexico and Argentina.

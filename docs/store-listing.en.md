@@ -23,7 +23,7 @@ display live video.
 
 Your settings stay local. No user account, advertising or telemetry.
 
-The interface is available in German and English. The app follows the Windows
+The interface is available in German, English and Spanish. The app follows the Windows
 display language; you can choose a different language in settings.
 
 ## Submission notes

@@ -41,29 +41,30 @@ documentation and actual hardware. Protocol references:
 [HTTP-CGI requests](https://docs.ptzoptics.com/dev/guides/http-api-getting-started/),
 [preset commands](https://docs.ptzoptics.com/dev/http-api/Movement/preset-commands-get-preset-command/).
 
-Draft Store descriptions are available in [German](docs/store-listing.md) and
-[English](docs/store-listing.en.md).
+Draft Store descriptions are available in [German](docs/store-listing.md),
+[English](docs/store-listing.en.md) and [Spanish](docs/store-listing.es.md).
 
 Settings > Info & Datenschutz shows the build version, publisher TobioBobi,
 project/support link and privacy information. The app embeds the same
-privacy text maintained in this repository in [German](docs/privacy.md) and
-[English](docs/privacy.en.md). The GitHub link
+privacy text maintained in this repository in [German](docs/privacy.md),
+[English](docs/privacy.en.md) and [Spanish](docs/privacy.es.md). The GitHub link
 opens the browser only when clicked. A public privacy URL for the Store listing
 will be configured when preparing the Store submission.
 
 ## Languages
 
-CamControl supports German and English, including first-run setup, settings,
+CamControl supports German, English and Spanish, including first-run setup, settings,
 help, privacy information, demo labels and accessible control names. The default
-follows the Windows display language: German variants use German; other languages
-use English. **Settings > Language / Sprache** offers the Windows setting,
-Deutsch and English. Save the choice and close/reopen the app to apply it.
+follows the Windows display language: German and Spanish regional variants use
+their respective translations; other languages use English.
+**Settings > Language / Sprache** offers the Windows setting, Deutsch, English
+and Español. Save the choice and close/reopen the app to apply it.
 The preference is stored in `%LOCALAPPDATA%/CamControl/language.json` separately
 from camera settings. Changing languages preserves custom preset names and does
 not change regional number/date formats or the camera protocol.
 
 Translations use `CamControl/Resources/Strings.resx` (complete English fallback)
-and `Strings.de.resx`. Both C# and XAML use the shared `Texts` accessors. See
+with `Strings.de.resx` and `Strings.es.resx`. Both C# and XAML use the shared `Texts` accessors. See
 [localization.md](docs/localization.md) for adding a language and validation.
 
 ## Development
