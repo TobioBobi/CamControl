@@ -22,7 +22,7 @@ manual controls, and check compact layout with a 32-character name and enlarged
 text, including a two-line camera error without unnecessary scrollbars.
 They also verify that repeated theme application keeps shared brushes, and that
 motion, preset clicks and renaming reuse the existing preset content.
-Settings checks cover all seven sections, persistent appearance selection, address validation/save/cancel and
+Settings checks cover all eight sections, persistent appearance and language selection, address validation/save/cancel and
 write failure, read-only help/privacy, demo entry, duplicate/reserved preset
 numbers, explicit mapping/automation saves, custom demo save/recall, and mapped
 startup/exit presets. Editors must stop and close on one close request, including
@@ -30,6 +30,11 @@ synchronous demo responses.
 
 Most windows render offscreen. Local modal save/cancel, demo and welcome dialogs
 open briefly. The checks save actual WPF renders under `artifacts/ui-preview` for
-visual review, including light/dark main windows, settings, the preset editor,
+visual review in `de-DE`, `en-US` and `es-ES` subdirectories, including light/dark main windows, settings, the preset editor,
 long names and enlarged text. These checks do not replace physical camera tests,
 real DPI/monitor changes or a fresh MSIX installation test.
+
+All window checks run in German, English and Spanish. Language tests cover save/reopen,
+returning to the Windows setting, write failure, restart guidance, XAML/C# UI
+text, WPF language metadata and privacy language. Saving a preference must not
+change the current UI language or custom preset names.

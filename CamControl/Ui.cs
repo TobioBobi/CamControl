@@ -30,6 +30,7 @@ public class AppWindow : Window
 {
     public AppWindow()
     {
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(System.Globalization.CultureInfo.CurrentUICulture.IetfLanguageTag);
         SetResourceReference(StyleProperty, typeof(Window));
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SourceInitialized += (_, _) => Theme.UpdateTitleBar(this);
@@ -67,10 +68,10 @@ internal sealed class ConfirmationDialog : AppWindow
 {
     internal ConfirmationDialog(Window owner, string message)
     {
-        Owner = owner; Title = "Position speichern"; Width = 430; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize; ShowInTaskbar = false;
-        var no = Ui.Button("Abbrechen", () => DialogResult = false); no.IsCancel = true;
-        var yes = Ui.Button("Position überschreiben", () => DialogResult = true);
-        var panel = Ui.Stack(Ui.Heading("Position überschreiben?"), Ui.Text(message), yes, no); panel.Margin = new(20); Content = panel;
+        Owner = owner; Title = Texts.Preset_Save; Width = 430; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize; ShowInTaskbar = false;
+        var no = Ui.Button(Texts.Common_Cancel, () => DialogResult = false); no.IsCancel = true;
+        var yes = Ui.Button(Texts.Preset_Overwrite, () => DialogResult = true);
+        var panel = Ui.Stack(Ui.Heading(Texts.Preset_OverwriteTitle), Ui.Text(message), yes, no); panel.Margin = new(20); Content = panel;
         Loaded += (_, _) => no.Focus();
     }
 }

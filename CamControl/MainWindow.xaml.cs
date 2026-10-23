@@ -53,15 +53,15 @@ public partial class MainWindow : AppWindow
         foreach (var (number, button) in buttons)
         {
             presetLabels[number].Text = Session.Names[number];
-            AutomationProperties.SetName(button, $"{Session.Names[number]}, Taste {number}");
+            AutomationProperties.SetName(button, Texts.Format(Texts.Preset_AccessibleName, Session.Names[number], number));
             button.IsEnabled = Session.Controller.ControlsEnabled && !settingsOpen;
         }
         ManualControls.IsEnabled = Session.Controller.ControlsEnabled && !settingsOpen;
         SettingsButton.IsEnabled = !closing && !settingsOpen;
         ModeLabel.Text = Session.IsDemo ? "CamControl · Demo" : "CamControl";
         Title = Session.IsDemo ? "CamControl – Demo" : "CamControl";
-        string requested = lastRequested is { } n ? "Zuletzt angefordert: " + Session.Names[n] : "";
-        Status.Text = Session.Controller.Error.Length > 0 ? Session.Controller.Error : Session.IsDemo ? "Demo · Keine Kamera verbunden" + (requested.Length > 0 ? " · " + requested : "") : requested.Length > 0 ? requested : "Kameramodus · Pfeiltasten / Num + −";
+        string requested = lastRequested is { } n ? Texts.Format(Texts.Main_Requested, Session.Names[n]) : "";
+        Status.Text = Session.Controller.Error.Length > 0 ? Session.Controller.Error : Session.IsDemo ? Texts.Main_DemoStatus + (requested.Length > 0 ? " · " + requested : "") : requested.Length > 0 ? requested : Texts.Main_CameraStatus;
         Status.SetResourceReference(TextBlock.ForegroundProperty, Session.Controller.Error.Length > 0 ? "ErrorBrush" : "MutedBrush");
     }
     private async void SettingsClick(object sender, RoutedEventArgs e)

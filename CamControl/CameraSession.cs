@@ -37,7 +37,7 @@ internal sealed class CameraSession : IDisposable
     public void SaveMapping(int button, string name, int number)
     {
         if (!PresetSettings.IsValidName(name) || !PresetSettings.IsValidNumber(number) || Numbers.Any(p => p.Key != button && p.Value == number))
-            throw new ArgumentException("Name oder Kamerapreset-Nummer ungültig; jede Nummer darf nur einem Button zugeordnet sein.");
+            throw new ArgumentException(Texts.Preset_InvalidMapping);
         var updatedNames = new Dictionary<int, string>(Names) { [button] = name.Trim() };
         var updatedNumbers = new Dictionary<int, int>(Numbers) { [button] = number };
         if (!IsDemo) PresetSettings.SaveConfiguration(updatedNames, updatedNumbers);
@@ -46,7 +46,7 @@ internal sealed class CameraSession : IDisposable
     }
     public void SaveAutomatic(AutomaticPositions value)
     {
-        if (!AutomaticPositions.IsValid(value.StartPreset) || !AutomaticPositions.IsValid(value.ExitPreset)) throw new ArgumentException("Ungültige Position.");
+        if (!AutomaticPositions.IsValid(value.StartPreset) || !AutomaticPositions.IsValid(value.ExitPreset)) throw new ArgumentException(Texts.Preset_InvalidPosition);
         if (!IsDemo) AutomaticPositions.Save(value);
         if (IsDemo) demoAutomatic = value; else automatic = value;
     }

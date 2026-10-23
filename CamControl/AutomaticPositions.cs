@@ -25,7 +25,7 @@ internal sealed class AutomaticPositions
 
     public static void Save(AutomaticPositions value, string? path = null)
     {
-        if (!IsValid(value.StartPreset) || !IsValid(value.ExitPreset)) throw new ArgumentException("Ungültige Presetnummer.");
+        if (!IsValid(value.StartPreset) || !IsValid(value.ExitPreset)) throw new ArgumentException(Texts.Preset_InvalidNumber);
         path ??= FilePath;
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";

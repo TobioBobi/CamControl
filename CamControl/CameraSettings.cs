@@ -46,7 +46,7 @@ namespace CamControl
         public static void Save(string ip, string? path = null)
         {
             if (!TryNormalizeIp(ip, out var normalizedIp))
-                throw new ArgumentException("Ungültige IPv4-Adresse.", nameof(ip));
+                throw new ArgumentException(Texts.Camera_InvalidIp, nameof(ip));
 
             path ??= FilePath;
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);

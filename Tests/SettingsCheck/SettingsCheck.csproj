@@ -4,10 +4,18 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../CamControl/AppInformation.cs" Link="AppInformation.cs" />
     <EmbeddedResource Include="../../docs/privacy.md" LogicalName="CamControl.PrivacyPolicy" />
+    <EmbeddedResource Include="../../docs/privacy.en.md" LogicalName="CamControl.PrivacyPolicy.en" WithCulture="false" />
+    <EmbeddedResource Include="../../docs/privacy.es.md" LogicalName="CamControl.PrivacyPolicy.es" WithCulture="false" />
+    <EmbeddedResource Include="../../CamControl/Resources/Strings.resx" LogicalName="CamControl.Resources.Strings.resources" />
+    <EmbeddedResource Include="../../CamControl/Resources/Strings.de.resx" LogicalName="CamControl.Resources.Strings.de.resources" />
+    <EmbeddedResource Include="../../CamControl/Resources/Strings.es.resx" LogicalName="CamControl.Resources.Strings.es.resources" />
+    <Compile Include="../../CamControl/Texts.cs" Link="Texts.cs" />
+    <Compile Include="../../CamControl/LanguageSettings.cs" Link="LanguageSettings.cs" />
     <Compile Include="../../CamControl/CameraSettings.cs" Link="CameraSettings.cs" />
     <Compile Include="../../CamControl/AppearanceSettings.cs" Link="AppearanceSettings.cs" />
     <Compile Include="../../CamControl/CamControlService.cs" Link="CamControlService.cs" />

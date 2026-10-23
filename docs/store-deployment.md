@@ -69,10 +69,16 @@ Store-Paket bleibt unsigniert; Microsoft signiert es für den Store.
 
 ## Versionen und Ergebnis
 
-Vor jedem Merge, der ein neues Store-Paket veröffentlichen soll,
-`CamControl/CamControl.csproj` auf eine höhere Version setzen und Changelog sowie
-Manifestvorlage passend aktualisieren. Aus `1.2.1` entsteht beispielsweise
-`1.2.1.0`. Die vierte Stelle bleibt für den Store `0`.
+Version und Versionshinweise bereits im jeweiligen Feature-/Fix-Branch
+vorbereiten. Die gemeinsame Zielversion des Releases in
+`CamControl/CamControl.csproj` muss höher als auf `master` sein. Projektversion,
+Changelog, Manifestvorlage und Paketbeispiele gemeinsam aktualisieren. Weitere
+Features desselben Releases übernehmen diese Zielversion und ergänzen die
+vorhandenen Release Notes. Aus `1.3.0` entsteht `1.3.0.0`; die vierte Stelle
+bleibt für den Store `0`. Details: [Branch-Workflow](branch-workflow.md).
+
+Damit ist der Merge des geprüften Stands von `develop` nach `master` der einzige
+Veröffentlichungsschritt; es gibt keinen gesonderten Versions-Commit beim Release.
 
 ### Versionshinweise im Store
 
@@ -98,12 +104,14 @@ Leerzeilen und einzelne Listeneinträge bleiben erhalten. Der Text darf nach
 dieser Normalisierung höchstens 1500 UTF-16-Zeichen umfassen und wird bei
 Überschreitung nicht abgeschnitten.
 
-Schon der Build-Job prüft ohne Zugangsdaten, dass die Datei für die aktuelle
-Projektversion existiert, ihre erste Überschrift zur Version passt und genau
+Schon der Build-Job prüft ohne Zugangsdaten, dass die Zielversion höher als auf
+`master` ist und die MSIX-Manifestvorlage zur Projektversion passt. Er prüft außerdem,
+dass die Datei für die aktuelle Projektversion existiert, ihre erste Überschrift
+zur Version passt und genau
 ein nicht leerer Abschnitt für die Versionshinweise vorhanden ist:
 
 ```powershell
-python packaging/submit_store.py --check-release-notes
+python packaging/check_release.py --base-ref origin/master
 ```
 
 Beim Deployment bestimmt die tatsächliche MSIX-Paketversion die Release-Datei.
@@ -112,10 +120,11 @@ deutschen Store-Eintrag. Andere Sprachen und sonstige Listing-Felder bleiben
 erhalten. Fehlt ein deutscher Basis-Eintrag, bricht die Prüfung vor dem Anlegen
 einer neuen Einreichung ab. Neue Sprachen werden nicht automatisch angelegt.
 
-Versionshinweise werden zusammen mit dem Release-PR geprüft und anschließend
+Versionshinweise werden bereits mit dem Feature-/Fix-PR geprüft und anschließend
 mit dem Paket eingereicht; ein manuelles Nachtragen im Partner Center ist nicht
-erforderlich. API-Einreichungen während ihrer Bearbeitung nicht im Partner
-Center ändern.
+erforderlich. `python packaging/submit_store.py --check-release-notes` bleibt als
+separate Prüfung ausschließlich des Store-Textes verfügbar. API-Einreichungen
+während ihrer Bearbeitung nicht im Partner Center ändern.
 
 ### Paketversion und Veröffentlichung
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -29,7 +29,7 @@ namespace CamControl
         public void SetCameraIp(string ip)
         {
             if (!CameraSettings.TryNormalizeIp(ip, out var normalizedIp))
-                throw new ArgumentException("Ungültige IPv4-Adresse.", nameof(ip));
+                throw new ArgumentException(Texts.Camera_InvalidIp, nameof(ip));
 
             CameraIp = normalizedIp;
             cameraAddress = new Uri($"http://{CameraIp}/");

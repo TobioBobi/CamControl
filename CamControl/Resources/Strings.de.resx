@@ -1,0 +1,407 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Bearbeiten …</value>
+  </data>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>Unbekannt</value>
+  </data>
+  <data name="Common_System" xml:space="preserve">
+    <value>Windows-Einstellung verwenden</value>
+  </data>
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="Settings_Camera" xml:space="preserve">
+    <value>Kamera</value>
+  </data>
+  <data name="Settings_Presets" xml:space="preserve">
+    <value>Buttons &amp; Presets</value>
+  </data>
+  <data name="Settings_Automatic" xml:space="preserve">
+    <value>Automatische Positionen</value>
+  </data>
+  <data name="Settings_Demo" xml:space="preserve">
+    <value>Demo-Modus</value>
+  </data>
+  <data name="Settings_Help" xml:space="preserve">
+    <value>Hilfe &amp; Voraussetzungen</value>
+  </data>
+  <data name="Settings_About" xml:space="preserve">
+    <value>Info &amp; Datenschutz</value>
+  </data>
+  <data name="Settings_Appearance" xml:space="preserve">
+    <value>Darstellung</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Sprache / Language</value>
+  </data>
+  <data name="Camera_Address" xml:space="preserve">
+    <value>IP-Adresse der Kamera</value>
+  </data>
+  <data name="Camera_Requirements" xml:space="preserve">
+    <value>IPv4 · HTTP auf Port 80 · Kamera und PC müssen im erreichbaren Netzwerk sein.</value>
+  </data>
+  <data name="Camera_SaveFailed" xml:space="preserve">
+    <value>Die Einstellung konnte nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="Camera_SetupFirst" xml:space="preserve">
+    <value>Zuerst Kamera einrichten oder Demo starten.</value>
+  </data>
+  <data name="Camera_InvalidIp" xml:space="preserve">
+    <value>Ungültige IPv4-Adresse.</value>
+  </data>
+  <data name="Preset_Description" xml:space="preserve">
+    <value>Namen, Kamerapreset-Nummern und Positionen bearbeiten.</value>
+  </data>
+  <data name="Preset_Number" xml:space="preserve">
+    <value>Kamerapreset-Nummer</value>
+  </data>
+  <data name="Preset_Name" xml:space="preserve">
+    <value>Buttonname</value>
+  </data>
+  <data name="Preset_NameHint" xml:space="preserve">
+    <value>Buttonname (1–32 Zeichen)</value>
+  </data>
+  <data name="Preset_NumberHint" xml:space="preserve">
+    <value>0–89 oder 100–254 · Nummern müssen je Benutzer eindeutig sein.</value>
+  </data>
+  <data name="Preset_EditTitle" xml:space="preserve">
+    <value>Preset {0} bearbeiten</value>
+  </data>
+  <data name="Preset_SaveMapping" xml:space="preserve">
+    <value>Zuordnung speichern</value>
+  </data>
+  <data name="Preset_Recall" xml:space="preserve">
+    <value>Position anfahren</value>
+  </data>
+  <data name="Preset_Save" xml:space="preserve">
+    <value>Position speichern</value>
+  </data>
+  <data name="Preset_SaveButton" xml:space="preserve">
+    <value>Position speichern …</value>
+  </data>
+  <data name="Preset_Overwrite" xml:space="preserve">
+    <value>Position überschreiben</value>
+  </data>
+  <data name="Preset_OverwriteTitle" xml:space="preserve">
+    <value>Position überschreiben?</value>
+  </data>
+  <data name="Preset_Confirm" xml:space="preserve">
+    <value>Kamerapreset {0} für „{1}“ überschreiben?</value>
+  </data>
+  <data name="Preset_Invalid" xml:space="preserve">
+    <value>Gültigen Namen und eine freie Nummer von 0–89 oder 100–254 eingeben.</value>
+  </data>
+  <data name="Preset_Saved" xml:space="preserve">
+    <value>Zuordnung gespeichert; Kameraposition unverändert.</value>
+  </data>
+  <data name="Preset_SaveFailed" xml:space="preserve">
+    <value>Zuordnung konnte nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="Preset_StoreSent" xml:space="preserve">
+    <value>Speicherbefehl gesendet. Mit „Position anfahren“ prüfen.</value>
+  </data>
+  <data name="Preset_RecallSent" xml:space="preserve">
+    <value>Positionsbefehl gesendet.</value>
+  </data>
+  <data name="Preset_Row" xml:space="preserve">
+    <value>{0}
+Kamerapreset {1}</value>
+  </data>
+  <data name="Preset_AccessibleName" xml:space="preserve">
+    <value>{0}, Taste {1}</value>
+  </data>
+  <data name="Preset_InvalidMapping" xml:space="preserve">
+    <value>Name oder Kamerapreset-Nummer ungültig; jede Nummer darf nur einem Button zugeordnet sein.</value>
+  </data>
+  <data name="Preset_InvalidNumbers" xml:space="preserve">
+    <value>Kamerapreset-Nummern müssen gültig und eindeutig sein.</value>
+  </data>
+  <data name="Preset_InvalidName" xml:space="preserve">
+    <value>Bitte einen Namen mit 1 bis 32 Zeichen eingeben.</value>
+  </data>
+  <data name="Preset_InvalidNumber" xml:space="preserve">
+    <value>Ungültige Presetnummer.</value>
+  </data>
+  <data name="Preset_InvalidPosition" xml:space="preserve">
+    <value>Ungültige Position.</value>
+  </data>
+  <data name="Automatic_Description" xml:space="preserve">
+    <value>Optional eine Position beim Start und beim Beenden aufrufen. Ohne Auswahl gibt es keine automatische Fahrt.</value>
+  </data>
+  <data name="Automatic_Start" xml:space="preserve">
+    <value>Beim Start</value>
+  </data>
+  <data name="Automatic_Exit" xml:space="preserve">
+    <value>Beim Beenden</value>
+  </data>
+  <data name="Automatic_Save" xml:space="preserve">
+    <value>Automatik speichern</value>
+  </data>
+  <data name="Automatic_None" xml:space="preserve">
+    <value>Keine Position</value>
+  </data>
+  <data name="Automatic_Saved" xml:space="preserve">
+    <value>Automatik gespeichert.</value>
+  </data>
+  <data name="Automatic_SaveFailed" xml:space="preserve">
+    <value>Auswahl konnte nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="Demo_SwitchCamera" xml:space="preserve">
+    <value>Zur Kamera wechseln</value>
+  </data>
+  <data name="Demo_Start" xml:space="preserve">
+    <value>Demo starten</value>
+  </data>
+  <data name="Demo_Active" xml:space="preserve">
+    <value>Demo aktiv · Keine Netzwerkbefehle. Änderungen gelten nur für diese Sitzung.</value>
+  </data>
+  <data name="Demo_Description" xml:space="preserve">
+    <value>Bewegung, Zoom und Presets ohne Kamera testen. Deine Kameraeinstellungen bleiben erhalten.</value>
+  </data>
+  <data name="Demo_AccessibleName" xml:space="preserve">
+    <value>Simulierte Bühne und Kamera-Bildausschnitt, kein Live-Video</value>
+  </data>
+  <data name="Demo_Overview" xml:space="preserve">
+    <value>Bühne mit Bildausschnitt</value>
+  </data>
+  <data name="Demo_Zoom" xml:space="preserve">
+    <value>Simulation · Zoom {0:0.0}×</value>
+  </data>
+  <data name="Demo_Status" xml:space="preserve">
+    <value>{0} · kein Live-Video</value>
+  </data>
+  <data name="Demo_Speaker" xml:space="preserve">
+    <value>Redner</value>
+  </data>
+  <data name="Demo_Reader" xml:space="preserve">
+    <value>Leser</value>
+  </data>
+  <data name="Demo_Screen" xml:space="preserve">
+    <value>Bildschirm</value>
+  </data>
+  <data name="Demo_Table" xml:space="preserve">
+    <value>Tisch</value>
+  </data>
+  <data name="Demo_Ready" xml:space="preserve">
+    <value>Bereit</value>
+  </data>
+  <data name="Demo_CustomPreset" xml:space="preserve">
+    <value>Eigenes Preset {0}</value>
+  </data>
+  <data name="Demo_PresetSaved" xml:space="preserve">
+    <value>Preset {0} gespeichert</value>
+  </data>
+  <data name="Demo_MovementStopped" xml:space="preserve">
+    <value>Bewegung gestoppt</value>
+  </data>
+  <data name="Demo_ZoomStopped" xml:space="preserve">
+    <value>Zoom gestoppt</value>
+  </data>
+  <data name="Demo_Focusing" xml:space="preserve">
+    <value>Fokusfahrt</value>
+  </data>
+  <data name="Demo_FocusStopped" xml:space="preserve">
+    <value>Fokus gestoppt</value>
+  </data>
+  <data name="About_Support" xml:space="preserve">
+    <value>Projekt &amp; Support auf GitHub ↗</value>
+  </data>
+  <data name="About_BrowserFailed" xml:space="preserve">
+    <value>Der Browser konnte nicht geöffnet werden: {0}</value>
+  </data>
+  <data name="About_Details" xml:space="preserve">
+    <value>CamControl · Version {0}
+{1}
+Herausgeber: {2}</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+    <value>PTZ-Kamerasteuerung über HTTP-CGI</value>
+  </data>
+  <data name="About_PrivacyMissing" xml:space="preserve">
+    <value>Datenschutztext fehlt im App-Paket.</value>
+  </data>
+  <data name="Appearance_Dark" xml:space="preserve">
+    <value>Dunkel</value>
+  </data>
+  <data name="Appearance_Light" xml:space="preserve">
+    <value>Hell</value>
+  </data>
+  <data name="Appearance_Save" xml:space="preserve">
+    <value>Darstellung übernehmen</value>
+  </data>
+  <data name="Appearance_Saved" xml:space="preserve">
+    <value>Darstellung gespeichert.</value>
+  </data>
+  <data name="Appearance_SaveFailed" xml:space="preserve">
+    <value>Darstellung konnte nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="Appearance_Scheme" xml:space="preserve">
+    <value>Farbschema</value>
+  </data>
+  <data name="Appearance_Description" xml:space="preserve">
+    <value>Gilt für alle Fenster und bleibt nach einem Neustart erhalten. Windows-Kontrastdesigns haben Vorrang.</value>
+  </data>
+  <data name="Language_Save" xml:space="preserve">
+    <value>Sprache speichern</value>
+  </data>
+  <data name="Language_Description" xml:space="preserve">
+    <value>Die Sprache wird beim nächsten Start der App übernommen.</value>
+  </data>
+  <data name="Language_Saved" xml:space="preserve">
+    <value>Sprache gespeichert. Bitte die App schließen und erneut öffnen.</value>
+  </data>
+  <data name="Language_SaveFailed" xml:space="preserve">
+    <value>Sprache konnte nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="Welcome_Title" xml:space="preserve">
+    <value>Willkommen bei CamControl</value>
+  </data>
+  <data name="Welcome_Demo" xml:space="preserve">
+    <value>Ohne Kamera ausprobieren</value>
+  </data>
+  <data name="Welcome_Setup" xml:space="preserve">
+    <value>Kamera einrichten</value>
+  </data>
+  <data name="Welcome_Description" xml:space="preserve">
+    <value>PTZ-Kamera mit HTTP-CGI einrichten oder ohne Kamera ausprobieren.</value>
+  </data>
+  <data name="Movement_Left" xml:space="preserve">
+    <value>Nach links</value>
+  </data>
+  <data name="Movement_Right" xml:space="preserve">
+    <value>Nach rechts</value>
+  </data>
+  <data name="Movement_Up" xml:space="preserve">
+    <value>Nach oben</value>
+  </data>
+  <data name="Movement_Down" xml:space="preserve">
+    <value>Nach unten</value>
+  </data>
+  <data name="Movement_Title" xml:space="preserve">
+    <value>Bewegen</value>
+  </data>
+  <data name="Movement_HoldHint" xml:space="preserve">
+    <value>Halten zum Bewegen
+Loslassen stoppt</value>
+  </data>
+  <data name="Zoom_InButton" xml:space="preserve">
+    <value>+
+Hinein</value>
+  </data>
+  <data name="Zoom_OutButton" xml:space="preserve">
+    <value>−
+Heraus</value>
+  </data>
+  <data name="Zoom_In" xml:space="preserve">
+    <value>Zoom hinein</value>
+  </data>
+  <data name="Zoom_Out" xml:space="preserve">
+    <value>Zoom heraus</value>
+  </data>
+  <data name="Zoom_Title" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="Main_Settings" xml:space="preserve">
+    <value>⚙ Einstellungen</value>
+  </data>
+  <data name="Main_Positions" xml:space="preserve">
+    <value>Positionen</value>
+  </data>
+  <data name="Main_CameraMode" xml:space="preserve">
+    <value>Kameramodus</value>
+  </data>
+  <data name="Main_CameraStatus" xml:space="preserve">
+    <value>Kameramodus · Pfeiltasten / Num + −</value>
+  </data>
+  <data name="Main_DemoStatus" xml:space="preserve">
+    <value>Demo · Keine Kamera verbunden</value>
+  </data>
+  <data name="Main_Requested" xml:space="preserve">
+    <value>Zuletzt angefordert: {0}</value>
+  </data>
+  <data name="Error_Timeout" xml:space="preserve">
+    <value>Kamera antwortet nicht rechtzeitig. IP-Adresse und Netzwerk prüfen.</value>
+  </data>
+  <data name="Error_Http" xml:space="preserve">
+    <value>Befehl abgelehnt (HTTP {0}). IP-Adresse und Kamerakonfiguration prüfen.</value>
+  </data>
+  <data name="Error_Connection" xml:space="preserve">
+    <value>Keine Verbindung zur Kamera. IP-Adresse, Netzwerk und Stromversorgung prüfen.</value>
+  </data>
+  <data name="Error_CloseStop" xml:space="preserve">
+    <value>Stopp beim Schließen nicht bestätigt</value>
+  </data>
+  <data name="Error_Move" xml:space="preserve">
+    <value>Kamera bewegen</value>
+  </data>
+  <data name="Error_Zoom" xml:space="preserve">
+    <value>Kamera zoomen</value>
+  </data>
+  <data name="Error_MovementStop" xml:space="preserve">
+    <value>Bewegungsstopp nicht bestätigt</value>
+  </data>
+  <data name="Error_ZoomStop" xml:space="preserve">
+    <value>Zoomstopp nicht bestätigt</value>
+  </data>
+  <data name="Error_AllStops" xml:space="preserve">
+    <value>Kamerastopp nicht vollständig bestätigt</value>
+  </data>
+  <data name="Error_ExitPosition" xml:space="preserve">
+    <value>Endposition</value>
+  </data>
+  <data name="Help_Text" xml:space="preserve">
+    <value>Voraussetzungen
+Windows-PC und PTZ-Kamera mit passender HTTP-CGI-Steuerung im erreichbaren Netzwerk. Das MSIX-Paket enthält .NET; andere Builds benötigen die .NET 10 Desktop Runtime.
+
+Entscheidend sind die unterstützten Befehle, unabhängig von Hersteller oder Modell: Bewegung, Zoom, Stopps und Presets über /cgi-bin/ptzctrl.cgi?ptzcmd&amp;… . Benötigt werden IPv4 und HTTP auf Port 80 ohne Anmeldung. Nicht jede HTTP-CGI-Schnittstelle verwendet diesen Befehlssatz.
+
+Kamera einrichten
+Unter „Kamera“ die IP-Adresse ändern und speichern. Abbrechen verwirft die Eingabe.
+
+Bewegung und Presets
+Pfeile und Zoom-Buttons gedrückt halten; Loslassen stoppt. Tastatur: Pfeiltasten, Plus/Minus auf dem Nummernblock und 1–6 oder 9 für die Presets.
+
+Jeder Button ruft seine zugeordnete Kamerapreset-Nummer auf. Tastenkürzel bleiben an den Button gebunden. Die App legt keine Kamerapositionen automatisch an. Vor dem ersten Aufruf die gewünschte Position einrichten.
+
+Unter „Buttons &amp; Presets“ Namen und Kamerapreset-Nummer festlegen und „Zuordnung speichern“. Nummern: 0–89 oder 100–254, sofern die Kamera sie unterstützt. Mehrere Benutzer sprechen ihre Nummernbereiche ab. Doppelte Nummern innerhalb eines Windows-Kontos sind gesperrt.
+
+Kamera ausrichten und „Position speichern“ wählen. Das überschreibt nach Bestätigung das zugeordnete Kamerapreset. Mit „Position anfahren“ prüfen. Namen und Zuordnungen bleiben pro Windows-Konto lokal; Positionen speichert die Kamera.
+
+Automatische Positionen
+Unter „Einstellungen &gt; Automatische Positionen“ eine Start- oder Endposition wählen und „Automatik speichern“. Ohne eigene Auswahl gibt es keine automatische Fahrt. Beim Beenden wird die Endposition nur nach bestätigtem Stopp angefahren. Eine HTTP-Antwort bestätigt nicht, dass die Kamera ihr Ziel erreicht hat.
+
+Demo-Modus
+Unter „Demo-Modus“ ohne Kamera ausprobieren. Links: Bühne mit Bildausschnitt; rechts: simuliertes Kamerabild, kein Live-Video. Es werden keine Netzwerkbefehle gesendet. Demo-Namen, Zuordnungen, Positionen und Automatik gelten nur für die Sitzung; deine Kameraeinstellungen bleiben erhalten.
+
+Sprache
+Unter „Sprache / Language“ Windows-Einstellung, Deutsch, English oder Español auswählen und speichern. Die Sprache wird beim nächsten App-Start übernommen. Nicht unterstützte Windows-Sprachen verwenden Englisch.
+
+Verbindungsprobleme
+IP-Adresse, Netzwerk und Stromversorgung prüfen. HTTP-Fehler können auf eine inkompatible Kamerasteuerung hinweisen.
+
+Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, die Kamera zu stoppen. Wird ein Stopp nicht bestätigt, kann sie weiterlaufen: Kamera prüfen und bei Bedarf deren eigene Steuerung verwenden.</value>
+  </data>
+</root>
