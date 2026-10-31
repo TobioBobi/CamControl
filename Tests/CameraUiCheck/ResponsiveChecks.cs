@@ -22,6 +22,7 @@ internal static partial class Program
         var contents = presets.Select(b => b.Content).ToArray();
         var originalController = session.Controller;
         string output = System.IO.Path.GetFullPath("artifacts/ui-preview/" + CultureInfo.CurrentUICulture.Name);
+        System.IO.Directory.CreateDirectory(output);
 
         async Task Resize(double width, double height, CameraView view, PresetArrangement arrangement)
         {
