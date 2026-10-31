@@ -158,10 +158,20 @@ internal static partial class Program
             previous = window.CurrentLayout;
         }
         Check(transitions <= 3 && handler.Commands.Count == restoreCommands, "Boundary traversal oscillated or sent camera commands");
-        // A restricted work area must still allow one-click access to settings.
+        // A restricted work area must retain access to every control via scrolling.
         window.MaxWidth = 420; window.MaxHeight = 330; await Layout();
         window.RestoreFull(); await Layout();
         Check(window.CurrentLayout.View == CameraView.Full && window.SettingsButton.IsVisible && window.Width <= 420 && window.Height <= 330, "Constrained full restore failed");
+        Check(window.ControlsScroll.ScrollableWidth > 0, "Constrained full restore has no horizontal scroll range");
+        var presenter = Descendants(window.ControlsScroll).OfType<ScrollContentPresenter>().Single();
+        foreach (var button in presets.Concat(Descendants(window.ManualPanel).OfType<Button>()))
+        {
+            button.BringIntoView(); await Layout();
+            var bounds = button.TransformToAncestor(presenter).TransformBounds(new Rect(button.RenderSize));
+            var viewport = new Rect(0, 0, window.ControlsScroll.ViewportWidth, window.ControlsScroll.ViewportHeight);
+            viewport.Inflate(.5, .5);
+            Check(button.IsVisible && viewport.Contains(bounds), $"Constrained full control cannot be scrolled into view: {button.Name} {bounds} viewport {viewport}");
+        }
         window.MaxWidth = area.Width; window.MaxHeight = area.Height;
         await Resize(700, 520, CameraView.Full, PresetArrangement.Tiles);
         window.Left = -10000; window.Top = -10000;
@@ -211,7 +221,32 @@ internal static partial class Program
             Check(demo.Demo.State == demoState, "Demo resize triggered preset/motion/automation");
             Check(demoWindow.ControlsScroll.ScrollableWidth == 0 && demoWindow.ControlsScroll.ScrollableHeight == 0, "Long demo names forced essential controls to scroll");
             Screenshot(demoWindow, System.IO.Path.Combine(output, $"responsive-demo-{demoWindow.CurrentLayout.View}-{arrangement}.png"));
+            await demo.Controller.SetActiveAsync(true);
+            await demoWindow.Input.PressKeyAsync(Key.Right);
+            await demoWindow.Input.PressKeyAsync(Key.Add);
+            await Task.Delay(200);
+            Check(demo.Demo.State.X > demoState.X + .002 && demo.Demo.State.Zoom > demoState.Zoom + .02,
+                $"Hidden demo preview stopped movement/zoom in {demoWindow.CurrentLayout}");
+            await demoWindow.Input.ReleaseKeyAsync(Key.Right);
+            await demoWindow.Input.ReleaseKeyAsync(Key.Add);
+            demoState = demo.Demo.State;
+            await Task.Delay(120);
+            Check(demo.Demo.State == demoState && !demoState.Moving && !demoState.Zooming, "Hidden demo continued moving after release");
+            demoWindow.RestoreFull(); await Layout();
+            Check(demoWindow.DemoPreview.IsVisible && demo.Demo.State == demoState, "Restoring demo preview lost the simulated position/zoom");
         }
+        var extraPreview = new Window { Width = 500, Height = 260, Content = new DemoCameraView(demo.Demo) };
+        ShowOffscreen(extraPreview); await Layout();
+        await demo.Controller.SetActiveAsync(true);
+        float initialZoom = demo.Demo.State.Zoom;
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        await demoWindow.Input.PressKeyAsync(Key.Add); await Task.Delay(200);
+        await demoWindow.Input.ReleaseKeyAsync(Key.Add);
+        double zoomChange = demo.Demo.State.Zoom - initialZoom;
+        Check(zoomChange > .02 && zoomChange <= elapsed.Elapsed.TotalSeconds + .08, "Multiple previews advanced the demo simulation more than once");
+        extraPreview.Close(); await Layout();
+        // Leave the main window slim to retain coverage of its exit-preset path.
+        demoWindow.Width = 160; demoWindow.Height = 310; await Layout();
         demoWindow.Close(); await Layout();
         Check(demo.Demo.State.Action == Texts.Format(Texts.Demo_CustomPreset, 26), "Slim close lost mapped exit preset");
         Theme.Apply(false);

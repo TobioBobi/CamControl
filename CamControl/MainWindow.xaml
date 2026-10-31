@@ -12,7 +12,7 @@
    <Button x:Name="RestoreButton" Content="↗" ToolTip="{x:Static local:Texts.Main_RestoreFull}" AutomationProperties.Name="{x:Static local:Texts.Main_RestoreFull}" MinHeight="28" MinWidth="28" Padding="4" Margin="4,0,0,4" VerticalAlignment="Top" Click="RestoreFullClick" />
    </StackPanel>
    <ScrollViewer x:Name="ControlsScroll" Grid.Row="1" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-    <StackPanel Width="{Binding ViewportWidth, ElementName=ControlsScroll}">
+    <StackPanel Width="{Binding ViewportWidth, ElementName=ControlsScroll}" MinWidth="{Binding MinWidth, ElementName=ControlGrid}">
      <Grid x:Name="ControlGrid">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="14" /><ColumnDefinition Width="174" /></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>

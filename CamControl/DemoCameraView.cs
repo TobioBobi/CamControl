@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
@@ -10,17 +9,16 @@ internal sealed class DemoCameraView : FrameworkElement
 {
     private readonly DemoCamera camera;
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(40) };
-    private readonly Stopwatch clock = new();
     internal DemoCameraView(DemoCamera camera)
     {
         this.camera = camera;
         System.Windows.Automation.AutomationProperties.SetName(this, Texts.Demo_AccessibleName);
         timer.Tick += Tick;
-        Loaded += (_, _) => { clock.Restart(); timer.Start(); };
-        Unloaded += (_, _) => { timer.Stop(); clock.Stop(); };
-        IsVisibleChanged += (_, _) => { clock.Restart(); if (IsVisible) timer.Start(); else timer.Stop(); };
+        Loaded += (_, _) => { if (IsVisible) timer.Start(); };
+        Unloaded += (_, _) => timer.Stop();
+        IsVisibleChanged += (_, _) => { if (IsLoaded && IsVisible) timer.Start(); else timer.Stop(); };
     }
-    private void Tick(object? sender, EventArgs e) { camera.Advance(clock.Elapsed); clock.Restart(); InvalidateVisual(); }
+    private void Tick(object? sender, EventArgs e) => InvalidateVisual();
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);

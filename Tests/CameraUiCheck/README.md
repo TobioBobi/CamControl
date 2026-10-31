@@ -33,7 +33,11 @@ one-click restoration of full size/position. Native WM_SIZING tests exercise all
 eight edges/corners; column sweeps check controls at narrow widths and sufficient
 height, strip checks verify aligned arrow/zoom controls. Boundary traversal checks hysteresis and unchanged outer
 size. Long-name demo checks cover all six slim variants and startup/exit presets.
-Restricted-area restoration retains full controls via scrolling. Screenshots use
+Restricted-area restoration retains full controls via scrolling.
+Regression checks scroll each preset/direction/zoom button into the constrained
+full viewport, exercise hidden-preview movement/zoom and release in all six slim
+variants, and verify that multiple previews do not accelerate the demo.
+Screenshots use
 the `responsive-*` prefix. Scaling simulations do not replace real monitor/DPI
 and Windows high-contrast acceptance.
 Settings checks cover all eight sections, persistent appearance and language selection, address validation/save/cancel and

@@ -12,6 +12,9 @@ bereit. Ein Klick auf den Vergrößern-Button bringt die letzte Vollansicht zur�
 Vollständige Positionsnamen sind als Tooltip und für Screenreader verfügbar.
 Hinweise und Kamerafehler werden in der Vollansicht angezeigt. Die Demovorschau
 vergrößert das Fenster nicht mehr automatisch.
+Demo-Bewegung und Zoom funktionieren auch bei ausgeblendeter Vorschau. Auf sehr
+kleinen Arbeitsflächen bleiben die Bedienelemente der Vollansicht durch Scrollen
+erreichbar.
 
 ## Pakete und Veröffentlichung
 
@@ -32,6 +35,10 @@ Historische Release-Dateien bleiben unverändert.
   Layout wechseln, Mausfang/Fokus verlieren und schließen: Bewegung muss stoppen.
 - Fehlermeldungen erst nach Vergrößern, Zuordnungen, Hervorhebung,
   Start-/Exit-Presets und Demo prüfen.
+- Bei eingeschränkter Vollansicht alle Presets, Richtungs- und Zoomtasten durch
+  Scrollen erreichen. Demo-Bewegung und Zoom in allen kleinen Varianten bei
+  ausgeblendeter Vorschau halten und loslassen; der Zustand bleibt beim
+  Vergrößern erhalten. Mehrere Vorschauen dürfen die Demo nicht beschleunigen.
 - Release-/Debug-Builds, SettingsCheck, CameraUiCheck und Release-/Store-Prüfungen
   ausführen. WPF-Prüfungen erzeugen Ansichten unter `artifacts/ui-preview`.
 - Echte Kamerastopps und native Monitorwechsel zusätzlich auf Hardware abnehmen.

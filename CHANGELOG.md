@@ -12,6 +12,9 @@
   Die Demovorschau vergrößert das Fenster nicht mehr automatisch.
 - Pfeil- und Zoomtasten der Leiste sind direkt nebeneinander ausgerichtet;
   schmale Spalten blenden die Steuerung bei ausreichender Höhe zuverlässig ein.
+- In eingeschränkten Arbeitsbereichen bleiben alle Steuerelemente der Vollansicht
+  durch Scrollen erreichbar. Demo-Bewegung und Zoom laufen auch bei ausgeblendeter
+  Vorschau weiter; mehrere Vorschauen verwenden denselben Simulationstakt.
 
 Hinweise zur Vorbereitung und Abnahme: [Release 1.4.0](docs/release-1.4.0.md).
 
