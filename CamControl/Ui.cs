@@ -40,21 +40,27 @@ public class AppWindow : Window
     }
     private void Fit()
     {
-        // Working area in WPF logical units, including per-monitor DPI.
-        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-        var monitor = MonitorFromWindow(hwnd, 2);
-        var info = new MonitorInfo { Size = System.Runtime.InteropServices.Marshal.SizeOf<MonitorInfo>() };
-        if (!GetMonitorInfo(monitor, ref info)) return;
-        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
-        var topLeft = transform.Transform(new Point(info.Work.Left, info.Work.Top));
-        var bottomRight = transform.Transform(new Point(info.Work.Right, info.Work.Bottom));
-        MaxWidth = Math.Max(1, bottomRight.X - topLeft.X); MaxHeight = Math.Max(1, bottomRight.Y - topLeft.Y);
+        var area = CurrentWorkArea();
+        var topLeft = area.TopLeft; var bottomRight = area.BottomRight;
+        MaxWidth = area.Width; MaxHeight = area.Height;
         MinWidth = Math.Min(MinWidth, MaxWidth); MinHeight = Math.Min(MinHeight, MaxHeight);
         if (Width > MaxWidth) Width = MaxWidth;
         if (Height > MaxHeight) Height = MaxHeight;
         // Preserve deliberately offscreen test windows.
         if (Left < bottomRight.X && Left + ActualWidth > topLeft.X && Top < bottomRight.Y && Top + ActualHeight > topLeft.Y)
         { Left = Math.Clamp(Left, topLeft.X, Math.Max(topLeft.X, bottomRight.X - ActualWidth)); Top = Math.Clamp(Top, topLeft.Y, Math.Max(topLeft.Y, bottomRight.Y - ActualHeight)); }
+    }
+    internal Rect CurrentWorkArea()
+    {
+        // Working area in WPF logical units, including per-monitor DPI.
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        var monitor = MonitorFromWindow(hwnd, 2);
+        var info = new MonitorInfo { Size = System.Runtime.InteropServices.Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(monitor, ref info)) return SystemParameters.WorkArea;
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var topLeft = transform.Transform(new Point(info.Work.Left, info.Work.Top));
+        var bottomRight = transform.Transform(new Point(info.Work.Right, info.Work.Bottom));
+        return new(topLeft, bottomRight);
     }
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     private struct NativeRect { public int Left, Top, Right, Bottom; }

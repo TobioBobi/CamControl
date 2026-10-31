@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Globalization;
 
-internal static class Program
+internal static partial class Program
 {
     private static int checks;
     private static void Check(bool value, string message) { if (!value) throw new Exception(message); checks++; }
@@ -27,6 +27,7 @@ internal static class Program
                 foreach (string language in new[] { "de-DE", "en-US", "es-ES" })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                    await ResponsiveChecks();
                     await WindowChecks();
                 }
                 Console.WriteLine($"Passed {checks} WPF/controller checks (German, English and Spanish).");
@@ -237,12 +238,12 @@ internal static class Program
         Check(scroll.ScrollableHeight == 0 && scroll.ScrollableWidth == 0, $"Wrapped camera error introduced scrollbars: {scroll.ScrollableWidth} x {scroll.ScrollableHeight}");
         Theme.Apply(true); await Layout(); Screenshot(window, System.IO.Path.Combine(output, "main-dark-error.png"));
         await session.Controller.SetActiveAsync(true); await session.Controller.RecallAsync(3);
-        window.FontSize = 21; window.Width = 580; await Layout();
+        window.FontSize = 21; window.Width = 950; window.Height = 740; await Layout();
         CheckControlAlignment();
         Check(scroll.ExtentHeight > 0 && window.SettingsButton.IsVisible && window.Status.IsVisible, "Large text hid settings/status");
         Screenshot(window, System.IO.Path.Combine(output, "main-large-text.png"));
         Check(Descendants(window.ManualControls).OfType<Button>().Where(b => b.Name.StartsWith("Zoom")).All(b => b.ActualHeight >= 58), "Large text shrank zoom controls");
-        window.FontSize = 14; window.Width = 636; await Layout();
+        window.FontSize = 14; window.Width = 636; window.Height = 468; await Layout();
         Screenshot(window, System.IO.Path.Combine(output, "main-long-name.png"));
         string[] examples = ["Redner", "Redner & Leser", "Tisch", "Gesamte Bühne", "Redner & Bildschirm", "Demo stehend", "Standby"];
         for (int i = 0; i < CameraSession.Buttons.Length; i++) { int n = CameraSession.Buttons[i]; session.SaveMapping(n, examples[i], session.Numbers[n]); }

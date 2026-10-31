@@ -1,5 +1,20 @@
 # Änderungen
 
+## 1.4.0 – vorbereitet am 31. Oktober 2026
+
+- Automatische Voll-, Kompakt- und Minimalansicht mit Kachelblock, horizontaler
+  Leiste oder vertikaler Spalte. Alle sieben Presets bleiben direkt bedienbar.
+- Kleine Richtungstasten und Zoomtasten als Zwischenstufe; Layoutwechsel stoppen
+  laufende manuelle Eingaben und geben den Mausfang frei.
+- Rückkehr zur letzten Vollansichtsgröße und Position mit einem Klick; kurze
+  Presetnamen mit vollständigen Tooltips und zugänglichen Beschriftungen.
+- Hinweise und Kamerafehler werden nur in der Vollansicht angezeigt.
+  Die Demovorschau vergrößert das Fenster nicht mehr automatisch.
+- Pfeil- und Zoomtasten der Leiste sind direkt nebeneinander ausgerichtet;
+  schmale Spalten blenden die Steuerung bei ausreichender Höhe zuverlässig ein.
+
+Hinweise zur Vorbereitung und Abnahme: [Release 1.4.0](docs/release-1.4.0.md).
+
 ## 1.3.0 – vorbereitet am 22. Oktober 2026
 
 - Deutsche, englische und spanische Oberfläche einschließlich Einrichtung, Hilfe,

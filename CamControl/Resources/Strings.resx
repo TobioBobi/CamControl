@@ -404,4 +404,5 @@ Check the IP address, network and power supply. HTTP errors may indicate an inco
 
 When switching windows or opening settings, the app attempts to stop the camera. If a stop is not confirmed, the camera may continue moving: check the camera and use its own controls if needed.</value>
   </data>
+  <data name="Main_RestoreFull" xml:space="preserve"><value>Restore full view</value></data>
 </root>

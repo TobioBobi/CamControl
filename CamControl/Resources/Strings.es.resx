@@ -404,4 +404,5 @@ Comprueba la dirección IP, la red y la alimentación. Los errores HTTP pueden i
 
 Al cambiar de ventana o abrir los ajustes, la aplicación intenta detener la cámara. Si no se confirma la parada, la cámara puede seguir moviéndose: comprueba la cámara y utiliza sus propios controles si es necesario.</value>
   </data>
+  <data name="Main_RestoreFull" xml:space="preserve"><value>Restaurar vista completa</value></data>
 </root>

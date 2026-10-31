@@ -112,6 +112,7 @@ public static class Texts
     public static string Zoom_In => Get(nameof(Zoom_In));
     public static string Zoom_Out => Get(nameof(Zoom_Out));
     public static string Zoom_Title => Get(nameof(Zoom_Title));
+    public static string Main_RestoreFull => Get(nameof(Main_RestoreFull));
     public static string Main_Settings => Get(nameof(Main_Settings));
     public static string Main_Positions => Get(nameof(Main_Positions));
     public static string Main_CameraMode => Get(nameof(Main_CameraMode));
