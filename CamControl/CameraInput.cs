@@ -61,25 +61,16 @@ internal sealed class CameraInput
         button.PreviewKeyUp += async (_, e) => { if (e.Key is Key.Space or Key.Enter) { e.Handled = true; await ReleaseAsync(button, zoom); } };
         button.LostKeyboardFocus += async (_, _) => await ReleaseAsync(button, zoom);
     }
-    internal FrameworkElement CreatePanel()
+    internal ManualControlPanel CreatePanel() => new(this, controller);
+
+    // Reset the input owners before releasing capture so LostMouseCapture cannot
+    // race the shared controller stop or leave a key held across a reflow.
+    internal Task StopForLayoutAsync()
     {
-        var pad = new Grid { Margin = new(0, 0, 0, 12) };
-        foreach (double width in new[] { 48d, 54d, 48d }) pad.ColumnDefinitions.Add(new() { Width = new(width) });
-        pad.RowDefinitions.Add(new() { Height = new(54) }); pad.RowDefinitions.Add(new() { Height = new(54) });
-        void DirectionButton(string text, Direction direction, int column, int row, int span = 1)
-        {
-            var button = new Button { Content = text, FontSize = 23, Padding = new(4), Margin = new(2), Name = "move" + direction };
-            Bind(button, direction switch { Direction.Left => Texts.Movement_Left, Direction.Right => Texts.Movement_Right, Direction.Up => Texts.Movement_Up, _ => Texts.Movement_Down }, false, () => controller().StartDirectionAsync(direction));
-            Grid.SetColumn(button, column); Grid.SetRow(button, row); Grid.SetRowSpan(button, span); pad.Children.Add(button);
-        }
-        DirectionButton("←", Direction.Left, 0, 0, 2); DirectionButton("↑", Direction.Up, 1, 0);
-        DirectionButton("↓", Direction.Down, 1, 1); DirectionButton("→", Direction.Right, 2, 0, 2);
-        var zoom = new Grid(); zoom.ColumnDefinitions.Add(new()); zoom.ColumnDefinitions.Add(new());
-        foreach (var (text, value, column) in new[] { (Texts.Zoom_OutButton, Zoom.ZoomOut, 0), (Texts.Zoom_InButton, Zoom.ZoomIn, 1) })
-        {
-            var button = new Button { Content = new TextBlock { Text = text, TextAlignment = TextAlignment.Center }, MinHeight = 58, Padding = new(4), Margin = new(2), Name = value.ToString() };
-            Bind(button, value == Zoom.ZoomIn ? Texts.Zoom_In : Texts.Zoom_Out, true, () => controller().StartZoomAsync(value)); Grid.SetColumn(button, column); zoom.Children.Add(button);
-        }
-        return Ui.Stack(Ui.Text(Texts.Movement_Title), pad, Ui.Text(Texts.Zoom_Title), zoom, new TextBlock { Text = Texts.Movement_HoldHint, FontSize = 11, TextAlignment = TextAlignment.Center, Margin = new(0, 10, 0, 0) });
+        bool moving = controller().IsMoving;
+        var captured = directionSource as Button ?? zoomSource as Button;
+        Reset();
+        captured?.ReleaseMouseCapture();
+        return moving ? controller().StopAsync() : Task.CompletedTask;
     }
 }

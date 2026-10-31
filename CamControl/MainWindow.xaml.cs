@@ -11,26 +11,28 @@ public partial class MainWindow : AppWindow
     internal CameraInput Input { get; }
     private readonly Dictionary<int, Button> buttons = new();
     private readonly Dictionary<int, TextBlock> presetLabels = new();
-    private bool finalClose, closing, settingsOpen, demoExpanded;
+    private bool finalClose, closing, settingsOpen;
     private int? lastRequested;
     internal MainWindow(CameraSession session)
     {
         Session = session;
         InitializeComponent();
         Input = new(this, () => Session.Controller, async n => await RecallAsync(n));
-        ManualControls.Content = Input.CreatePanel();
+        manual = Input.CreatePanel();
+        ManualControls.Content = manual;
         for (int i = 0; i < CameraSession.Buttons.Length; i++)
         {
             int number = CameraSession.Buttons[i];
-            var button = new Button { Name = "preset" + number, Style = (Style)FindResource("PresetButton"), Margin = new(i == 6 ? 0 : i % 2 == 0 ? 0 : 4, 0, i == 6 ? 0 : i % 2 == 0 ? 4 : 0, i == 6 ? 0 : 6) };
-            var grid = new Grid(); grid.ColumnDefinitions.Add(new()); grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-            var label = new TextBlock { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
-            grid.Children.Add(label); presetLabels[number] = label;
-            var key = new TextBlock { Text = number.ToString(), FontSize = 11, Margin = new(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center }; key.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(key, 1); grid.Children.Add(key); button.Content = grid;
-            Grid.SetRow(button, i / 2); Grid.SetColumn(button, i % 2); if (i == 6) { Grid.SetColumn(button, 0); Grid.SetColumnSpan(button, 2); }
+            var button = new Button { Name = "preset" + number, Style = (Style)FindResource("PresetButton") };
+            var grid = new Grid(); grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); grid.ColumnDefinitions.Add(new());
+            var key = new TextBlock { Text = number.ToString(), Margin = new(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.NoWrap };
+            key.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); grid.Children.Add(key);
+            var label = new TextBlock { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(label, 1); grid.Children.Add(label); presetLabels[number] = label; button.Content = grid;
             button.Click += async (_, _) => await RecallAsync(number);
             buttons[number] = button; Presets.Children.Add(button);
         }
+        InitializeResponsiveLayout();
         AttachController(); Refresh();
         Loaded += async (_, _) => { if (Session.Automatic.StartPreset is { } n) await RecallAsync(n); };
         Activated += async (_, _) => { if (!closing) await Session.Controller.SetActiveAsync(true); };
@@ -53,6 +55,7 @@ public partial class MainWindow : AppWindow
         foreach (var (number, button) in buttons)
         {
             presetLabels[number].Text = Session.Names[number];
+            button.ToolTip = Session.Names[number];
             AutomationProperties.SetName(button, Texts.Format(Texts.Preset_AccessibleName, Session.Names[number], number));
             button.IsEnabled = Session.Controller.ControlsEnabled && !settingsOpen;
         }
@@ -62,6 +65,9 @@ public partial class MainWindow : AppWindow
         Title = Session.IsDemo ? "CamControl – Demo" : "CamControl";
         string requested = lastRequested is { } n ? Texts.Format(Texts.Main_Requested, Session.Names[n]) : "";
         Status.Text = Session.Controller.Error.Length > 0 ? Session.Controller.Error : Session.IsDemo ? Texts.Main_DemoStatus + (requested.Length > 0 ? " · " + requested : "") : requested.Length > 0 ? requested : Texts.Main_CameraStatus;
+        ErrorIndicator.Visibility = Session.Controller.Error.Length > 0 ? Visibility.Visible : Visibility.Hidden;
+        AutomationProperties.SetName(ErrorIndicator, Session.Controller.Error);
+        ErrorIndicator.ToolTip = new ToolTip { Content = new TextBlock { Text = Session.Controller.Error, TextWrapping = TextWrapping.Wrap, MaxWidth = 360 } };
         Status.SetResourceReference(TextBlock.ForegroundProperty, Session.Controller.Error.Length > 0 ? "ErrorBrush" : "MutedBrush");
     }
     private async void SettingsClick(object sender, RoutedEventArgs e)
@@ -73,7 +79,7 @@ public partial class MainWindow : AppWindow
         {
             await previous.SuspendAsync();
             if (closing) return;
-            DemoPreview.Visibility = Visibility.Hidden;
+            DemoPreview.Visibility = Visibility.Collapsed;
             var dialog = new CameraSettingsDialog(Session.Service.CameraIp, Session) { Owner = this };
             dialog.PresetStopFailed += Session.Controller.ReportStopFailure;
             if (dialog.ShowDialog() == true)
@@ -88,14 +94,13 @@ public partial class MainWindow : AppWindow
             }
             UpdateDemo();
         }
-        finally { settingsOpen = false; DemoPreview.Visibility = Session.IsDemo ? Visibility.Visible : Visibility.Collapsed; Session.Controller.Resume(); await Session.Controller.SetActiveAsync(IsActive); Refresh(); }
+        finally { settingsOpen = false; DemoPreview.Visibility = Session.IsDemo && CurrentLayout.View == CameraView.Full ? Visibility.Visible : Visibility.Collapsed; Session.Controller.Resume(); await Session.Controller.SetActiveAsync(IsActive); Refresh(); }
     }
     private void UpdateDemo()
     {
-        DemoPreview.Visibility = Session.IsDemo ? Visibility.Visible : Visibility.Collapsed;
+        DemoPreview.Visibility = Session.IsDemo && CurrentLayout.View == CameraView.Full ? Visibility.Visible : Visibility.Collapsed;
         DemoPreview.Content = Session.IsDemo ? new DemoCameraView(Session.Demo) : null;
-        if (demoExpanded != Session.IsDemo) Height = Math.Min(MaxHeight, Height + (Session.IsDemo ? 212 : -212));
-        demoExpanded = Session.IsDemo;
+
     }
     private async void ClosingAsync(object? sender, CancelEventArgs e)
     {

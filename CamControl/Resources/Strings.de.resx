@@ -404,4 +404,5 @@ IP-Adresse, Netzwerk und Stromversorgung prüfen. HTTP-Fehler können auf eine i
 
 Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, die Kamera zu stoppen. Wird ein Stopp nicht bestätigt, kann sie weiterlaufen: Kamera prüfen und bei Bedarf deren eigene Steuerung verwenden.</value>
   </data>
+  <data name="Main_RestoreFull" xml:space="preserve"><value>Vollansicht wiederherstellen</value></data>
 </root>

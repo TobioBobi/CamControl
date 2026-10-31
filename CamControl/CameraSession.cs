@@ -19,6 +19,12 @@ internal sealed class CameraSession : IDisposable
         Service = new(); Controller = new(Service);
         if (demo) SwitchMode(true);
     }
+    // An injected transport allows full-window command/lifecycle checks without
+    // contacting hardware or inheriting the user's automatic startup choices.
+    internal CameraSession(CamControlService service)
+    {
+        Service = service; Controller = new(Service); automatic = new();
+    }
     // Caller has suspended input and awaited all stops on the previous service.
     public void SwitchMode(bool demo)
     {
