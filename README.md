@@ -3,15 +3,28 @@
 Windows app for PTZ cameras that support the HTTP-CGI command interface
 `/cgi-bin/ptzctrl.cgi?ptzcmd&…`, regardless of manufacturer or model.
 
-The WPF interface uses a compact two-column preset panel and a tightly grouped
-direction/zoom panel. The default camera window is 636 × 468 WPF logical units
-including the Windows frame. All settings, the preset editor, first-run setup
-and overwrite confirmation share the same styles. Dark is the default;
-**Einstellungen > Darstellung** saves a choice of dark, light or the Windows
-appearance in `appearance.json`. Windows high-contrast settings take priority.
-Windows scaling can increase the physical
-window size. Restricted work areas and enlarged text allow scrolling rather
-than shrinking camera controls.
+The WPF interface automatically switches between full, compact and minimal views
+using the available client width and height in logical units. The default full
+window is 636 × 468 including the Windows frame. Compact views keep clickable
+held direction and zoom controls; minimal views keep all seven presets. Presets
+form a two-column block, a horizontal strip or a vertical column. Shortcut numbers
+remain visible beside single-line, ellipsized names; tooltips and accessible names
+contain the full name. The ↗ button restores the last usable full size and position
+within the current monitor work area. Small views omit settings, regular status
+and the demo preview. Warnings and camera errors are shown only in full view;
+use ↗ to expand the window and read them. Keyboard shortcuts remain available
+in every view.
+
+Layout changes stop held manual movement before reordering/hiding controls and
+release capture. An idle resize sends no camera commands and never resizes the
+outer window. Native resizing prevents dimensions that cannot fit all seven
+minimal presets. Thresholds include hysteresis and use current font measurements.
+Windows DPI scaling retains logical control sizes; unusually restricted work
+areas allow scrolling. The demo never expands the window automatically.
+
+All settings, the preset editor, first-run setup and overwrite confirmation share
+the same styles. Dark is the default; **Settings > Appearance** saves dark, light
+or Windows appearance in `appearance.json`. Windows high contrast takes priority.
 
 `CameraController` owns cancellation, independent movement/zoom inputs and
 stop-before-preset/close sequencing. `CameraInput` connects WPF mouse capture
@@ -85,7 +98,9 @@ previews into `artifacts/ui-preview`. See [the settings and service tests](Tests
 and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
 Changes follow `feature/*` or `fix/*` → `develop` → `master`. Start work from
-`develop` and target feature/fix pull requests at `develop`. Prepare the shared
+`develop` and target feature/fix pull requests at `develop`. Create a new pull request
+(including drafts) only after the user explicitly approves it; branches, commits
+and pushes can be prepared independently. Prepare the shared
 release version, manifest, changelog and release notes in those branches. Features
 in the same release use the same target version. CI checks release preparation
 before merging; merging the tested batch into `master` is the only publication
@@ -152,7 +167,7 @@ are cancelled before the lifecycle stop commands are sent.
 Camera controls are disabled during a preset sequence or while stopping.
 Closing calls the selected exit preset only after all stop commands succeed.
 Network failures can prevent the camera from receiving or confirming a stop;
-an unconfirmed stop is shown as an error while the app is open.
+an unconfirmed stop is shown as an error in full view.
 
 Framework-dependent builds require the .NET 10 Desktop Runtime on the target
 Windows PC. MSIX packages include the .NET runtime.

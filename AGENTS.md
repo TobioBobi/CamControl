@@ -1,5 +1,11 @@
 # Projektworkflow
 
+- Neue Pull Requests (auch Drafts) nur nach ausdrücklichem Okay des Nutzers
+  erstellen. Branches anlegen, Änderungen implementieren, prüfen, committen
+  und pushen bleiben autonom erlaubt. Vor der PR-Freigabe den fertigen Stand
+  vorbereiten, da das bei PR-Erstellung gestartete Review spätere Commits
+  nicht erneut prüft.
+
 - Änderungen auf `feature/...` oder `fix/...` von `develop` entwickeln und per
   Pull Request nach `develop` bringen. Veröffentlichungen erfolgen durch Merge
   von `develop` nach `master`.

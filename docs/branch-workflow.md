@@ -7,6 +7,11 @@ gesammelt:
 feature/* oder fix/* → develop → master → Microsoft Store
 ```
 
+Neue Pull Requests einschließlich Drafts werden erst nach ausdrücklichem Okay
+des Nutzers angelegt. Branches, Implementierung, Prüfungen, Commits und Pushes
+werden vorher fertig vorbereitet. Das bei PR-Erstellung gestartete Code-Review
+prüft spätere Commits nicht erneut.
+
 ## Änderungen entwickeln und prüfen
 
 1. Einen neuen `feature/...`- oder `fix/...`-Branch vom aktuellen `develop`
