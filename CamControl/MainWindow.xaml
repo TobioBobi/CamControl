@@ -9,7 +9,6 @@
    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
    <StackPanel x:Name="CompactActions" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Collapsed">
-   <Button x:Name="ErrorIndicator" Content="!" Visibility="Hidden" MinHeight="28" MinWidth="28" Padding="4" Margin="0,0,4,4" Foreground="{DynamicResource ErrorBrush}" AutomationProperties.LiveSetting="Assertive" Click="ErrorClick" />
    <Button x:Name="RestoreButton" Content="↗" ToolTip="{x:Static local:Texts.Main_RestoreFull}" AutomationProperties.Name="{x:Static local:Texts.Main_RestoreFull}" MinHeight="28" MinWidth="28" Padding="4" Margin="4,0,0,4" VerticalAlignment="Top" Click="RestoreFullClick" />
    </StackPanel>
    <ScrollViewer x:Name="ControlsScroll" Grid.Row="1" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">

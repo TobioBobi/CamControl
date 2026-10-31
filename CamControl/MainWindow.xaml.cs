@@ -65,9 +65,6 @@ public partial class MainWindow : AppWindow
         Title = Session.IsDemo ? "CamControl – Demo" : "CamControl";
         string requested = lastRequested is { } n ? Texts.Format(Texts.Main_Requested, Session.Names[n]) : "";
         Status.Text = Session.Controller.Error.Length > 0 ? Session.Controller.Error : Session.IsDemo ? Texts.Main_DemoStatus + (requested.Length > 0 ? " · " + requested : "") : requested.Length > 0 ? requested : Texts.Main_CameraStatus;
-        ErrorIndicator.Visibility = Session.Controller.Error.Length > 0 ? Visibility.Visible : Visibility.Hidden;
-        AutomationProperties.SetName(ErrorIndicator, Session.Controller.Error);
-        ErrorIndicator.ToolTip = new ToolTip { Content = new TextBlock { Text = Session.Controller.Error, TextWrapping = TextWrapping.Wrap, MaxWidth = 360 } };
         Status.SetResourceReference(TextBlock.ForegroundProperty, Session.Controller.Error.Length > 0 ? "ErrorBrush" : "MutedBrush");
     }
     private async void SettingsClick(object sender, RoutedEventArgs e)

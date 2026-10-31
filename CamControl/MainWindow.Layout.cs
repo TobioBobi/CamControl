@@ -17,7 +17,7 @@ public partial class MainWindow
     internal CameraLayout CurrentLayout { get; private set; } = new(CameraView.Full, PresetArrangement.Tiles);
     private CameraLayoutMetrics Metrics()
     {
-        var sample = new TextBlock { Text = "9 W…", FontFamily = FontFamily, FontSize = FontSize };
+        var sample = new TextBlock { Text = "9 Wâ€¦", FontFamily = FontFamily, FontSize = FontSize };
         sample.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
         double key = Math.Max(30, Math.Ceiling(sample.DesiredSize.Height + 8));
         double row = Math.Max(32, Math.Ceiling(sample.DesiredSize.Height + 12));
@@ -67,8 +67,8 @@ public partial class MainWindow
         bool full = layout.View == CameraView.Full, strip = !full && layout.Arrangement == PresetArrangement.Strip;
         Header.Visibility = StatusPanel.Visibility = PositionsHeading.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
         CompactActions.Visibility = full ? Visibility.Collapsed : Visibility.Visible;
-        CompactActions.Width = 2 * metrics.Key + 8;
-        RestoreButton.MinWidth = RestoreButton.MinHeight = ErrorIndicator.MinWidth = ErrorIndicator.MinHeight = metrics.Key;
+        CompactActions.Width = metrics.Key + 4;
+        RestoreButton.MinWidth = RestoreButton.MinHeight = metrics.Key;
         Grid.SetRow(ControlsScroll, strip ? 0 : 1); Grid.SetColumnSpan(ControlsScroll, strip ? 1 : 2);
         ContentArea.Margin = new(full ? 10 : 6, full ? 8 : 6, full ? 10 : 6, full ? 8 : 6);
         ControlsScroll.HorizontalContentAlignment = HorizontalAlignment.Stretch;
@@ -127,11 +127,6 @@ public partial class MainWindow
         }
         finally { restoring = false; }
     }
-    private void ErrorClick(object sender, RoutedEventArgs e)
-    {
-        if (ErrorIndicator.ToolTip is ToolTip tooltip) { tooltip.PlacementTarget = ErrorIndicator; tooltip.IsOpen = true; }
-    }
-
     // A single rectangular MinWidth/MinHeight would forbid a thin strip or a
     // narrow column. Constrain only the proposed native drag rectangle, never
     // change Width/Height as a side effect of selecting a layout.

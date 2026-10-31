@@ -14,7 +14,7 @@ internal sealed record CameraLayoutMetrics(double PresetWidth, double Row, doubl
     internal double TileHeight => 4 * Row + Key + 16;
     internal double ColumnWidth => Math.Max(PresetWidth, 4 * Key) + 12;
     internal double ColumnHeight => 7 * Row + Key + 16;
-    internal double StripWidth => 7 * PresetWidth + 2 * Key + 24;
+    internal double StripWidth => 7 * PresetWidth + Key + 20;
     internal double StripHeight => Math.Max(Row, Key) + 12;
     internal double MinimumHeight(double width) => width >= StripWidth ? StripHeight : width >= TileWidth ? TileHeight : ColumnHeight;
     internal double MinimumWidth(double height) => height >= ColumnHeight ? ColumnWidth : height >= TileHeight ? TileWidth : StripWidth;
@@ -27,18 +27,24 @@ internal sealed record CameraLayoutMetrics(double PresetWidth, double Row, doubl
 
         double stripGap = current.Arrangement == PresetArrangement.Strip ? 0 : gap;
         double columnGap = current.Arrangement == PresetArrangement.Column ? gap : 0;
+        double compactTileWidth = TileWidth + 3 * Key + 16;
         var arrangement = size.Width >= StripWidth && (size.Height < TileHeight || size.Width >= StripWidth + stripGap && size.Height < TileHeight + 2 * Row + (current.Arrangement == PresetArrangement.Strip ? gap : 0))
             ? PresetArrangement.Strip
-            : size.Width < TileWidth + columnGap && size.Height >= ColumnHeight
+            : size.Width < compactTileWidth + gap + columnGap && size.Height >= ColumnHeight
                 ? PresetArrangement.Column : PresetArrangement.Tiles;
         var compactSize = arrangement switch
         {
             PresetArrangement.Strip => new Size(StripWidth, StripHeight + Key + 8),
-            PresetArrangement.Column => new Size(ColumnWidth, ColumnHeight + 2 * Key + 12),
-            _ => new Size(TileWidth + 3 * Key + 16, Math.Max(TileHeight, 4 * Key + 28))
+            PresetArrangement.Column => new Size(ColumnWidth, ColumnHeight + 2 * Key + 8),
+            _ => new Size(compactTileWidth, Math.Max(TileHeight, 4 * Key + 28))
         };
-        double compactGap = current.View == CameraView.Compact && current.Arrangement == arrangement ? 0 : gap;
-        return new(size.Width >= compactSize.Width + compactGap && size.Height >= compactSize.Height + compactGap
+        bool retainingCompact = current.View == CameraView.Compact && current.Arrangement == arrangement;
+        // A tall, narrow column needs no spare width to enter compact mode:
+        // its four direction keys already fit at ColumnWidth. Hysteresis belongs
+        // on height here, so extra height reliably reveals the controls.
+        double widthGap = retainingCompact || arrangement != PresetArrangement.Tiles ? 0 : gap;
+        double heightGap = retainingCompact ? 0 : arrangement == PresetArrangement.Tiles ? gap : 2;
+        return new(size.Width >= compactSize.Width + widthGap && size.Height >= compactSize.Height + heightGap
             ? CameraView.Compact : CameraView.Minimal, arrangement);
     }
 }

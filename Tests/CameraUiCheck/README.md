@@ -28,9 +28,10 @@ column layouts, unscrolled access to all seven numbered/ellipsized presets,
 full-name tooltips/accessibility, light/dark palettes, enlarged fonts and
 presentation scaling at 100/125/150/200%. A recording HTTP transport checks idle
 resizing, held mouse movement/zoom, concurrent keyboard channels, pending safety
-stops, capture release, minimal-view shortcuts, error details, mapped presets and
+stops, capture release, minimal-view shortcuts, errors retained for full view, mapped presets and
 one-click restoration of full size/position. Native WM_SIZING tests exercise all
-eight edges/corners; boundary traversal checks hysteresis and unchanged outer
+eight edges/corners; column sweeps check controls at narrow widths and sufficient
+height, strip checks verify aligned arrow/zoom controls. Boundary traversal checks hysteresis and unchanged outer
 size. Long-name demo checks cover all six slim variants and startup/exit presets.
 Restricted-area restoration retains full controls via scrolling. Screenshots use
 the `responsive-*` prefix. Scaling simulations do not replace real monitor/DPI

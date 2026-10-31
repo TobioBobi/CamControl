@@ -11,8 +11,9 @@ form a two-column block, a horizontal strip or a vertical column. Shortcut numbe
 remain visible beside single-line, ellipsized names; tooltips and accessible names
 contain the full name. The ↗ button restores the last usable full size and position
 within the current monitor work area. Small views omit settings, regular status
-and the demo preview; camera errors appear as an accessible ! button with details
-on hover or click. Keyboard shortcuts remain available in every view.
+and the demo preview. Warnings and camera errors are shown only in full view;
+use ↗ to expand the window and read them. Keyboard shortcuts remain available
+in every view.
 
 Layout changes stop held manual movement before reordering/hiding controls and
 release capture. An idle resize sends no camera commands and never resizes the
@@ -97,7 +98,9 @@ previews into `artifacts/ui-preview`. See [the settings and service tests](Tests
 and [the UI tests](Tests/CameraUiCheck/README.md) for coverage.
 
 Changes follow `feature/*` or `fix/*` → `develop` → `master`. Start work from
-`develop` and target feature/fix pull requests at `develop`. Prepare the shared
+`develop` and target feature/fix pull requests at `develop`. Create a new pull request
+(including drafts) only after the user explicitly approves it; branches, commits
+and pushes can be prepared independently. Prepare the shared
 release version, manifest, changelog and release notes in those branches. Features
 in the same release use the same target version. CI checks release preparation
 before merging; merging the tested batch into `master` is the only publication
@@ -164,7 +167,7 @@ are cancelled before the lifecycle stop commands are sent.
 Camera controls are disabled during a preset sequence or while stopping.
 Closing calls the selected exit preset only after all stop commands succeed.
 Network failures can prevent the camera from receiving or confirming a stop;
-an unconfirmed stop is shown as an error while the app is open.
+an unconfirmed stop is shown as an error in full view.
 
 Framework-dependent builds require the .NET 10 Desktop Runtime on the target
 Windows PC. MSIX packages include the .NET runtime.

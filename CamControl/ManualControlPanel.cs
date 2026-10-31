@@ -33,10 +33,10 @@ internal sealed class ManualControlPanel : Grid
         bool cross = full || arrangement == PresetArrangement.Tiles;
         RowDefinitions.Clear(); ColumnDefinitions.Clear();
         for (int i = 0; i < (inline ? 1 : 5); i++) RowDefinitions.Add(new() { Height = GridLength.Auto });
-        for (int i = 0; i < (inline ? 3 : 1); i++) ColumnDefinitions.Add(new() { Width = i == 0 && inline ? new GridLength(4 * key + 12) : GridLength.Auto });
+        for (int i = 0; i < (inline ? 2 : 1); i++) ColumnDefinitions.Add(new() { Width = !inline ? new GridLength(1, GridUnitType.Star) : i == 0 ? new GridLength(4 * key + 4) : GridLength.Auto });
         heading.Visibility = zoomHeading.Visibility = hint.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
-        Place(heading, 0, 0); Place(pad, inline ? 0 : 1, 0); Place(zoomHeading, 2, 0); Place(zoom, inline ? 0 : 3, inline ? 2 : 0); Place(hint, 4, 0);
-        pad.Margin = new(0, 0, inline ? 12 : 0, full ? 12 : 4);
+        Place(heading, 0, 0); Place(pad, inline ? 0 : 1, 0); Place(zoomHeading, 2, 0); Place(zoom, inline ? 0 : 3, inline ? 1 : 0); Place(hint, 4, 0);
+        pad.Margin = new(0, 0, inline ? 4 : 0, full ? 12 : inline ? 0 : 4);
         pad.RowDefinitions.Clear(); pad.ColumnDefinitions.Clear();
         for (int i = 0; i < (cross ? 3 : 4); i++) pad.ColumnDefinitions.Add(new() { Width = full ? new GridLength(i == 1 ? 54 : 48) : new GridLength(1, GridUnitType.Star) });
         pad.MinWidth = full ? 150 : (cross ? 3 : 4) * key;
@@ -51,7 +51,8 @@ internal sealed class ManualControlPanel : Grid
         }
         zoom.ColumnDefinitions.Clear(); zoom.ColumnDefinitions.Add(new()); zoom.ColumnDefinitions.Add(new());
         zoom.MinWidth = inline ? 2 * key : 0;
-        zoom.Margin = new(0, full ? 0 : 4, 0, 0);
+        zoom.Width = inline ? 2 * key : double.NaN;
+        zoom.Margin = new(0, full || inline ? 0 : 4, 0, 0);
         for (int i = 0; i < zooms.Count; i++)
         {
             var button = zooms[i]; button.Content = full ? new TextBlock { Text = i == 0 ? Texts.Zoom_OutButton : Texts.Zoom_InButton, TextAlignment = TextAlignment.Center } : i == 0 ? "−" : "+";

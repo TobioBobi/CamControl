@@ -10,7 +10,7 @@ Kachelblock, horizontale Leiste oder schmale Spalte. Alle sieben Positionen blei
 direkt erreichbar. Bei etwas mehr Platz stehen kleine Richtungs- und Zoomtasten
 bereit. Ein Klick auf den Vergrößern-Button bringt die letzte Vollansicht zurück.
 Vollständige Positionsnamen sind als Tooltip und für Screenreader verfügbar.
-Kamerafehler bleiben auch in den kleinen Ansichten erkennbar. Die Demovorschau
+Hinweise und Kamerafehler werden in der Vollansicht angezeigt. Die Demovorschau
 vergrößert das Fenster nicht mehr automatisch.
 
 ## Pakete und Veröffentlichung
@@ -30,7 +30,8 @@ Historische Release-Dateien bleiben unverändert.
   sieben erreichbare Presets und dauerhaft erreichbare Rückkehr zur Vollansicht.
 - Maus gedrückt halten, Richtung und Zoom gleichzeitig über Tastatur bedienen,
   Layout wechseln, Mausfang/Fokus verlieren und schließen: Bewegung muss stoppen.
-- Fehlerhinweis, Zuordnungen, Hervorhebung, Start-/Exit-Presets und Demo prüfen.
+- Fehlermeldungen erst nach Vergrößern, Zuordnungen, Hervorhebung,
+  Start-/Exit-Presets und Demo prüfen.
 - Release-/Debug-Builds, SettingsCheck, CameraUiCheck und Release-/Store-Prüfungen
   ausführen. WPF-Prüfungen erzeugen Ansichten unter `artifacts/ui-preview`.
 - Echte Kamerastopps und native Monitorwechsel zusätzlich auf Hardware abnehmen.

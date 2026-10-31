@@ -51,12 +51,29 @@ internal static partial class Program
             }
             if (view == CameraView.Compact)
             {
-                foreach (var button in Descendants(window.ManualPanel).OfType<Button>())
+                var manualButtons = Descendants(window.ManualPanel).OfType<Button>().ToArray();
+                foreach (var button in manualButtons)
                 {
                     var bounds = button.TransformToAncestor(window.ControlsScroll).TransformBounds(new Rect(button.RenderSize));
                     Check(button.IsVisible && button.ActualWidth >= 26 && button.ActualHeight >= 26 && viewport.Contains(bounds), $"Small manual target clipped: {button.Name} {bounds}");
                 }
+                if (arrangement == PresetArrangement.Strip)
+                {
+                    var bounds = manualButtons.Select(b => b.TransformToAncestor(window.ControlsScroll).TransformBounds(new Rect(b.RenderSize))).ToArray();
+                    Check(bounds.All(b => Math.Abs(b.Top - bounds[0].Top) < 1 && Math.Abs(b.Height - bounds[0].Height) < 1), "Strip zoom and direction buttons are not aligned in one row");
+                    Check(bounds[4].Left - bounds[3].Right >= 0 && bounds[4].Left - bounds[3].Right <= 7, "Strip zoom controls do not follow the direction keys directly");
+                }
             }
+        }
+        // Growing a narrow column must reveal its controls even at minimum
+        // width, and modest widening must not hide them behind a tile layout.
+        foreach (double width in new[] { 152d, 160, 180, 200, 240, 270 })
+        {
+            await Resize(width, 310, CameraView.Minimal, PresetArrangement.Column);
+            await Resize(width, 380, CameraView.Compact, PresetArrangement.Column);
+            Screenshot(window, System.IO.Path.Combine(output, $"responsive-column-{width}.png"));
+            await Resize(width, 420, CameraView.Compact, PresetArrangement.Column);
+            await Resize(width, 380, CameraView.Compact, PresetArrangement.Column);
         }
         foreach (bool dark in new[] { false, true })
         {
@@ -114,12 +131,11 @@ internal static partial class Program
         window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, Key.D3) { RoutedEvent = Keyboard.PreviewKeyDownEvent }); await Layout();
         Check(handler.Commands.Last() == $"poscall&{session.Numbers[3]}" && presets.Single(b => b.Name == "preset3").Tag as string == "Requested", $"Minimal shortcut lost mapping/highlight (enabled={session.Controller.ControlsEnabled}, modifiers={Keyboard.Modifiers}, last={string.Join(",", handler.Commands.TakeLast(8))})");
         session.Controller.ReportStopFailure(Texts.Error_Connection); await Layout();
-        Check(window.ErrorIndicator.IsVisible && AutomationProperties.GetName(window.ErrorIndicator).Contains(Texts.Error_Connection) && !window.Status.IsVisible, "Slim camera error inaccessible");
-        window.ErrorIndicator.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Check(window.ErrorIndicator.ToolTip is ToolTip { IsOpen: true }, "Keyboard/click error details unavailable");
-        ((ToolTip)window.ErrorIndicator.ToolTip).IsOpen = false;
+        Check(!window.Status.IsVisible && !Descendants(window).OfType<Button>().Any(b => Equals(b.Content, "!")), "Slim view displayed a camera error indicator");
         Screenshot(window, System.IO.Path.Combine(output, "responsive-error.png"));
-        await window.RecallAsync(1); await Layout(); Check(!window.ErrorIndicator.IsVisible, "Recovered error indicator remained visible");
+        window.RestoreFull(); await Layout();
+        Check(window.Status.IsVisible && window.Status.Text.Contains(Texts.Error_Connection), "Expanding the window lost the retained camera error");
+        await window.RecallAsync(1); await Layout();
 
         var area = window.CurrentWorkArea();
         window.Left = area.Left + 20; window.Top = area.Top + 20;
@@ -151,6 +167,8 @@ internal static partial class Program
         window.Left = -10000; window.Top = -10000;
 
         window.FontSize = 21;
+        await Resize(180, 460, CameraView.Compact, PresetArrangement.Column);
+        Screenshot(window, System.IO.Path.Combine(output, "responsive-column-large-text.png"));
         await Resize(430, 310, CameraView.Compact, PresetArrangement.Tiles);
         Check(Descendants(window.Presets).OfType<TextBlock>().All(t => t.FontSize == 21), "Slim view shrank enlarged text");
         Screenshot(window, System.IO.Path.Combine(output, "responsive-large-text.png"));
