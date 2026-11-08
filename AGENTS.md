@@ -26,3 +26,20 @@
   ausführen. Details: `docs/branch-workflow.md`.
 - Beim Release keine nachträglichen Versions- oder Dokumentationsänderungen auf
   `master` vornehmen. Der Merge veröffentlicht den vorbereiteten Stand automatisch.
+
+## Agent skills
+
+### Issue tracker
+
+Issues und Spezifikationen liegen in GitHub Issues unter
+TobioBobi/CamControl. Siehe `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Wir verwenden die fünf Standard-Triage-Labels.
+Siehe `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` und `docs/adr/`.
+Siehe `docs/agents/domain.md`.
