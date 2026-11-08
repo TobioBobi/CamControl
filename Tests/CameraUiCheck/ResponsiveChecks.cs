@@ -16,7 +16,9 @@ internal static partial class Program
     {
         using var handler = new RecordingHandler(); using var client = new HttpClient(handler);
         using var session = new CameraSession(new CamControlService(client, "192.168.188.24"));
-        var window = new MainWindow(session); ShowOffscreen(window); await Layout();
+        string placementPath = System.IO.Path.GetFullPath("artifacts/ui-preview/responsive-placement.json");
+        System.IO.File.Delete(placementPath);
+        var window = new MainWindow(session, placementPath); ShowOffscreen(window); await Layout();
         await session.Controller.SetActiveAsync(true);
         var presets = Descendants(window.Presets).OfType<Button>().ToArray();
         var contents = presets.Select(b => b.Content).ToArray();

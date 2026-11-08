@@ -13,7 +13,7 @@ public partial class MainWindow : AppWindow
     private readonly Dictionary<int, TextBlock> presetLabels = new();
     private bool finalClose, closing, settingsOpen;
     private int? lastRequested;
-    internal MainWindow(CameraSession session)
+    internal MainWindow(CameraSession session, string? windowPlacementPath = null)
     {
         Session = session;
         InitializeComponent();
@@ -33,6 +33,7 @@ public partial class MainWindow : AppWindow
             buttons[number] = button; Presets.Children.Add(button);
         }
         InitializeResponsiveLayout();
+        InitializeWindowPlacement(windowPlacementPath);
         AttachController(); Refresh();
         Loaded += async (_, _) => { if (Session.Automatic.StartPreset is { } n) await RecallAsync(n); };
         Activated += async (_, _) => { if (!closing) await Session.Controller.SetActiveAsync(true); };
@@ -84,8 +85,10 @@ public partial class MainWindow : AppWindow
                 Session.Service.SetCameraIp(dialog.CameraIp);
                 if (dialog.RequestedDemoMode is { } demo && demo != Session.IsDemo)
                 {
+                    SaveWindowPlacement();
                     previous.Changed -= Refresh;
                     Session.SwitchMode(demo); AttachController(); lastRequested = null;
+                    RestoreWindowPlacement();
                     foreach (var button in buttons.Values) button.Tag = null;
                 }
             }
@@ -104,6 +107,7 @@ public partial class MainWindow : AppWindow
         if (finalClose) return;
         e.Cancel = true;
         if (closing) return;
+        SaveWindowPlacement();
         closing = true; Input.Reset(); Refresh();
         int? target = Session.Automatic.ExitPreset is { } n ? Session.Numbers[n] : null;
         await Session.Controller.CloseAsync(target);
