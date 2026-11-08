@@ -4,15 +4,16 @@ using System.Windows;
 
 namespace CamControl;
 
-internal sealed record WindowBounds(double Left, double Top, double Width, double Height)
+internal sealed record WindowBounds(double Left, double Top, double Width, double Height, double ScaleX = 1, double ScaleY = 1)
 {
     [JsonIgnore]
     public bool IsValid => double.IsFinite(Left) && double.IsFinite(Top) &&
         double.IsFinite(Width) && double.IsFinite(Height) &&
         Math.Abs(Left) <= 1000000 && Math.Abs(Top) <= 1000000 &&
-        Width is >= 152 and <= 100000 && Height is >= 80 and <= 100000;
+        Width is >= 152 and <= 100000 && Height is >= 80 and <= 100000 &&
+        ScaleX is >= 0.5 and <= 8 && ScaleY is >= 0.5 and <= 8;
     public Rect ToRect() => new(Left, Top, Width, Height);
-    public static WindowBounds FromRect(Rect bounds) => new(bounds.Left, bounds.Top, bounds.Width, bounds.Height);
+    public static WindowBounds FromRect(Rect bounds, DpiScale dpi) => new(bounds.Left, bounds.Top, bounds.Width, bounds.Height, dpi.DpiScaleX, dpi.DpiScaleY);
 }
 
 internal sealed record WindowPlacement(WindowBounds NormalBounds, WindowBounds FullBounds, bool Maximized)

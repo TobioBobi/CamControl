@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace CamControl;
 
@@ -8,6 +9,7 @@ public partial class MainWindow
     private string? placementPath;
     private bool placementReady;
     private bool startMaximized;
+    private WindowPlacement? startupPlacement;
 
     private void InitializeWindowPlacement(string? path)
     {
@@ -15,12 +17,18 @@ public partial class MainWindow
         RestoreWindowPlacement();
         SourceInitialized += (_, _) =>
         {
+            if (startupPlacement is { } saved)
+            {
+                var position = MoveToSavedMonitor(saved.NormalBounds);
+                Left = position.X; Top = position.Y;
+            }
             FitPlacement();
             HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(PlacementDisplayChanged);
         };
         Loaded += (_, _) =>
         {
             placementReady = true;
+            FitUsablePlacement();
             // The HWND must have acquired its normal restore rectangle before
             // maximizing; doing this during SourceInitialized loses that rectangle.
             if (startMaximized) WindowState = WindowState.Maximized;
@@ -28,24 +36,31 @@ public partial class MainWindow
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(FitPlacement);
     }
 
-    private void RestoreWindowPlacement()
+    internal void RestoreWindowPlacement()
     {
         restoring = true;
         try
         {
             var saved = Session.IsDemo ? null : WindowPlacement.Load(placementPath);
+            startupPlacement = saved;
             WindowState = WindowState.Normal;
-            fullBounds = saved?.FullBounds.ToRect() ?? new Rect(0, 0, 636, 468);
+            fullBounds = saved?.FullBounds.ToRect() ?? DefaultWindowBounds;
+            fullBoundsDpi = saved is null ? VisualTreeHelper.GetDpi(this) : new(saved.FullBounds.ScaleX, saved.FullBounds.ScaleY);
             constrainedFullSize = null;
             CurrentLayout = new(CameraView.Full, PresetArrangement.Tiles);
             if (saved != null)
             {
                 WindowStartupLocation = WindowStartupLocation.Manual;
                 SetPlacementBounds(saved.NormalBounds.ToRect());
+                if (IsLoaded)
+                {
+                    var position = MoveToSavedMonitor(saved.NormalBounds);
+                    Left = position.X; Top = position.Y;
+                }
             }
             else
             {
-                Width = 636; Height = 468;
+                Width = DefaultWindowBounds.Width; Height = DefaultWindowBounds.Height;
                 WindowStartupLocation = WindowStartupLocation.CenterScreen;
                 if (IsLoaded)
                 {
@@ -54,7 +69,7 @@ public partial class MainWindow
                     Top = area.Top + (area.Height - Height) / 2;
                 }
             }
-            if (IsLoaded) FitPlacement();
+            if (IsLoaded) { FitPlacement(); FitUsablePlacement(); }
             startMaximized = saved?.Maximized == true;
             if (IsLoaded && startMaximized) WindowState = WindowState.Maximized;
         }
@@ -87,10 +102,20 @@ public partial class MainWindow
         // RestoreBounds retains the normal rectangle even when closing maximized
         // or minimized. Minimization itself is deliberately never persisted.
         var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, ActualWidth, ActualHeight) : RestoreBounds;
-        WindowPlacement.Save(new(WindowBounds.FromRect(bounds), WindowBounds.FromRect(fullBounds),
+        WindowPlacement.Save(new(WindowBounds.FromRect(bounds, VisualTreeHelper.GetDpi(this)), WindowBounds.FromRect(fullBounds, fullBoundsDpi),
             WindowState == WindowState.Maximized), placementPath);
     }
 
+    private void FitUsablePlacement()
+    {
+        // Individually legal width/height values can still be an unusable pair
+        // (for example a narrow window too short to hold the preset column).
+        var metrics = Metrics();
+        if (LayoutRoot.ActualWidth + 1 >= metrics.MinimumWidth(LayoutRoot.ActualHeight + 1) &&
+            LayoutRoot.ActualHeight + 1 >= metrics.MinimumHeight(LayoutRoot.ActualWidth + 1)) return;
+        Width = DefaultWindowBounds.Width; Height = DefaultWindowBounds.Height;
+        FitPlacement();
+    }
     private IntPtr PlacementDisplayChanged(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (message is 0x007E or 0x001A) Dispatcher.BeginInvoke(FitPlacement); // display/work-area changes

@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Media;
 
 internal static partial class Program
 {
@@ -51,6 +52,7 @@ internal static partial class Program
             window.Width = 700; window.Height = 520; await Layout();
             var full = new Rect(window.Left, window.Top, window.Width, window.Height);
             window.Width = 360; window.Height = 240; await Layout();
+            window.Left = area.Left + 100; window.Top = area.Top + 100; await Layout();
             var small = new Rect(window.Left, window.Top, window.Width, window.Height);
             window.Close(); await Layout();
             window = Open(); await Layout();
@@ -122,6 +124,28 @@ internal static partial class Program
             demoWindow.Width = 360; demoWindow.Height = 240; await Layout();
             demoWindow.Close(); await Layout();
             Check(File.ReadAllText(path) == cameraData, "Demo overwrote camera window data");
+
+            var dpi = VisualTreeHelper.GetDpi(window);
+            // Simulate coordinates recorded at a different DPI, without changing
+            // Windows settings. The physical anchor should become +100 DIPs now.
+            WindowPlacement.Save(new(new(area.Left + 200, area.Top + 200, 360, 240, dpi.DpiScaleX, dpi.DpiScaleY),
+                new((area.Left + 100) / 1.5, (area.Top + 100) / 1.5, 700, 520, dpi.DpiScaleX * 1.5, dpi.DpiScaleY * 1.5), false), path);
+            window = Open(); await Layout();
+            window.RestoreFull(); await Layout();
+            Check(Math.Abs(window.Left - (area.Left + 100)) < 1 && Math.Abs(window.Top - (area.Top + 100)) < 1,
+                "Full-view physical position was lost after a saved DPI change");
+            window.Close(); await Layout();
+
+            WindowPlacement.Save(new(new(20, 20, 152, 80), new(20, 20, 700, 520), false), path);
+            window = Open(); await Layout();
+            Check(window.Width == 636 && window.Height == 468,
+                "An unusable saved width/height combination did not fall back to the default");
+            // Exercise the same already-loaded restoration used when returning
+            // from demo, keeping the recording camera transport throughout.
+            window.RestoreWindowPlacement(); await Layout();
+            Check(window.Width == 636 && window.Height == 468,
+                "In-session restoration validated stale demo layout dimensions");
+            window.Close(); await Layout();
 
             File.WriteAllText(path, "broken");
             window = Open(); await Layout();
