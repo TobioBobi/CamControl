@@ -22,6 +22,15 @@ minimal presets. Thresholds include hysteresis and use current font measurements
 Windows DPI scaling retains logical control sizes; unusually restricted work
 areas allow scrolling. The demo never expands the window automatically.
 
+In camera mode, the main window automatically remembers its normal size and
+position, maximized state, and last usable full-view rectangle across restarts.
+A minimized window restarts visibly. Saved bounds are fitted to the current
+monitor work area; missing or damaged data uses the 636 × 468 default.
+The data lives in `%LOCALAPPDATA%/CamControl/window-placement.json`.
+Demo mode starts with the default window and never reads or writes camera window
+data. Switching into demo first saves the camera rectangle; switching back restores it.
+Other dialogs keep their existing behavior.
+
 All settings, the preset editor, first-run setup and overwrite confirmation share
 the same styles. Dark is the default; **Settings > Appearance** saves dark, light
 or Windows appearance in `appearance.json`. Windows high contrast takes priority.

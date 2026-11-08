@@ -62,6 +62,27 @@ public class AppWindow : Window
         var bottomRight = transform.Transform(new Point(info.Work.Right, info.Work.Bottom));
         return new(topLeft, bottomRight);
     }
+    // Select the saved monitor in physical desktop coordinates, then let WPF
+    // receive its target DPI before applying logical size and position.
+    internal Point MoveToSavedMonitor(WindowBounds bounds)
+    {
+        var rect = new NativeRect
+        {
+            Left = (int)Math.Round(bounds.Left * bounds.ScaleX), Top = (int)Math.Round(bounds.Top * bounds.ScaleY),
+            Right = (int)Math.Round((bounds.Left + bounds.Width) * bounds.ScaleX),
+            Bottom = (int)Math.Round((bounds.Top + bounds.Height) * bounds.ScaleY)
+        };
+        var monitor = MonitorFromRect(ref rect, 2);
+        var info = new MonitorInfo { Size = System.Runtime.InteropServices.Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(monitor, ref info)) return bounds.ToRect().TopLeft;
+        int left = Math.Clamp(rect.Left, info.Work.Left, info.Work.Right - 1);
+        int top = Math.Clamp(rect.Top, info.Work.Top, info.Work.Bottom - 1);
+        SetWindowPos(new System.Windows.Interop.WindowInteropHelper(this).Handle, IntPtr.Zero, left, top, 0, 0, 0x0015); // NOSIZE|NOZORDER|NOACTIVATE
+        var dpi = VisualTreeHelper.GetDpi(this);
+        return new(left / dpi.DpiScaleX, top / dpi.DpiScaleY);
+    }
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr MonitorFromRect(ref NativeRect rect, uint flags);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int width, int height, uint flags);
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     private struct NativeRect { public int Left, Top, Right, Bottom; }
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]

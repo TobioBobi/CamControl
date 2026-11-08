@@ -1,5 +1,16 @@
 # Änderungen
 
+## 1.4.1 – vorbereitet am 8. November 2026
+
+- Repository-Konfiguration für Engineering-Skills ergänzt: GitHub Issues,
+  fünf Standard-Triage-Labels und Regeln für Glossar und Architekturentscheidungen.
+- Hauptfenster merkt sich im Kamerabetrieb Größe, Position und Maximierung
+  sowie die letzte brauchbare Vollansichtsgröße über Neustarts hinweg.
+  Minimierte Fenster starten sichtbar; gespeicherte Maße werden an die aktuelle
+  Monitorarbeitsfläche angepasst. Demo-Fensterdaten bleiben getrennt.
+
+Hinweise zur Vorbereitung und Abnahme: [Release 1.4.1](docs/release-1.4.1.md).
+
 ## 1.4.0 – vorbereitet am 31. Oktober 2026
 
 - Automatische Voll-, Kompakt- und Minimalansicht mit Kachelblock, horizontaler

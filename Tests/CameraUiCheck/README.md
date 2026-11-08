@@ -34,6 +34,12 @@ eight edges/corners; column sweeps check controls at narrow widths and sufficien
 height, strip checks verify aligned arrow/zoom controls. Boundary traversal checks hysteresis and unchanged outer
 size. Long-name demo checks cover all six slim variants and startup/exit presets.
 Restricted-area restoration retains full controls via scrolling.
+Window placement checks use isolated settings files and recording camera
+transport. They cover normal/compact/minimal restarts, maximized restart with
+normal restore bounds, minimized close, persistent full-view restoration,
+offscreen/oversized saved rectangles, missing/corrupt files, write failures and
+demo startup plus an in-session camera-to-demo switch. Run only these checks with
+`dotnet run --project Tests/CameraUiCheck/CameraUiCheck.csproj -c Release -- --placement-only`.
 Regression checks scroll each preset/direction/zoom button into the constrained
 full viewport, exercise hidden-preview movement/zoom and release in all six slim
 variants, and verify that multiple previews do not accelerate the demo.
