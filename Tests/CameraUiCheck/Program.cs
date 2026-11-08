@@ -23,6 +23,13 @@ internal static partial class Program
         {
             try
             {
+                WindowPlacementFileChecks();
+                await WindowPlacementWindowChecks();
+                if (Environment.GetCommandLineArgs().Contains("--placement-only"))
+                {
+                    Console.WriteLine($"Passed {checks} window placement checks.");
+                    return;
+                }
                 ThemeChecks(); await ControllerChecks();
                 foreach (string language in new[] { "de-DE", "en-US", "es-ES" })
                 {

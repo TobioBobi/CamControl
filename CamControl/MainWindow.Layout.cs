@@ -13,7 +13,9 @@ public partial class MainWindow
     private bool layoutQueued, layoutInitialized, restoring;
     private CameraLayoutMetrics? appliedMetrics;
     private Size? constrainedFullSize;
-    private Rect fullBounds = new(0, 0, 636, 468);
+    private static readonly Rect DefaultWindowBounds = new(0, 0, 636, 468);
+    private Rect fullBounds = DefaultWindowBounds;
+    private DpiScale fullBoundsDpi = new(1, 1);
     internal CameraLayout CurrentLayout { get; private set; } = new(CameraView.Full, PresetArrangement.Tiles);
     private CameraLayoutMetrics Metrics()
     {
@@ -104,7 +106,10 @@ public partial class MainWindow
         if (!layoutInitialized || restoring || WindowState != WindowState.Normal || CurrentLayout.View != CameraView.Full) return;
         var m = Metrics();
         if (LayoutRoot.ActualWidth >= m.FullWidth && LayoutRoot.ActualHeight >= m.FullHeight)
+        {
             fullBounds = new(Left, Top, ActualWidth, ActualHeight);
+            fullBoundsDpi = VisualTreeHelper.GetDpi(this);
+        }
     }
     private void RestoreFullClick(object sender, RoutedEventArgs e) => RestoreFull();
     internal void RestoreFull()
@@ -112,13 +117,16 @@ public partial class MainWindow
         restoring = true;
         try
         {
-            var area = CurrentWorkArea(); var metrics = Metrics();
-            double frameWidth = ActualWidth - LayoutRoot.ActualWidth, frameHeight = ActualHeight - LayoutRoot.ActualHeight;
             WindowState = WindowState.Normal;
+            var previousArea = CurrentWorkArea();
+            var position = MoveToSavedMonitor(WindowBounds.FromRect(fullBounds, fullBoundsDpi));
+            var area = CurrentWorkArea(); var metrics = Metrics();
+            if (area != previousArea) { MaxWidth = area.Width; MaxHeight = area.Height; }
+            double frameWidth = ActualWidth - LayoutRoot.ActualWidth, frameHeight = ActualHeight - LayoutRoot.ActualHeight;
             Width = Math.Min(Math.Min(MaxWidth, area.Width), Math.Max(fullBounds.Width, metrics.FullWidth + frameWidth + 12));
             Height = Math.Min(Math.Min(MaxHeight, area.Height), Math.Max(fullBounds.Height, metrics.FullHeight + frameHeight + 12));
-            Left = Math.Clamp(fullBounds.Left, area.Left, Math.Max(area.Left, area.Right - Width));
-            Top = Math.Clamp(fullBounds.Top, area.Top, Math.Max(area.Top, area.Bottom - Height));
+            Left = Math.Clamp(position.X, area.Left, Math.Max(area.Left, area.Right - Width));
+            Top = Math.Clamp(position.Y, area.Top, Math.Max(area.Top, area.Bottom - Height));
             // If the monitor cannot fit a full view, retain access via scrolling.
             CurrentLayout = new(CameraView.Full, PresetArrangement.Tiles);
             constrainedFullSize = new(Width, Height);
