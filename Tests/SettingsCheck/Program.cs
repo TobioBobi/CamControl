@@ -105,6 +105,14 @@ Check(CameraSettings.Load(testPath) == "192.168.188.25", "Saved settings did not
 Check(CameraSettings.TryLoad(testPath, out var configuredIp) && configuredIp == "192.168.188.25", "Saved configuration was not recognized");
 CameraSettings.Save("192.168.188.26", testPath);
 Check(CameraSettings.Load(testPath) == "192.168.188.26", "Replacing settings failed");
+Check(CameraSettings.LoadTarget(testPath).DeviceId == null, "Existing IP settings must stay manual");
+var discoveredTarget = new CameraTarget("192.168.188.26", "urn:uuid:86ab39a6-5a1c-41ee-9663-ae9712dc0943");
+CameraSettings.SaveTarget(discoveredTarget, testPath);
+Check(CameraSettings.LoadTarget(testPath) == discoveredTarget, "Discovery selection did not survive reload");
+CameraSettings.Save("192.168.188.26", testPath);
+Check(CameraSettings.LoadTarget(testPath) == new CameraTarget("192.168.188.26"), "Saving the same IP manually did not clear automatic selection");
+CameraSettings.RememberAddress(discoveredTarget with { Ip = "192.168.188.27" }, testPath);
+Check(CameraSettings.LoadTarget(testPath) == new CameraTarget("192.168.188.26"), "Late discovery overwrote a newer manual selection");
 File.WriteAllText(testPath, "broken json");
 Check(CameraSettings.Load(testPath) == CameraSettings.DefaultCameraIp, "Damaged settings fallback failed");
 File.WriteAllText(testPath, "{\"CameraIp\":\"http://invalid\"}");
@@ -113,6 +121,111 @@ bool rejected = false;
 try { CameraSettings.Save("bad address", testPath); } catch (ArgumentException) { rejected = true; }
 Check(rejected, "Invalid settings saved");
 File.Delete(testPath);
+
+await CheckCameraRecoveryAsync();
+await CheckDiscoveryProtocolAsync();
+
+async Task CheckDiscoveryProtocolAsync()
+{
+    using var responder = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    var search = OnvifDiscovery.ProbeAsync(IPAddress.Loopback, (IPEndPoint)responder.Client.LocalEndPoint!, timeout.Token);
+    var request = await responder.ReceiveAsync(timeout.Token);
+    var xml = System.Xml.Linq.XElement.Parse(Encoding.UTF8.GetString(request.Buffer));
+    var probe = xml.Descendants().Single(element => element.Name.LocalName == "Probe");
+    Check(!probe.HasElements, "Probe applied a device filter");
+    string messageId = xml.Descendants().Single(element => element.Name.LocalName == "MessageID").Value;
+    string Reply(string relatesTo, string name) => $"""
+        <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
+                    xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+                    xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery">
+          <s:Header>
+            <a:RelatesTo>{relatesTo}</a:RelatesTo>
+            <a:Action>http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches</a:Action>
+          </s:Header>
+          <s:Body><d:ProbeMatches><d:ProbeMatch>
+            <a:EndpointReference><a:Address>uuid:86AB39A6-5A1C-41EE-9663-AE9712DC0943</a:Address></a:EndpointReference>
+            <d:Scopes>onvif://www.onvif.org/name/{name}</d:Scopes>
+            <d:XAddrs>http://127.0.0.1:81/onvif/device_service</d:XAddrs>
+          </d:ProbeMatch></d:ProbeMatches></s:Body>
+        </s:Envelope>
+        """;
+    foreach (string reply in new[] { "<malformed", Reply("unrelated", "Wrong"), Reply(messageId, "AIDA%20PTZ"), Reply(messageId, "AIDA%20PTZ") })
+        await responder.SendAsync(Encoding.UTF8.GetBytes(reply), request.RemoteEndPoint, timeout.Token);
+    var found = await search;
+    Check(found.SequenceEqual([new("urn:uuid:86ab39a6-5a1c-41ee-9663-ae9712dc0943", "127.0.0.1", "AIDA PTZ")]),
+        "Discovery failed to correlate the reply, decode the name or deduplicate the camera");
+}
+
+async Task CheckCameraRecoveryAsync()
+{
+    const string id = "urn:uuid:86ab39a6-5a1c-41ee-9663-ae9712dc0943";
+    var probes = System.Threading.Channels.Channel.CreateUnbounded<IReadOnlyList<DiscoveredCamera>>();
+    var retries = System.Threading.Channels.Channel.CreateUnbounded<bool>();
+    var saved = new CameraTarget("192.168.188.24", id);
+    CameraSettings.SaveTarget(saved, testPath);
+    using var handler = new RecordingHandler();
+    using var client = new HttpClient(handler);
+    using var service = new CamControlService(client, saved,
+        async token => { retries.Writer.TryWrite(true); return await probes.Reader.ReadAsync(token); },
+        target => CameraSettings.RememberAddress(target, testPath),
+        TimeSpan.FromMilliseconds(10));
+    try
+    {
+        var startup = service.ResolveCameraAsync();
+        try { await service.MoveToPreset(4); throw new Exception("Expected unresolved camera"); }
+        catch (HttpRequestException) { }
+        Check(handler.Requests.Count == 0 && !service.IsCameraAvailable, "Old address was usable before discovery");
+        probes.Writer.TryWrite([new(id, "192.168.188.25", null)]);
+        Check(await startup.WaitAsync(TimeSpan.FromSeconds(3)), "Startup did not resolve the selected camera");
+        _ = await retries.Reader.ReadAsync();
+        await service.MoveToPreset(4);
+        Check(handler.Requests.Single().Host == "192.168.188.25" && handler.Requests.Single().Port == 80,
+            "Startup preset used a stale address or the ONVIF port");
+
+        var failingRequest = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.Respond = _ => failingRequest.Task;
+        Task failed = service.MoveInDirection(Direction.Left);
+        Task queued = service.MoveInDirection(Direction.Right);
+        failingRequest.SetException(new HttpRequestException("simulated connection loss"));
+        foreach (Task command in new[] { failed, queued })
+        {
+            try { await command; throw new Exception("Expected an unavailable camera"); }
+            catch (HttpRequestException) { }
+        }
+        handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        var recovery = service.ResolveCameraAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        _ = await retries.Reader.ReadAsync(timeout.Token);
+        probes.Writer.TryWrite([new("other", "192.168.188.26", null)]);
+        _ = await retries.Reader.ReadAsync(timeout.Token);
+        Check(!recovery.IsCompleted && !service.IsCameraAvailable && service.CameraUnreachable,
+            "Other device was accepted during recovery");
+        Check(CameraSettings.LoadTarget(testPath) == new CameraTarget("192.168.188.25", id),
+            "Camera selection changed after a failed lookup");
+        probes.Writer.TryWrite([new(id, "192.168.188.27", null)]);
+        Check(await recovery.WaitAsync(timeout.Token), "Selected camera was not recognized on a later attempt");
+        Check(handler.Requests.Count == 5 && handler.Requests.Skip(2).All(uri => uri.Host == "192.168.188.27") &&
+            handler.Requests.Skip(2).Select(uri => uri.Query).ToHashSet().SetEquals(
+                ["?ptzcmd&ptzstop&10&10", "?ptzcmd&zoomstop&5", "?ptzcmd&focusstop&5"]),
+            "Recovery did not limit commands to safety stops on the confirmed address");
+        await service.Zoom(Zoom.ZoomIn);
+        Check(handler.Requests.Last().Host == "192.168.188.27" &&
+            CameraSettings.LoadTarget(testPath) == new CameraTarget("192.168.188.27", id),
+            "New commands or saved settings used an outdated address");
+
+        handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        try { await service.MoveToPreset(4); throw new Exception("Expected missing CGI endpoint"); }
+        catch (HttpRequestException error) when (error.StatusCode == HttpStatusCode.NotFound) { }
+        handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        probes.Writer.TryWrite([new(id, "192.168.188.28", null)]);
+        Check(await service.ResolveCameraAsync().WaitAsync(timeout.Token) && service.CameraIp == "192.168.188.28" &&
+            handler.Requests.Count == 10 && handler.Requests.Skip(7).All(uri =>
+                uri.Host == "192.168.188.28" && !uri.Query.Contains("poscall")),
+            "A missing CGI endpoint at the old IP did not rediscover the device without a preset replay");
+    }
+    finally { File.Delete(testPath); }
+}
 
 using var handler = new RecordingHandler();
 var namesPath = Path.Combine(AppContext.BaseDirectory, "test-buttons.json");

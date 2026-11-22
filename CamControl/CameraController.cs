@@ -2,24 +2,46 @@ namespace CamControl;
 
 // UI-thread confined. The transport owns serialization; this class owns input,
 // cancellation and lifecycle ordering. Neither class depends on WPF controls.
-internal sealed class CameraController(CamControlService service) : IDisposable
+internal sealed class CameraController : IDisposable
 {
+    private readonly CamControlService service;
     private CancellationTokenSource lifetime = new(), direction = new(), zoom = new();
     private CancellationTokenSource? position;
     private Task<bool>? stopping;
     private bool active = true, suspended, busy, closing, disposed, directionHeld, zoomHeld;
     private int errorVersion;
-    public string Error { get; private set; } = "";
-    public bool CanControl => active && !suspended && !closing && !disposed && stopping == null;
+    private string error = "";
+    private CameraTarget target;
+    private bool connectionError;
+    public string Error => service.CameraUnreachable ? Texts.Camera_Unreachable : error;
+    public bool CanControl => service.IsCameraAvailable && active && !suspended && !closing && !disposed && stopping == null;
     public bool ControlsEnabled => CanControl && !busy;
     public bool IsMoving => directionHeld || zoomHeld;
     public event Action? Changed;
     private void Notify() => Changed?.Invoke();
+    public CameraController(CamControlService service)
+    {
+        this.service = service;
+        target = service.Target;
+        service.ConnectionChanged += CameraConnectionChanged;
+    }
+    private void CameraConnectionChanged()
+    {
+        if (service.IsCameraAvailable && (target != service.Target || connectionError))
+        {
+            error = "";
+            connectionError = false;
+            errorVersion++;
+        }
+        target = service.Target;
+        Notify();
+    }
     private void Report(string action, string error)
     {
         if (disposed) return;
         errorVersion++;
-        Error = $"{action}: {error}";
+        this.error = $"{action}: {error}";
+        connectionError = error == Texts.Error_Connection || error == Texts.Error_Timeout;
         Notify();
     }
     internal void ReportStopFailure(string error) => Report(Texts.Error_CloseStop, error);
@@ -31,7 +53,7 @@ internal sealed class CameraController(CamControlService service) : IDisposable
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellation);
         int version = errorVersion;
         bool success = await CameraCommandRunner.RunAsync(() => command(linked.Token), e => Report(action, e), linked.Token);
-        if (success && version == errorVersion && CanControl) { Error = ""; Notify(); }
+        if (success && version == errorVersion && CanControl) { error = ""; connectionError = false; Notify(); }
         return success;
     }
 
@@ -86,7 +108,8 @@ internal sealed class CameraController(CamControlService service) : IDisposable
     {
         try
         {
-            bool result = await CameraCommandRunner.RunAsync(service.StopAll, e => Report(Texts.Error_AllStops, e));
+            bool result = service.IsCameraAvailable &&
+                await CameraCommandRunner.RunAsync(service.StopAll, e => Report(Texts.Error_AllStops, e));
             stopping = null;
             previous.Dispose();
             Notify();
@@ -133,6 +156,7 @@ internal sealed class CameraController(CamControlService service) : IDisposable
     public void Dispose()
     {
         if (disposed) return;
+        service.ConnectionChanged -= CameraConnectionChanged;
         disposed = true; position?.Cancel();
         lifetime.Cancel(); direction.Cancel(); zoom.Cancel();
         lifetime.Dispose(); direction.Dispose(); zoom.Dispose();

@@ -11,7 +11,7 @@ public partial class MainWindow : AppWindow
     internal CameraInput Input { get; }
     private readonly Dictionary<int, Button> buttons = new();
     private readonly Dictionary<int, TextBlock> presetLabels = new();
-    private bool finalClose, closing, settingsOpen;
+    private bool finalClose, closing, settingsOpen, startPresetPending;
     private int? lastRequested;
     internal MainWindow(CameraSession session, string? windowPlacementPath = null)
     {
@@ -35,13 +35,28 @@ public partial class MainWindow : AppWindow
         InitializeResponsiveLayout();
         InitializeWindowPlacement(windowPlacementPath);
         AttachController(); Refresh();
-        Loaded += async (_, _) => { if (Session.Automatic.StartPreset is { } n) await RecallAsync(n); };
-        Activated += async (_, _) => { if (!closing) await Session.Controller.SetActiveAsync(true); };
+        Loaded += async (_, _) =>
+        {
+            startPresetPending = Session.Automatic.StartPreset != null;
+            if (await Session.Service.ResolveCameraAsync()) await RunStartupPresetAsync();
+        };
+        Activated += async (_, _) =>
+        {
+            if (closing) return;
+            await Session.Controller.SetActiveAsync(true);
+            await RunStartupPresetAsync();
+        };
         Deactivated += async (_, _) => { Input.Reset(); if (!settingsOpen && !closing) await Session.Controller.SetActiveAsync(false); };
         Closing += ClosingAsync;
         Closed += (_, _) => Session.Dispose();
     }
     private void AttachController() => Session.Controller.Changed += Refresh;
+    private async Task RunStartupPresetAsync()
+    {
+        if (!startPresetPending || closing || settingsOpen || !Session.Controller.ControlsEnabled) return;
+        startPresetPending = false;
+        if (Session.Automatic.StartPreset is { } preset) await RecallAsync(preset);
+    }
     internal async Task RecallAsync(int number)
     {
         if (await Session.Controller.RecallAsync(Session.Numbers[number]))
@@ -65,8 +80,12 @@ public partial class MainWindow : AppWindow
         ModeLabel.Text = Session.IsDemo ? "CamControl · Demo" : "CamControl";
         Title = Session.IsDemo ? "CamControl – Demo" : "CamControl";
         string requested = lastRequested is { } n ? Texts.Format(Texts.Main_Requested, Session.Names[n]) : "";
-        Status.Text = Session.Controller.Error.Length > 0 ? Session.Controller.Error : Session.IsDemo ? Texts.Main_DemoStatus + (requested.Length > 0 ? " · " + requested : "") : requested.Length > 0 ? requested : Texts.Main_CameraStatus;
-        Status.SetResourceReference(TextBlock.ForegroundProperty, Session.Controller.Error.Length > 0 ? "ErrorBrush" : "MutedBrush");
+        string error = Session.Controller.Error;
+        Status.Text = error.Length > 0 ? error
+            : !Session.Service.IsCameraAvailable ? Texts.Camera_Discovery_Resolving
+            : Session.IsDemo ? Texts.Main_DemoStatus + (requested.Length > 0 ? " · " + requested : "")
+            : requested.Length > 0 ? requested : Texts.Main_CameraStatus;
+        Status.SetResourceReference(TextBlock.ForegroundProperty, error.Length > 0 ? "ErrorBrush" : "MutedBrush");
     }
     private async void SettingsClick(object sender, RoutedEventArgs e)
     {
@@ -78,11 +97,11 @@ public partial class MainWindow : AppWindow
             await previous.SuspendAsync();
             if (closing) return;
             DemoPreview.Visibility = Visibility.Collapsed;
-            var dialog = new CameraSettingsDialog(Session.Service.CameraIp, Session) { Owner = this };
+            var dialog = new CameraSettingsDialog(Session.Target, Session) { Owner = this };
             dialog.PresetStopFailed += Session.Controller.ReportStopFailure;
             if (dialog.ShowDialog() == true)
             {
-                Session.Service.SetCameraIp(dialog.CameraIp);
+                startPresetPending = false;
                 if (dialog.RequestedDemoMode is { } demo && demo != Session.IsDemo)
                 {
                     SaveWindowPlacement();
@@ -91,10 +110,25 @@ public partial class MainWindow : AppWindow
                     RestoreWindowPlacement();
                     foreach (var button in buttons.Values) button.Tag = null;
                 }
+                else if (dialog.RequestedDemoMode == null)
+                {
+                    Session.ApplyCameraTarget(dialog.Target);
+                    lastRequested = null;
+                    foreach (var button in buttons.Values) button.Tag = null;
+                }
+                _ = Session.Service.ResolveCameraAsync();
             }
             UpdateDemo();
         }
-        finally { settingsOpen = false; DemoPreview.Visibility = Session.IsDemo && CurrentLayout.View == CameraView.Full ? Visibility.Visible : Visibility.Collapsed; Session.Controller.Resume(); await Session.Controller.SetActiveAsync(IsActive); Refresh(); }
+        finally
+        {
+            settingsOpen = false;
+            DemoPreview.Visibility = Session.IsDemo && CurrentLayout.View == CameraView.Full ? Visibility.Visible : Visibility.Collapsed;
+            Session.Controller.Resume();
+            await Session.Controller.SetActiveAsync(IsActive);
+            await RunStartupPresetAsync();
+            Refresh();
+        }
     }
     private void UpdateDemo()
     {

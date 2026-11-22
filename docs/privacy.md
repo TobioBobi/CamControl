@@ -1,5 +1,5 @@
 Datenschutz für CamControl
-Stand: 22. Oktober 2026
+Stand: 22. November 2026
 Herausgeber: TobioBobi
 
 Lokale Daten
@@ -8,10 +8,12 @@ Kamera-IP, Buttonnamen, Kamerapreset-Zuordnungen und Start-/Endpositionen werden
 Darstellung und Sprachauswahl werden dort ebenfalls lokal gespeichert (appearance.json, language.json).
 
 Kamerasteuerung
+Die Kamerasuche sendet ONVIF-Anfragen im lokalen Netz. Wenn du einen Treffer speicherst, speichert CamControl dessen Geräte-ID und zuletzt bestätigte IP-Adresse in settings.json. Die automatische Wiedererkennung nutzt dieselbe lokale Suche.
+
 HTTP-CGI-Befehle für Bewegung, Zoom und Presets gehen über unverschlüsseltes HTTP an die konfigurierte Kamera. CamControl empfängt und speichert weder Kamerabilder noch Video oder Ton. Preset-Positionen speichert die Kamera; ihre eigene Datenverarbeitung hängt vom Gerät ab.
 
 Demo
-Keine Netzwerkbefehle. Demo-Namen, Positionen und Automatik liegen nur im Arbeitsspeicher und werden beim Beenden verworfen. Deine Kameraeinstellungen bleiben erhalten.
+Die Demo-Steuerung sendet keine Netzwerkbefehle. Demo-Namen, Positionen und Automatik liegen nur im Arbeitsspeicher und werden beim Beenden verworfen. Deine Kameraeinstellungen bleiben erhalten.
 
 GitHub und Support
 Der Support-Link öffnet GitHub erst nach einem Klick. Dort gelten GitHubs Datenschutzbestimmungen. Öffentliche Issues sind für alle sichtbar; keine vertraulichen Daten einstellen.

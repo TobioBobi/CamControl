@@ -19,6 +19,7 @@
     <Compile Include="../../CamControl/CameraSettings.cs" Link="CameraSettings.cs" />
     <Compile Include="../../CamControl/AppearanceSettings.cs" Link="AppearanceSettings.cs" />
     <Compile Include="../../CamControl/CamControlService.cs" Link="CamControlService.cs" />
+    <Compile Include="../../CamControl/OnvifDiscovery.cs" Link="OnvifDiscovery.cs" />
     <Compile Include="../../CamControl/CameraCommandRunner.cs" Link="CameraCommandRunner.cs" />
     <Compile Include="../../CamControl/Position.cs" Link="Position.cs" />
     <Compile Include="../../CamControl/Direction.cs" Link="Direction.cs" />

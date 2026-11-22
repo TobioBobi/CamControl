@@ -379,7 +379,7 @@ Windows PC and PTZ camera with a compatible HTTP-CGI interface on a reachable ne
 Supported commands matter, regardless of manufacturer or model: movement, zoom, stops and presets via /cgi-bin/ptzctrl.cgi?ptzcmd&amp;… . IPv4 and HTTP on port 80 without authentication are required. Not every HTTP-CGI interface uses this command set.
 
 Camera setup
-Under “Camera”, change and save the IP address. Cancel discards your changes.
+Under “Camera”, find and select a camera with ONVIF enabled, or enter its IPv4 address manually. Save applies the change.
 
 Movement and presets
 Hold the arrow and zoom buttons; release to stop. Keyboard: arrow keys, numpad plus/minus and 1–6 or 9 for presets.
@@ -405,4 +405,31 @@ Check the IP address, network and power supply. HTTP errors may indicate an inco
 When switching windows or opening settings, the app attempts to stop the camera. If a stop is not confirmed, the camera may continue moving: check the camera and use its own controls if needed.</value>
   </data>
   <data name="Main_RestoreFull" xml:space="preserve"><value>Restore full view</value></data>
+  <data name="Camera_Discovery_Find" xml:space="preserve">
+    <value>Find camera on the network</value>
+  </data>
+  <data name="Camera_Discovery_FindAgain" xml:space="preserve">
+    <value>Find again</value>
+  </data>
+  <data name="Camera_Discovery_Searching" xml:space="preserve">
+    <value>Looking for cameras…</value>
+  </data>
+  <data name="Camera_Discovery_NoResults" xml:space="preserve">
+    <value>No cameras found. Check that the camera is on the local network and ONVIF is enabled.</value>
+  </data>
+  <data name="Camera_Discovery_Manual" xml:space="preserve">
+    <value>Use IP manually</value>
+  </data>
+  <data name="Camera_Discovery_Automatic" xml:space="preserve">
+    <value>Automatic camera recognition</value>
+  </data>
+  <data name="Camera_Unreachable" xml:space="preserve">
+    <value>Camera unreachable</value>
+  </data>
+  <data name="Camera_Discovery_Resolving" xml:space="preserve">
+    <value>Looking for the selected camera…</value>
+  </data>
+  <data name="Camera_Discovery_Results" xml:space="preserve">
+    <value>Discovered cameras</value>
+  </data>
 </root>

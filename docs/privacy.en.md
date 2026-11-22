@@ -1,5 +1,5 @@
 Privacy for CamControl
-Updated: October 22, 2026
+Updated: November 22, 2026
 Publisher: TobioBobi
 
 Local data
@@ -8,10 +8,12 @@ The camera IP address, button names, camera preset assignments and startup/exit 
 Appearance and language preferences are also stored locally in that folder (appearance.json, language.json).
 
 Camera control
+Camera discovery sends ONVIF requests on the local network. If you save a discovered camera, CamControl stores its device ID and last confirmed IP address in settings.json. Automatic reconnection uses the same local discovery.
+
 HTTP-CGI commands for movement, zoom and presets are sent over unencrypted HTTP to the configured camera. CamControl does not receive or store camera images, video or audio. Preset positions are stored by the camera; its own data processing depends on the device.
 
 Demo
-No network commands. Demo names, positions and automatic positions are kept in memory only and discarded when the app exits. Your camera settings are preserved.
+Demo controls send no network commands. Demo names, positions and automatic positions are kept in memory only and discarded when the app exits. Your camera settings are preserved.
 
 GitHub and support
 The support link opens GitHub only when clicked. GitHub's privacy policy applies there. Public issues are visible to everyone; do not include confidential data.

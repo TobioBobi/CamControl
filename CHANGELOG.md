@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.5.0 – vorbereitet am 22. November 2026
+
+- Kameras per ONVIF im lokalen Netzwerk finden und auswählen.
+- Eine ausgewählte Kamera nach einem DHCP-Adresswechsel automatisch wiedererkennen.
+- Die manuelle IPv4-Eingabe bleibt verfügbar.
+
+Hinweise zur Vorbereitung und Abnahme: [Release 1.5.0](docs/release-1.5.0.md).
+
 ## 1.4.1 – vorbereitet am 8. November 2026
 
 - Repository-Konfiguration für Engineering-Skills ergänzt: GitHub Issues,
