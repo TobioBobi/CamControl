@@ -24,6 +24,12 @@ API = "https://manage.devcenter.microsoft.com"
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_NOTES_HEADING = '## Text für „Neu in dieser Version“'
 MAX_RELEASE_NOTES_LENGTH = 1500
+RELEASE_SCREENSHOTS = {
+    "1.5.0.0": {
+        "kamera-einrichten.png": "Kamera per Netzwerksuche oder mit einer festen IPv4-Adresse einrichten.",
+        "kamera-im-netzwerk.png": "Die Netzwerksuche zeigt gefundene Kameras zur Auswahl an.",
+    },
+}
 ACCEPTED = {"PreProcessing", "Certification", "PendingPublication", "Publishing", "Published", "Release"}
 FAILED = {"Canceled", "CommitFailed", "PreProcessingFailed", "CertificationFailed", "PublishFailed", "ReleaseFailed"}
 
@@ -176,13 +182,35 @@ class StoreClient:
         }, timeout=600)
 
 
-def replacement(submission, package, new_version, notes):
+def load_release_screenshots(package_version, root):
+    directory = root / "docs" / "store-screenshots" / package_version.removesuffix(".0")
+    screenshots = {directory / name: caption for name, caption in RELEASE_SCREENSHOTS.get(package_version, {}).items()}
+    for path in screenshots:
+        if not path.is_file():
+            raise DeploymentError(f"Missing Store screenshot: {path.relative_to(root)}.")
+    return screenshots
+
+
+def replacement(submission, package, new_version, notes, screenshots):
     body = copy.deepcopy(submission)
     listings = body.get("listings")
     german = [listing for locale, listing in listings.items() if locale.lower() == "de-de"] if isinstance(listings, dict) else []
     if len(german) != 1 or not isinstance(german[0], dict) or not isinstance(german[0].get("baseListing"), dict):
         raise DeploymentError("An existing de-de base listing is required for German Store release notes.")
     german[0]["baseListing"]["releaseNotes"] = notes
+    if screenshots:
+        images = german[0]["baseListing"].setdefault("images", [])
+        if not isinstance(images, list) or any(not isinstance(image, dict) for image in images):
+            raise DeploymentError("Invalid images in the German Store listing.")
+        desktop_count = sum(image.get("imageType") == "Screenshot" for image in images)
+        if desktop_count + len(screenshots) > 10:
+            raise DeploymentError("The German Store listing would exceed 10 desktop screenshots.")
+        images.extend({
+            "fileName": f"screenshots/{path.name}",
+            "fileStatus": "PendingUpload",
+            "description": caption,
+            "imageType": "Screenshot",
+        } for path, caption in screenshots.items())
     for old in body["applicationPackages"]:
         architecture = old.get("architecture", "").lower()
         if architecture not in {"x64", "x86", "arm", "arm64", "neutral"}:
@@ -204,6 +232,7 @@ def replacement(submission, package, new_version, notes):
 def deploy(config, package, client=None, sleep=time.sleep, polls=60, release_root=ROOT):
     metadata = package_identity(package, config["identity"])
     notes = load_release_notes(metadata["Version"], release_root)
+    screenshots = load_release_screenshots(metadata["Version"], release_root)
     if client is None:
         client = StoreClient(config)
     app_path = "applications/" + config["STORE_APP_ID"]
@@ -217,18 +246,20 @@ def deploy(config, package, client=None, sleep=time.sleep, polls=60, release_roo
         raise DeploymentError("Complete the first submission (including age ratings) in Partner Center before enabling API deployment.")
     # Validate versions and package metadata before creating a draft.
     previous = client.api("GET", app_path + "/submissions/" + published["id"])
-    replacement(previous, package, metadata["Version"], notes)
+    replacement(previous, package, metadata["Version"], notes, screenshots)
     submission = client.api("POST", app_path + "/submissions")
     submission_id = submission["id"]
     path = app_path + "/submissions/" + submission_id
     print(f"Created Store submission {submission_id} for version {metadata['Version']}.", flush=True)
     try:
-        body = replacement(submission, package, metadata["Version"], notes)
+        body = replacement(submission, package, metadata["Version"], notes, screenshots)
         client.api("PUT", path, body)
         with tempfile.TemporaryDirectory(prefix="camcontrol-store-") as directory:
             archive = Path(directory) / "submission.zip"
             with ZipFile(archive, "w", compression=ZIP_STORED) as output:
                 output.write(package, arcname=package.name)
+                for screenshot in screenshots:
+                    output.write(screenshot, arcname=f"screenshots/{screenshot.name}")
             client.upload(submission["fileUploadUrl"], archive)
         client.api("POST", path + "/commit")
         for attempt in range(polls):
