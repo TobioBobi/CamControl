@@ -6,6 +6,8 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
+import struct
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -154,6 +156,41 @@ class SubmissionChecks(unittest.TestCase):
         client = FakeClient()
         client.app["pendingApplicationSubmission"] = {"id": "manual-draft"}
         with self.assertRaisesRegex(store.DeploymentError, "already pending"):
+            self.deploy(client)
+        self.assert_no_writes(client)
+
+    def test_1_5_0_uploads_two_desktop_screenshots_with_the_package(self):
+        self.write_package(version="1.5.0.0")
+        self.write_release_notes(app_version="1.5.0")
+        relative = Path("docs/store-screenshots/1.5.0")
+        shutil.copytree(ROOT / relative, self.release_root / relative)
+        client = FakeClient()
+        self.deploy(client)
+        listings = client.body["listings"]
+        existing_images = PREVIOUS["listings"]["de-de"]["baseListing"]["images"]
+        images = listings["de-de"]["baseListing"]["images"]
+        self.assertEqual(images[:len(existing_images)], existing_images)
+        self.assertEqual(listings["en-us"], PREVIOUS["listings"]["en-us"])
+        added_images = images[len(existing_images):]
+        file_names = [image["fileName"] for image in added_images]
+        self.assertEqual(file_names, [
+            "screenshots/kamera-einrichten.png", "screenshots/kamera-im-netzwerk.png",
+        ])
+        self.assertEqual(set(client.archive_files), {self.package.name, *file_names})
+        for image in added_images:
+            self.assertEqual(image["imageType"], "Screenshot")
+            self.assertEqual(image["fileStatus"], "PendingUpload")
+            self.assertTrue(0 < len(image["description"]) <= 200)
+            image_data = client.archive_files[image["fileName"]]
+            self.assertEqual(image_data, (ROOT / relative / Path(image["fileName"]).name).read_bytes())
+            self.assertEqual(image_data[:8], b"\x89PNG\r\n\x1a\n")
+            self.assertEqual(struct.unpack(">II", image_data[16:24]), (1440, 810))
+
+    def test_1_5_0_rejects_missing_screenshots_before_creating_a_submission(self):
+        self.write_package(version="1.5.0.0")
+        self.write_release_notes(app_version="1.5.0")
+        client = FakeClient()
+        with self.assertRaisesRegex(store.DeploymentError, "Missing Store screenshot"):
             self.deploy(client)
         self.assert_no_writes(client)
 
