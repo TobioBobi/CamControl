@@ -1,5 +1,5 @@
 Privacidad de CamControl
-Actualizado: 22 de octubre de 2026
+Actualizado: 22 de noviembre de 2026
 Editor: TobioBobi
 
 Datos locales
@@ -8,10 +8,12 @@ La dirección IP de la cámara, los nombres de los botones, las asignaciones de 
 Las preferencias de apariencia e idioma también se guardan localmente en esa carpeta (appearance.json, language.json).
 
 Control de la cámara
+La búsqueda de cámaras envía solicitudes ONVIF en la red local. Si guardas una cámara encontrada, CamControl guarda su identificador y su última dirección IP confirmada en settings.json. La reconexión automática usa la misma búsqueda local.
+
 Los comandos HTTP-CGI de movimiento, zoom y preajustes se envían mediante HTTP sin cifrar a la cámara configurada. CamControl no recibe ni guarda imágenes, vídeo o audio de la cámara. La cámara guarda las posiciones de los preajustes; su propio tratamiento de datos depende del dispositivo.
 
 Demostración
-No se envían comandos de red. Los nombres, las posiciones y las posiciones automáticas de la demostración se mantienen únicamente en memoria y se descartan al cerrar la aplicación. La configuración de tu cámara se conserva.
+Los controles de demostración no envían comandos de red. Los nombres, las posiciones y las posiciones automáticas de la demostración se mantienen únicamente en memoria y se descartan al cerrar la aplicación. La configuración de tu cámara se conserva.
 
 GitHub y soporte
 El enlace de soporte solo abre GitHub al pulsarlo. Allí se aplica la política de privacidad de GitHub. Las incidencias públicas son visibles para todo el mundo; no incluyas datos confidenciales.

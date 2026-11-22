@@ -31,6 +31,7 @@ internal static partial class Program
                     return;
                 }
                 ThemeChecks(); await ControllerChecks();
+                await CameraDiscoveryChecks();
                 foreach (string language in new[] { "de-DE", "en-US", "es-ES" })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);

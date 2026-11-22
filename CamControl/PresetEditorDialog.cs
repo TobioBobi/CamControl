@@ -52,7 +52,19 @@ internal sealed class PresetEditorDialog : AppWindow
         close = Ui.Button(Texts.Common_Close, Close); close.IsCancel = true;
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(12, 8, 12, 8) }; footer.Children.Add(close);
         var layout = new DockPanel(); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer); layout.Children.Add(Ui.Scroll(content)); Content = layout;
-        Controller.Changed += () => { if (Controller.Error.Length > 0) { Status.Text = Controller.Error; Status.SetResourceReference(TextBlock.ForegroundProperty, "ErrorBrush"); } UpdateActions(); };
+        string lastCameraError = "";
+        Controller.Changed += () =>
+        {
+            string error = Controller.Error;
+            if (error.Length > 0)
+            {
+                Status.Text = error;
+                Status.SetResourceReference(TextBlock.ForegroundProperty, "ErrorBrush");
+            }
+            else if (Status.Text == lastCameraError) Status.Text = "";
+            lastCameraError = error;
+            UpdateActions();
+        };
         PresetName.TextChanged += (_, _) => UpdateActions(); PresetNumber.TextChanged += (_, _) => UpdateActions();
         Activated += async (_, _) => { if (!closing) await Controller.SetActiveAsync(true); };
         Deactivated += async (_, _) => { Input.Reset(); if (!closing) await Controller.SetActiveAsync(false); };

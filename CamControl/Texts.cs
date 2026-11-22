@@ -30,6 +30,15 @@ public static class Texts
     public static string Camera_SaveFailed => Get(nameof(Camera_SaveFailed));
     public static string Camera_SetupFirst => Get(nameof(Camera_SetupFirst));
     public static string Camera_InvalidIp => Get(nameof(Camera_InvalidIp));
+    public static string Camera_Discovery_Find => Get(nameof(Camera_Discovery_Find));
+    public static string Camera_Discovery_FindAgain => Get(nameof(Camera_Discovery_FindAgain));
+    public static string Camera_Discovery_Searching => Get(nameof(Camera_Discovery_Searching));
+    public static string Camera_Discovery_NoResults => Get(nameof(Camera_Discovery_NoResults));
+    public static string Camera_Discovery_Manual => Get(nameof(Camera_Discovery_Manual));
+    public static string Camera_Discovery_Automatic => Get(nameof(Camera_Discovery_Automatic));
+    public static string Camera_Unreachable => Get(nameof(Camera_Unreachable));
+    public static string Camera_Discovery_Resolving => Get(nameof(Camera_Discovery_Resolving));
+    public static string Camera_Discovery_Results => Get(nameof(Camera_Discovery_Results));
     public static string Preset_Description => Get(nameof(Preset_Description));
     public static string Preset_Number => Get(nameof(Preset_Number));
     public static string Preset_Name => Get(nameof(Preset_Name));

@@ -12,10 +12,12 @@ internal sealed class CameraSession : IDisposable
     private HttpClient? demoClient;
     private DispatcherTimer? demoTimer;
     private readonly Stopwatch demoClock = new();
+    private CameraTarget cameraTarget = new(CameraSettings.DefaultCameraIp);
     public DemoCamera Demo { get; } = new();
     public bool IsDemo { get; private set; }
     public CamControlService Service { get; private set; }
     public CameraController Controller { get; private set; }
+    public CameraTarget Target => IsDemo ? cameraTarget : Service.Target;
     public IReadOnlyDictionary<int, string> Names => IsDemo ? demoNames : names;
     public IReadOnlyDictionary<int, int> Numbers => IsDemo ? demoNumbers : numbers;
     public AutomaticPositions Automatic => IsDemo ? demoAutomatic : automatic;
@@ -26,30 +28,35 @@ internal sealed class CameraSession : IDisposable
     }
     // An injected transport allows full-window command/lifecycle checks without
     // contacting hardware or inheriting the user's automatic startup choices.
-    internal CameraSession(CamControlService service)
+    internal CameraSession(CamControlService service, AutomaticPositions? automatic = null)
     {
-        Service = service; Controller = new(Service); automatic = new();
+        Service = service; Controller = new(Service); this.automatic = automatic ?? new();
     }
     // Caller has suspended input and awaited all stops on the previous service.
     public void SwitchMode(bool demo)
     {
         if (demo == IsDemo) return;
         StopDemoSimulation();
-        string ip = Service.CameraIp;
+        cameraTarget = Target;
         Controller.Dispose(); Service.Dispose(); demoClient?.Dispose(); demoClient = null;
         if (demo)
         {
             Demo.Apply($"?ptzcmd&poscall&{(demoAutomatic.StartPreset is { } start ? demoNumbers[start] : 4)}");
             demoClient = new(new DemoCameraHandler(Demo));
-            Service = new(demoClient, ip);
+            Service = new(demoClient, cameraTarget.Ip);
             // One simulation clock per session, independent of preview visibility
             // and of how many previews (main window/editor) are loaded.
             demoTimer = new() { Interval = TimeSpan.FromMilliseconds(40) };
             demoTimer.Tick += (_, _) => { Demo.Advance(demoClock.Elapsed); demoClock.Restart(); };
             demoClock.Restart(); demoTimer.Start();
         }
-        else { Service = new(); Service.SetCameraIp(ip); }
+        else { Service = new(); Service.SetTarget(cameraTarget); }
         IsDemo = demo; Controller = new(Service);
+    }
+    public void ApplyCameraTarget(CameraTarget target)
+    {
+        if (IsDemo) cameraTarget = target;
+        else Service.SetTarget(target);
     }
     public void SaveMapping(int button, string name, int number)
     {
