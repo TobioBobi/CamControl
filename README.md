@@ -150,9 +150,24 @@ See [the certification test instructions](docs/store-testing.md).
 dotnet run --project CamControl/CamControl.csproj -c Release -- --demo
 ```
 
-The visible Settings button opens the configuration dialog. The camera IP is
-always editable; saving becomes available when a valid address changes
-and persists the change. Cancel or closing the dialog discards the edits.
+In **Settings** > **Camera**, choose **Search for a camera on the network**.
+CamControl selects a single result automatically. If several cameras appear,
+choose one. Select **Save** to apply the selection. If a camera is already
+configured, choose **Change camera** to open setup. Enable ONVIF on the camera
+and connect it to the same local network. Discovery uses IPv4 multicast and
+the camera's ONVIF device ID. Control still uses HTTP-CGI on port 80.
+[ONVIF Core Specification](https://www.onvif.org/specs/core/ONVIF-Core-Specification.pdf)
+
+CamControl rediscovers the saved device before issuing startup commands and
+after a connection failure. When the device is unavailable, CamControl keeps
+looking in the background. A configured startup preset waits for the first
+successful recognition. After a connection failure, CamControl stops motion
+on the rediscovered camera before restoring the controls. Failed movement
+and preset commands are never replayed.
+
+Choose **Enter IP address** to set a fixed IPv4 address. When changing a camera,
+the field starts with its saved IP address. **Save** applies the selected camera
+or the manually entered address. Closing the dialog discards unsaved edits.
 Opening settings cancels pending camera commands and attempts all stops first.
 The "Hilfe & Voraussetzungen" page explains network and runtime requirements,
 current camera compatibility limits, setup, preset numbers, keyboard/mouse

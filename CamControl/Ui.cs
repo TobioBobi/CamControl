@@ -16,10 +16,15 @@ internal static class Ui
     public static TextBlock Heading(string text) => new() { Text = text, FontSize = 18, FontWeight = FontWeights.SemiBold, Margin = new(0, 0, 0, 16), TextWrapping = TextWrapping.Wrap };
     public static Button Button(string text, Action action, string name = "")
     {
-        var button = new Button { Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap }, Name = name, Margin = new(0, 4, 0, 4) };
-        AutomationProperties.SetName(button, text);
+        var button = new Button { Name = name, Margin = new(0, 4, 0, 4) };
+        SetButtonLabel(button, text);
         button.Click += (_, _) => action();
         return button;
+    }
+    public static void SetButtonLabel(Button button, string text)
+    {
+        button.Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap };
+        AutomationProperties.SetName(button, text);
     }
     public static ScrollViewer Scroll(UIElement child) => new() { Content = child, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     public static StackPanel Stack(params UIElement[] children) { var panel = new StackPanel(); foreach (var child in children) panel.Children.Add(child); return panel; }

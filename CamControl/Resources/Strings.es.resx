@@ -58,7 +58,7 @@
     <value>Idioma / Language</value>
   </data>
   <data name="Camera_Address" xml:space="preserve">
-    <value>Dirección IP de la cámara</value>
+    <value>Dirección IP</value>
   </data>
   <data name="Camera_Requirements" xml:space="preserve">
     <value>IPv4 · HTTP en el puerto 80 · La cámara y el PC deben estar en una red accesible.</value>
@@ -379,7 +379,7 @@ PC con Windows y cámara PTZ con una interfaz HTTP-CGI compatible en una red acc
 Lo importante son los comandos compatibles, independientemente del fabricante o modelo: movimiento, zoom, paradas y preajustes mediante /cgi-bin/ptzctrl.cgi?ptzcmd&amp;… . Se requieren IPv4 y HTTP en el puerto 80 sin autenticación. No todas las interfaces HTTP-CGI usan este conjunto de comandos.
 
 Configurar la cámara
-En «Cámara», cambia y guarda la dirección IP. Cancelar descarta los cambios.
+En «Cámara», busca y selecciona una cámara con ONVIF activado o introduce su dirección IPv4 manualmente. Guardar aplica el cambio.
 
 Movimiento y preajustes
 Mantén pulsados los botones de dirección y zoom; al soltarlos, el movimiento se detiene. Teclado: flechas, más/menos del teclado numérico y 1–6 o 9 para los preajustes.
@@ -405,4 +405,49 @@ Comprueba la dirección IP, la red y la alimentación. Los errores HTTP pueden i
 Al cambiar de ventana o abrir los ajustes, la aplicación intenta detener la cámara. Si no se confirma la parada, la cámara puede seguir moviéndose: comprueba la cámara y utiliza sus propios controles si es necesario.</value>
   </data>
   <data name="Main_RestoreFull" xml:space="preserve"><value>Restaurar vista completa</value></data>
+  <data name="Camera_Discovery_Find" xml:space="preserve">
+    <value>Buscar cámara en la red</value>
+  </data>
+  <data name="Camera_Discovery_FindAgain" xml:space="preserve">
+    <value>Buscar de nuevo</value>
+  </data>
+  <data name="Camera_Discovery_Searching" xml:space="preserve">
+    <value>Buscando cámaras…</value>
+  </data>
+  <data name="Camera_Discovery_NoResults" xml:space="preserve">
+    <value>No se encontraron cámaras. Comprueba que la cámara esté en la red local y que ONVIF esté activado.</value>
+  </data>
+  <data name="Camera_Discovery_Manual" xml:space="preserve">
+    <value>Introducir dirección IP</value>
+  </data>
+  <data name="Camera_Discovery_Automatic" xml:space="preserve">
+    <value>Automática</value>
+  </data>
+  <data name="Camera_Setup_Title" xml:space="preserve">
+    <value>Configurar cámara</value>
+  </data>
+  <data name="Camera_Setup_Manual" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="Camera_Setup_Configured" xml:space="preserve">
+    <value>Cámara configurada</value>
+  </data>
+  <data name="Camera_Setup_Mode" xml:space="preserve">
+    <value>Tipo de configuración</value>
+  </data>
+  <data name="Camera_Setup_FixedIp" xml:space="preserve">
+    <value>Manual (dirección IP fija)</value>
+  </data>
+  <data name="Camera_Setup_Change" xml:space="preserve">
+    <value>Cambiar cámara</value>
+  </data>
+  <data name="Camera_Unreachable" xml:space="preserve">
+    <value>No se puede conectar con la cámara</value>
+  </data>
+  <data name="Camera_Discovery_Resolving" xml:space="preserve">
+    <value>Buscando la cámara seleccionada…</value>
+  </data>
+  <data name="Camera_Discovery_Results" xml:space="preserve">
+    <value>Cámaras encontradas</value>
+  </data>
 </root>

@@ -58,7 +58,7 @@
     <value>Sprache / Language</value>
   </data>
   <data name="Camera_Address" xml:space="preserve">
-    <value>IP-Adresse der Kamera</value>
+    <value>IP-Adresse</value>
   </data>
   <data name="Camera_Requirements" xml:space="preserve">
     <value>IPv4 · HTTP auf Port 80 · Kamera und PC müssen im erreichbaren Netzwerk sein.</value>
@@ -379,7 +379,7 @@ Windows-PC und PTZ-Kamera mit passender HTTP-CGI-Steuerung im erreichbaren Netzw
 Entscheidend sind die unterstützten Befehle, unabhängig von Hersteller oder Modell: Bewegung, Zoom, Stopps und Presets über /cgi-bin/ptzctrl.cgi?ptzcmd&amp;… . Benötigt werden IPv4 und HTTP auf Port 80 ohne Anmeldung. Nicht jede HTTP-CGI-Schnittstelle verwendet diesen Befehlssatz.
 
 Kamera einrichten
-Unter „Kamera“ die IP-Adresse ändern und speichern. Abbrechen verwirft die Eingabe.
+Unter „Kamera“ eine Kamera mit aktiviertem ONVIF suchen und auswählen oder ihre IPv4-Adresse manuell eingeben. „Speichern“ übernimmt die Änderung.
 
 Bewegung und Presets
 Pfeile und Zoom-Buttons gedrückt halten; Loslassen stoppt. Tastatur: Pfeiltasten, Plus/Minus auf dem Nummernblock und 1–6 oder 9 für die Presets.
@@ -405,4 +405,49 @@ IP-Adresse, Netzwerk und Stromversorgung prüfen. HTTP-Fehler können auf eine i
 Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, die Kamera zu stoppen. Wird ein Stopp nicht bestätigt, kann sie weiterlaufen: Kamera prüfen und bei Bedarf deren eigene Steuerung verwenden.</value>
   </data>
   <data name="Main_RestoreFull" xml:space="preserve"><value>Vollansicht wiederherstellen</value></data>
+  <data name="Camera_Discovery_Find" xml:space="preserve">
+    <value>Kamera im Netzwerk suchen</value>
+  </data>
+  <data name="Camera_Discovery_FindAgain" xml:space="preserve">
+    <value>Erneut suchen</value>
+  </data>
+  <data name="Camera_Discovery_Searching" xml:space="preserve">
+    <value>Kameras werden gesucht …</value>
+  </data>
+  <data name="Camera_Discovery_NoResults" xml:space="preserve">
+    <value>Keine Kamera gefunden. Prüfe, ob die Kamera im lokalen Netz ist und ONVIF aktiviert ist.</value>
+  </data>
+  <data name="Camera_Discovery_Manual" xml:space="preserve">
+    <value>IP-Adresse eingeben</value>
+  </data>
+  <data name="Camera_Discovery_Automatic" xml:space="preserve">
+    <value>Automatisch</value>
+  </data>
+  <data name="Camera_Setup_Title" xml:space="preserve">
+    <value>Kamera einrichten</value>
+  </data>
+  <data name="Camera_Setup_Manual" xml:space="preserve">
+    <value>Manuell</value>
+  </data>
+  <data name="Camera_Setup_Configured" xml:space="preserve">
+    <value>Eingerichtete Kamera</value>
+  </data>
+  <data name="Camera_Setup_Mode" xml:space="preserve">
+    <value>Einrichtung</value>
+  </data>
+  <data name="Camera_Setup_FixedIp" xml:space="preserve">
+    <value>Manuell (feste IP-Adresse)</value>
+  </data>
+  <data name="Camera_Setup_Change" xml:space="preserve">
+    <value>Kamera ändern</value>
+  </data>
+  <data name="Camera_Unreachable" xml:space="preserve">
+    <value>Kamera nicht erreichbar</value>
+  </data>
+  <data name="Camera_Discovery_Resolving" xml:space="preserve">
+    <value>Ausgewählte Kamera wird gesucht …</value>
+  </data>
+  <data name="Camera_Discovery_Results" xml:space="preserve">
+    <value>Gefundene Kameras</value>
+  </data>
 </root>

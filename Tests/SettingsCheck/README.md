@@ -17,6 +17,11 @@ starts; all-channel stops despite individual failures; and custom demo preset
 positions including zoom. WPF dialog and controller checks live in
 `Tests/CameraUiCheck`.
 
+ONVIF checks use a loopback UDP responder for the unfiltered probe and
+simulated device replies and CGI failures for address changes. They verify
+that another device cannot replace the selection and that recovery never
+replays failed commands.
+
 Localization checks cover language persistence and invalid settings, Windows
 language variants and English fallback, explicit overrides, startup/background
 thread UI culture, preserved regional formats, exact German/English/Spanish resource

@@ -38,15 +38,15 @@ internal static class Theme
     internal static void Apply(bool dark)
     {
         isDark = dark && !SystemParameters.HighContrast;
-        string[] keys = ["Canvas", "Surface", "Ink", "Muted", "Line", "Accent", "Hover", "Pressed", "Selection", "Error", "Success"];
-        string[] light = ["#F3F5F8", "#FFFFFF", "#182536", "#536174", "#CED6E0", "#1758B8", "#EDF3FC", "#CBDFFF", "#E5EFFF", "#AF2020", "#24653E"];
-        string[] night = ["#151A22", "#202733", "#EDF2F9", "#B2BDCC", "#465266", "#91BCFF", "#2A3546", "#385780", "#293F60", "#FFABAB", "#95D9AC"];
+        string[] keys = ["Canvas", "Surface", "Ink", "Muted", "Line", "Accent", "AccentInk", "Hover", "Pressed", "Selection", "Error", "Success"];
+        string[] light = ["#F3F5F8", "#FFFFFF", "#182536", "#536174", "#CED6E0", "#1758B8", "#FFFFFF", "#EDF3FC", "#CBDFFF", "#E5EFFF", "#AF2020", "#24653E"];
+        string[] night = ["#151A22", "#202733", "#EDF2F9", "#B2BDCC", "#465266", "#91BCFF", "#151A22", "#2A3546", "#385780", "#293F60", "#FFABAB", "#95D9AC"];
         bool changed = false;
         for (int i = 0; i < keys.Length; i++)
         {
             var color = (Color)ColorConverter.ConvertFromString((dark ? night : light)[i]);
             if (SystemParameters.HighContrast)
-                color = keys[i] switch { "Canvas" or "Surface" => SystemColors.WindowColor, "Ink" or "Muted" or "Error" or "Success" => SystemColors.WindowTextColor, "Hover" or "Pressed" or "Selection" => SystemColors.ControlColor, _ => SystemColors.HighlightColor };
+                color = keys[i] switch { "Canvas" or "Surface" => SystemColors.WindowColor, "Ink" or "Muted" or "Error" or "Success" => SystemColors.WindowTextColor, "Hover" or "Pressed" or "Selection" => SystemColors.ControlColor, "AccentInk" => SystemColors.HighlightTextColor, _ => SystemColors.HighlightColor };
             string key = keys[i] + "Brush";
             if (Application.Current.Resources[key] is SolidColorBrush current && current.Color == color) continue;
             Application.Current.Resources[key] = new SolidColorBrush(color);

@@ -132,12 +132,12 @@ Gleiche oder niedrigere bereits veröffentlichte x64-Versionen werden vor dem
 Erzeugen einer neuen Einreichung abgewiesen. Es gibt keine automatische
 Versionsänderung und keinen automatischen Versions-Commit auf `master`.
 
-Der Upload ersetzt die bisherigen x64-Pakete durch das neue x64-Paket. Pakete
-anderer Architekturen, Store-Beschreibungen, Bilder, Preise, Sichtbarkeit und
-bestehende Rollout-Einstellungen werden aus der veröffentlichten Einreichung
-übernommen. Eine zusätzliche Bestätigung zur Veröffentlichung ist nicht
-vorgesehen: Nach Microsofts Zertifizierung gilt der Veröffentlichungsmodus
-`Immediate`.
+Der Upload ersetzt die bisherigen x64-Pakete durch das neue x64-Paket.
+Pakete anderer Architekturen, Store-Beschreibungen, vorhandene Bilder, Preise,
+Sichtbarkeit und Rollout-Einstellungen werden aus der veröffentlichten
+Einreichung übernommen. Version 1.5.0 ergänzt die deutsche Galerie um die
+[Aufnahmen der Kameraeinrichtung](release-1.5.0.md#store-screenshots).
+Nach Microsofts Zertifizierung gilt der Veröffentlichungsmodus `Immediate`.
 
 Der Workflow wartet bis zur bestätigten Übernahme in die Store-Verarbeitung,
 maximal etwa zehn Minuten. Ein grüner Lauf bestätigt **Upload und Einreichung**,
