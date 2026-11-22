@@ -190,6 +190,7 @@ internal static partial class Program
 
         var settings = new CameraSettingsDialog(session.Service.CameraIp, session); ShowOffscreen(settings); await Layout();
         Check(settings.Navigation.Items.Count == 8 && !settings.SaveAddress.IsEnabled, "Settings sections or save guard missing");
+        OpenManualCameraForm(settings);
         settings.Address.Text = "invalid"; Check(!settings.SaveAddress.IsEnabled && !settings.DemoAction.IsEnabled, "Invalid IP allowed save or mode switch");
         settings.Address.Text = "192.168.188.25"; Check(settings.SaveAddress.IsEnabled && settings.SaveAddress.IsDefault, "Valid changed address not editable");
         settings.Navigation.SelectedIndex = 4; await Layout(); Check(!settings.SaveAddress.IsDefault, "Help retained default camera save");
@@ -328,13 +329,13 @@ internal static partial class Program
         // Modal IP save/cancel checks write only to an isolated test file.
         string path = System.IO.Path.Combine(output, "settings-test.json"); System.IO.File.Delete(path);
         var saveDialog = new CameraSettingsDialog("192.168.188.24", settingsPath: path);
-        saveDialog.ContentRendered += (_, _) => { saveDialog.Address.Text = "192.168.188.025"; saveDialog.SaveCamera(); };
+        saveDialog.ContentRendered += (_, _) => { OpenManualCameraForm(saveDialog); saveDialog.Address.Text = "192.168.188.025"; saveDialog.SaveCamera(); };
         Check(saveDialog.ShowDialog() == true && CameraSettings.Load(path) == "192.168.188.25", "Modal save did not persist normalized IP");
         var cancelDialog = new CameraSettingsDialog("192.168.188.25", settingsPath: path);
-        cancelDialog.ContentRendered += (_, _) => { cancelDialog.Address.Text = "192.168.188.26"; cancelDialog.Close(); };
+        cancelDialog.ContentRendered += (_, _) => { OpenManualCameraForm(cancelDialog); cancelDialog.Address.Text = "192.168.188.26"; cancelDialog.Close(); };
         cancelDialog.ShowDialog(); Check(CameraSettings.Load(path) == "192.168.188.25", "Cancel persisted edits"); System.IO.File.Delete(path);
         var failedDialog = new CameraSettingsDialog("192.168.188.24", settingsPath: output);
-        failedDialog.ContentRendered += (_, _) => { failedDialog.Address.Text = "192.168.188.25"; failedDialog.SaveCamera(); Check(failedDialog.CameraIp == "192.168.188.24" && failedDialog.IsVisible, "Failed write applied address or closed dialog"); failedDialog.Close(); }; failedDialog.ShowDialog();
+        failedDialog.ContentRendered += (_, _) => { OpenManualCameraForm(failedDialog); failedDialog.Address.Text = "192.168.188.25"; failedDialog.SaveCamera(); Check(failedDialog.CameraIp == "192.168.188.24" && failedDialog.IsVisible, "Failed write applied address or closed dialog"); failedDialog.Close(); }; failedDialog.ShowDialog();
         var demoDialog = new CameraSettingsDialog("192.168.188.24", settingsPath: path);
         demoDialog.ContentRendered += (_, _) => demoDialog.DemoAction.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check(demoDialog.ShowDialog() == true && demoDialog.RequestedDemoMode == true && !System.IO.File.Exists(path), "Demo action saved camera configuration");

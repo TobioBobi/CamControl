@@ -6,7 +6,8 @@ Vorbereitet am 22. November 2026. App-Version **1.5.0**, MSIX-Version **1.5.0.0*
 
 CamControl kann Kameras mit aktiviertem ONVIF im lokalen Netzwerk finden.
 Eine gespeicherte Kamera wird nach einem Wechsel ihrer IP-Adresse automatisch
-wiedererkannt. Die manuelle IPv4-Eingabe bleibt verfügbar.
+wiedererkannt. Im Tab „Kamera“ kannst du die aktuelle Einrichtung prüfen und
+die Kamera per Netzwerksuche oder mit einer festen IPv4-Adresse einrichten.
 
 ## Abnahme
 

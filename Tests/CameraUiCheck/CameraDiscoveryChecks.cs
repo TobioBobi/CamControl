@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 internal static partial class Program
 {
@@ -15,41 +16,115 @@ internal static partial class Program
         var automatic = new CameraTarget(camera.Ip, camera.DeviceId);
         try
         {
-            CameraSettings.SaveTarget(manual, file);
-            foreach (bool save in new[] { false, true })
+            string previews = Path.GetFullPath("artifacts/ui-preview/camera-setup");
+            Directory.CreateDirectory(previews);
+            foreach (var (configured, save) in new[] { (false, false), (false, true), (true, false), (true, true) })
             {
+                File.Delete(file);
+                if (configured) CameraSettings.SaveTarget(manual, file);
                 int searches = 0;
-                var dialog = new CameraSettingsDialog(manual, settingsPath: file, discover: _ =>
-                    Task.FromResult<IReadOnlyList<DiscoveredCamera>>(++searches == 1 ? [] : [camera]));
+                var other = new DiscoveredCamera("urn:uuid:5b3d5bee-fdac-4d8c-b83e-692b3f787227", "192.168.188.27", null);
+                var dialog = new CameraSettingsDialog(configured ? manual : new CameraTarget(""), settingsPath: file,
+                    discover: _ => Task.FromResult<IReadOnlyList<DiscoveredCamera>>(++searches switch
+                    {
+                        1 => [],
+                        2 => [camera],
+                        _ => [other, camera]
+                    }));
                 dialog.ContentRendered += (_, _) =>
                 {
-                    var find = Descendants(dialog).OfType<Button>().Single(button => button.Name == "findCamera");
+                    Check(searches == 0 && !dialog.Address.IsVisible && dialog.SaveAddress.IsVisible != configured,
+                        "Initial camera page opened discovery or the IP field automatically");
+                    if (configured)
+                    {
+                        Check(Descendants(dialog).OfType<TextBlock>().Any(text => text.IsVisible && text.Text == manual.Ip) &&
+                            Descendants(dialog).OfType<TextBlock>().Any(text => text.IsVisible && text.Text == Texts.Camera_Setup_FixedIp),
+                            "The configured camera overview omitted the IP or setup method");
+                        ClickCameraButton(dialog, "changeCamera");
+                    }
+                    var find = CameraButton(dialog, "findCamera");
+                    var useManual = CameraButton(dialog, "useManualCameraIp");
+                    Check(find.IsVisible && useManual.IsVisible && !dialog.Address.IsVisible && !dialog.SaveAddress.IsEnabled,
+                        "Setup did not offer both paths before search");
+                    if (!configured && !save) Screenshot(dialog, Path.Combine(previews, "setup.png"));
                     var results = Descendants(dialog).OfType<ListBox>().Single(list => list.Name == "discoveredCameras");
-                    find.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                    Check(find.IsEnabled && results.Items.Count == 0 &&
-                        Descendants(dialog).OfType<TextBlock>().Any(text => text.Text == Texts.Camera_Discovery_NoResults),
+                    ClickCameraButton(dialog, "findCamera");
+                    Check(find.IsEnabled && ((TextBlock)find.Content).Text == Texts.Camera_Discovery_FindAgain &&
+                        results.Items.Count == 0 && useManual.IsVisible && !dialog.Address.IsVisible &&
+                        Descendants(dialog).OfType<TextBlock>().Any(text => text.IsVisible && text.Text == Texts.Camera_Discovery_NoResults),
                         "Empty discovery did not show a retry");
-                    find.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    if (!configured && !save) Screenshot(dialog, Path.Combine(previews, "no-results.png"));
+                    ClickCameraButton(dialog, "findCamera");
                     Check(results.IsVisible && results.Items[0].ToString() == $"AIDA PTZ · {camera.Ip}", "Discovery omitted name or address");
-                    results.SelectedIndex = 0;
-                    Check(dialog.SaveAddress.IsEnabled && CameraSettings.LoadTarget(file) == manual,
+                    Check(results.SelectedIndex == 0 && dialog.SaveAddress.IsEnabled, "A single camera was not preselected");
+                    ClickCameraButton(dialog, "findCamera");
+                    Check(results.Items.Count == 2 && results.Items[0].ToString() == other.Ip &&
+                        results.SelectedIndex == -1 && !dialog.SaveAddress.IsEnabled,
+                        "Multiple cameras did not require a new explicit selection");
+                    results.SelectedIndex = 1;
+                    Check(dialog.SaveAddress.IsEnabled && (configured ? CameraSettings.LoadTarget(file) == manual : !File.Exists(file)),
                         "Selecting a result applied it early or could not change mode at the same IP");
                     if (save) dialog.SaveCamera(); else dialog.Close();
                 };
-                Check((dialog.ShowDialog() == true) == save && CameraSettings.LoadTarget(file) == (save ? automatic : manual),
+                Check((dialog.ShowDialog() == true) == save &&
+                    (save ? CameraSettings.LoadTarget(file) == automatic : File.Exists(file) == configured &&
+                        (!configured || CameraSettings.LoadTarget(file) == manual)),
                     "Closing or saving discovery did not preserve the expected selection");
             }
 
             var switchBack = new CameraSettingsDialog(automatic, settingsPath: file);
             switchBack.ContentRendered += (_, _) =>
             {
-                var useManual = Descendants(switchBack).OfType<Button>().Single(button => button.Name == "useManualCameraIp");
-                useManual.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Check(switchBack.SaveAddress.IsEnabled && switchBack.Address.Text == manual.Ip,
+                Check(Descendants(switchBack).OfType<TextBlock>().Any(text => text.IsVisible && text.Text == Texts.Camera_Discovery_Automatic),
+                    "The configured camera overview omitted automatic setup");
+                Screenshot(switchBack, Path.Combine(previews, "configured.png"));
+                OpenManualCameraForm(switchBack);
+                Check(switchBack.SaveAddress.IsEnabled && switchBack.Address.Text == manual.Ip && Keyboard.FocusedElement == switchBack.Address,
                     "The current IPv4 could not be kept in manual mode");
+                Screenshot(switchBack, Path.Combine(previews, "manual.png"));
                 switchBack.SaveCamera();
             };
             Check(switchBack.ShowDialog() == true && CameraSettings.LoadTarget(file) == manual, "Same-IP manual mode did not persist");
+
+            File.Delete(file);
+            var directManual = new CameraSettingsDialog(new CameraTarget(""), settingsPath: file,
+                discover: _ => throw new InvalidOperationException("Manual setup unexpectedly started discovery"));
+            directManual.ContentRendered += (_, _) =>
+            {
+                ClickCameraButton(directManual, "useManualCameraIp");
+                Check(directManual.Address.IsVisible && Keyboard.FocusedElement == directManual.Address &&
+                    directManual.Address.Text == "" && !directManual.SaveAddress.IsEnabled,
+                    "First-run manual entry was not empty, enabled or focused as expected");
+                directManual.Address.Text = manual.Ip;
+                ClickCameraButton(directManual, "saveConfiguration");
+            };
+            Check(directManual.ShowDialog() == true && CameraSettings.LoadTarget(file) == manual,
+                "First-run manual setup failed without discovery");
+
+            var reply = new TaskCompletionSource<IReadOnlyList<DiscoveredCamera>>();
+            CancellationToken searchToken = default;
+            var manualDuringSearch = new CameraSettingsDialog(new CameraTarget(""), settingsPath: file, discover: token =>
+            {
+                searchToken = token;
+                return reply.Task;
+            });
+            ShowOffscreen(manualDuringSearch);
+            await Layout();
+            ClickCameraButton(manualDuringSearch, "findCamera");
+            Check(!CameraButton(manualDuringSearch, "findCamera").IsEnabled &&
+                Descendants(manualDuringSearch).OfType<TextBlock>().Any(text => text.IsVisible && text.Text == Texts.Camera_Discovery_Searching),
+                "Discovery did not show the active search state");
+            ClickCameraButton(manualDuringSearch, "useManualCameraIp");
+            manualDuringSearch.Address.Text = "192.168.188.28";
+            reply.SetResult([camera]);
+            await Layout();
+            Check(searchToken.IsCancellationRequested && manualDuringSearch.Address.IsVisible && manualDuringSearch.SaveAddress.IsEnabled &&
+                manualDuringSearch.Address.Text == "192.168.188.28" && CameraButton(manualDuringSearch, "findCamera").IsEnabled,
+                "Late discovery replaced or blocked manual entry");
+            ClickCameraButton(manualDuringSearch, "findCamera");
+            ClickCameraButton(manualDuringSearch, "useManualCameraIp");
+            Check(manualDuringSearch.Address.Text == "192.168.188.28", "Switching setup paths discarded the manual draft");
+            manualDuringSearch.Close();
 
             using var handler = new RecordingHandler();
             using var client = new HttpClient(handler);
@@ -116,5 +191,20 @@ internal static partial class Program
             File.Delete(file);
             File.Delete(file + ".placement");
         }
+    }
+
+    private static Button CameraButton(CameraSettingsDialog dialog, string name)
+        => Descendants(dialog).OfType<Button>().Single(button => button.Name == name);
+
+    private static void ClickCameraButton(CameraSettingsDialog dialog, string name)
+    {
+        CameraButton(dialog, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        dialog.UpdateLayout();
+    }
+
+    private static void OpenManualCameraForm(CameraSettingsDialog dialog)
+    {
+        ClickCameraButton(dialog, "changeCamera");
+        ClickCameraButton(dialog, "useManualCameraIp");
     }
 }
