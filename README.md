@@ -159,7 +159,9 @@ multicast and the camera's ONVIF device ID. Control still uses HTTP-CGI on port 
 CamControl rediscovers the saved device before issuing startup commands and
 after a connection failure. When the device is unavailable, CamControl keeps
 looking in the background. A configured startup preset waits for the first
-successful recognition. Failed commands are never replayed.
+successful recognition. After a connection failure, CamControl stops motion
+on the rediscovered camera before restoring the controls. Failed movement
+and preset commands are never replayed.
 
 You can enter an IPv4 address directly or choose **Use IP manually** to keep the
 displayed IP and switch to manual mode. Save applies either choice. Closing the

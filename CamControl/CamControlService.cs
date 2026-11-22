@@ -14,7 +14,7 @@ namespace CamControl
         private Uri? cameraAddress;
         private CancellationTokenSource? discoveryCancellation;
         private Task<bool>? pendingDiscovery;
-        private bool disposed;
+        private bool recoveryStopsNeeded, disposed;
         public CameraTarget Target { get; private set; } = new(CameraSettings.DefaultCameraIp);
         public string CameraIp => Target.Ip;
         public bool IsCameraAvailable => cameraAddress != null;
@@ -54,6 +54,7 @@ namespace CamControl
             CancelDiscovery();
             Target = target with { Ip = normalizedIp };
             cameraAddress = Target.DeviceId == null ? CommandAddress(Target.Ip) : null;
+            recoveryStopsNeeded = false;
             CameraUnreachable = false;
             ConnectionChanged?.Invoke();
         }
@@ -91,9 +92,11 @@ namespace CamControl
                     if (cancellation.IsCancellationRequested) break;
                     var matches = replies.Where(camera => camera.DeviceId == Target.DeviceId).ToArray();
                     var camera = matches.FirstOrDefault(match => match.Ip == Target.Ip) ?? matches.FirstOrDefault();
-                    if (camera != null)
+                    var address = camera == null ? null : CommandAddress(camera.Ip);
+                    if (address != null && (!recoveryStopsNeeded || await TryStopAfterDiscoveryAsync(address, cancellation.Token)))
                     {
-                        if (camera.Ip != Target.Ip)
+                        cancellation.Token.ThrowIfCancellationRequested();
+                        if (camera!.Ip != Target.Ip)
                         {
                             Target = Target with { Ip = camera.Ip };
                             try { rememberAddress?.Invoke(Target); }
@@ -103,7 +106,8 @@ namespace CamControl
                                 System.Diagnostics.Debug.WriteLine(e);
                             }
                         }
-                        cameraAddress = CommandAddress(Target.Ip);
+                        recoveryStopsNeeded = false;
+                        cameraAddress = address;
                         CameraUnreachable = false;
                         discoveryCancellation = null;
                         pendingDiscovery = null;
@@ -189,13 +193,33 @@ namespace CamControl
         }
 
         public Task StopAll()
+            => ExecuteSerializedAsync(target => SendStopsAsync(target, CancellationToken.None),
+                CancellationToken.None, directionGate, zoomGate);
+
+        private Task SendStopsAsync(Uri target, CancellationToken cancellationToken)
         {
-            // Attempt every stop even if one fails. Hold both gates until all
-            // responses complete so a new start cannot overtake these stops.
-            return ExecuteSerializedAsync(target => Task.WhenAll(
-                SendCommandAsync(target, "ptzstop&10&10", CancellationToken.None),
-                SendCommandAsync(target, "zoomstop&5", CancellationToken.None),
-                SendCommandAsync(target, "focusstop&5", CancellationToken.None)), CancellationToken.None, directionGate, zoomGate);
+            // Attempt every stop even if one fails.
+            return Task.WhenAll(
+                SendCommandAsync(target, "ptzstop&10&10", cancellationToken),
+                SendCommandAsync(target, "zoomstop&5", cancellationToken),
+                SendCommandAsync(target, "focusstop&5", cancellationToken));
+        }
+
+        private async Task<bool> TryStopAfterDiscoveryAsync(Uri target, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // A motion command can reach the camera even when its response
+                // is lost. Stop on the confirmed device before restoring control.
+                await WithCommandGatesAsync(() => SendStopsAsync(target, cancellationToken),
+                    cancellationToken, directionGate, zoomGate);
+                return true;
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested &&
+                e is HttpRequestException or OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         private async Task ExecuteSerializedAsync(Func<Uri, Task> command, CancellationToken cancellationToken,
@@ -204,6 +228,17 @@ namespace CamControl
             // Queued commands belong to the camera selected when requested.
             var target = cameraAddress ?? throw new HttpRequestException(Texts.Camera_Unreachable);
             bool automatic = Target.DeviceId != null;
+            await WithCommandGatesAsync(() =>
+            {
+                if ((automatic || Target.DeviceId != null) && !ReferenceEquals(target, cameraAddress))
+                    throw new HttpRequestException(Texts.Camera_Unreachable);
+                return command(target);
+            }, cancellationToken, gates);
+        }
+
+        private static async Task WithCommandGatesAsync(Func<Task> command, CancellationToken cancellationToken,
+            params SemaphoreSlim[] gates)
+        {
             // Separate channels keep a slow zoom response from delaying a PTZ
             // stop (and vice versa). Presets and StopAll acquire both in this order.
             int acquired = 0;
@@ -215,9 +250,7 @@ namespace CamControl
                     acquired++;
                 }
                 cancellationToken.ThrowIfCancellationRequested();
-                if ((automatic || Target.DeviceId != null) && !ReferenceEquals(target, cameraAddress))
-                    throw new HttpRequestException(Texts.Camera_Unreachable);
-                await command(target);
+                await command();
             }
             finally
             {
@@ -240,6 +273,7 @@ namespace CamControl
                 if (!disposed && Target.DeviceId != null && ReferenceEquals(targetAddress, cameraAddress))
                 {
                     cameraAddress = null;
+                    recoveryStopsNeeded = true;
                     CameraUnreachable = true;
                     ConnectionChanged?.Invoke();
                     _ = ResolveCameraAsync();

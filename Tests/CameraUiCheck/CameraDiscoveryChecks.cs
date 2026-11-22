@@ -72,6 +72,42 @@ internal static partial class Program
             await Layout();
             Check(handler.Commands.LastOrDefault() == $"poscall&{session.Numbers[2]}" && service.CameraIp == "192.168.188.25",
                 "Startup did not run the configured preset after recognition");
+
+            handler.Commands.Clear();
+            await session.Controller.StartDirectionAsync(Direction.Left);
+            handler.Respond = (command, _) => command == "zoomin&5"
+                ? Task.FromException<HttpResponseMessage>(new HttpRequestException("Camera disconnected")) : Ok();
+            await session.Controller.StartZoomAsync(Zoom.ZoomIn);
+            await session.Controller.StopDirectionAsync();
+            await session.Controller.StopZoomAsync();
+            Check(handler.Commands.SequenceEqual(["left&10&10", "zoomin&5"]) && !session.Controller.ControlsEnabled,
+                "Releasing controls during rediscovery sent commands to an unconfirmed IP or enabled movement");
+
+            handler.Respond = (command, _) => command == "ptzstop&10&10"
+                ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)) : Ok();
+            var safetyRecovery = service.ResolveCameraAsync();
+            replies.Writer.TryWrite([camera with { Ip = "192.168.188.26" }]);
+            await Layout();
+            Check(!safetyRecovery.IsCompleted && !session.Controller.ControlsEnabled && handler.Commands.Count == 5,
+                "A rejected safety stop enabled movement or prevented the other stops");
+
+            var pendingStop = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var stopStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            handler.Respond = (command, _) =>
+            {
+                if (command != "ptzstop&10&10") return Ok();
+                stopStarted.SetResult();
+                return pendingStop.Task;
+            };
+            replies.Writer.TryWrite([camera with { Ip = "192.168.188.26" }]);
+            await stopStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Check(!safetyRecovery.IsCompleted && !session.Controller.ControlsEnabled && handler.Commands.Count == 8,
+                "Recovery enabled movement before all stops were confirmed");
+            pendingStop.SetResult(new(HttpStatusCode.OK));
+            Check(await safetyRecovery.WaitAsync(TimeSpan.FromSeconds(3)) && session.Controller.ControlsEnabled &&
+                handler.Commands.Skip(5).ToHashSet().SetEquals(["ptzstop&10&10", "zoomstop&5", "focusstop&5"]),
+                "Rediscovery did not stop the camera before restoring control or replayed a start");
+            handler.Respond = (_, _) => Ok();
             window.Close();
             await Layout();
         }

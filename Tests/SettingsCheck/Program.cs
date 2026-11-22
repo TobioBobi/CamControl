@@ -205,7 +205,10 @@ async Task CheckCameraRecoveryAsync()
             "Camera selection changed after a failed lookup");
         probes.Writer.TryWrite([new(id, "192.168.188.27", null)]);
         Check(await recovery.WaitAsync(timeout.Token), "Selected camera was not recognized on a later attempt");
-        Check(handler.Requests.Count == 2, "Recovery repeated a failed command");
+        Check(handler.Requests.Count == 5 && handler.Requests.Skip(2).All(uri => uri.Host == "192.168.188.27") &&
+            handler.Requests.Skip(2).Select(uri => uri.Query).ToHashSet().SetEquals(
+                ["?ptzcmd&ptzstop&10&10", "?ptzcmd&zoomstop&5", "?ptzcmd&focusstop&5"]),
+            "Recovery did not limit commands to safety stops on the confirmed address");
         await service.Zoom(Zoom.ZoomIn);
         Check(handler.Requests.Last().Host == "192.168.188.27" &&
             CameraSettings.LoadTarget(testPath) == new CameraTarget("192.168.188.27", id),
@@ -214,9 +217,12 @@ async Task CheckCameraRecoveryAsync()
         handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         try { await service.MoveToPreset(4); throw new Exception("Expected missing CGI endpoint"); }
         catch (HttpRequestException error) when (error.StatusCode == HttpStatusCode.NotFound) { }
+        handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
         probes.Writer.TryWrite([new(id, "192.168.188.28", null)]);
         Check(await service.ResolveCameraAsync().WaitAsync(timeout.Token) && service.CameraIp == "192.168.188.28" &&
-            handler.Requests.Count == 4, "A missing CGI endpoint at the old IP did not rediscover the device without a replay");
+            handler.Requests.Count == 10 && handler.Requests.Skip(7).All(uri =>
+                uri.Host == "192.168.188.28" && !uri.Query.Contains("poscall")),
+            "A missing CGI endpoint at the old IP did not rediscover the device without a preset replay");
     }
     finally { File.Delete(testPath); }
 }
