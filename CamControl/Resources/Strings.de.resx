@@ -58,7 +58,7 @@
     <value>Sprache / Language</value>
   </data>
   <data name="Camera_Address" xml:space="preserve">
-    <value>IP-Adresse der Kamera</value>
+    <value>IP-Adresse</value>
   </data>
   <data name="Camera_Requirements" xml:space="preserve">
     <value>IPv4 · HTTP auf Port 80 · Kamera und PC müssen im erreichbaren Netzwerk sein.</value>
@@ -406,7 +406,7 @@ Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, die Kamera z
   </data>
   <data name="Main_RestoreFull" xml:space="preserve"><value>Vollansicht wiederherstellen</value></data>
   <data name="Camera_Discovery_Find" xml:space="preserve">
-    <value>Kamera im Netzwerk finden</value>
+    <value>Kamera im Netzwerk suchen</value>
   </data>
   <data name="Camera_Discovery_FindAgain" xml:space="preserve">
     <value>Erneut suchen</value>
@@ -418,10 +418,28 @@ Beim Fensterwechsel und Öffnen der Einstellungen versucht die App, die Kamera z
     <value>Keine Kamera gefunden. Prüfe, ob die Kamera im lokalen Netz ist und ONVIF aktiviert ist.</value>
   </data>
   <data name="Camera_Discovery_Manual" xml:space="preserve">
-    <value>IP manuell verwenden</value>
+    <value>IP-Adresse eingeben</value>
   </data>
   <data name="Camera_Discovery_Automatic" xml:space="preserve">
-    <value>Automatische Kameraerkennung</value>
+    <value>Automatisch</value>
+  </data>
+  <data name="Camera_Setup_Title" xml:space="preserve">
+    <value>Kamera einrichten</value>
+  </data>
+  <data name="Camera_Setup_Manual" xml:space="preserve">
+    <value>Manuell</value>
+  </data>
+  <data name="Camera_Setup_Configured" xml:space="preserve">
+    <value>Eingerichtete Kamera</value>
+  </data>
+  <data name="Camera_Setup_Mode" xml:space="preserve">
+    <value>Einrichtung</value>
+  </data>
+  <data name="Camera_Setup_FixedIp" xml:space="preserve">
+    <value>Manuell (feste IP-Adresse)</value>
+  </data>
+  <data name="Camera_Setup_Change" xml:space="preserve">
+    <value>Kamera ändern</value>
   </data>
   <data name="Camera_Unreachable" xml:space="preserve">
     <value>Kamera nicht erreichbar</value>

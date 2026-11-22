@@ -36,6 +36,12 @@ public static class Texts
     public static string Camera_Discovery_NoResults => Get(nameof(Camera_Discovery_NoResults));
     public static string Camera_Discovery_Manual => Get(nameof(Camera_Discovery_Manual));
     public static string Camera_Discovery_Automatic => Get(nameof(Camera_Discovery_Automatic));
+    public static string Camera_Setup_Title => Get(nameof(Camera_Setup_Title));
+    public static string Camera_Setup_Manual => Get(nameof(Camera_Setup_Manual));
+    public static string Camera_Setup_Configured => Get(nameof(Camera_Setup_Configured));
+    public static string Camera_Setup_Mode => Get(nameof(Camera_Setup_Mode));
+    public static string Camera_Setup_FixedIp => Get(nameof(Camera_Setup_FixedIp));
+    public static string Camera_Setup_Change => Get(nameof(Camera_Setup_Change));
     public static string Camera_Unreachable => Get(nameof(Camera_Unreachable));
     public static string Camera_Discovery_Resolving => Get(nameof(Camera_Discovery_Resolving));
     public static string Camera_Discovery_Results => Get(nameof(Camera_Discovery_Results));

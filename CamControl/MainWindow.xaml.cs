@@ -97,7 +97,8 @@ public partial class MainWindow : AppWindow
             await previous.SuspendAsync();
             if (closing) return;
             DemoPreview.Visibility = Visibility.Collapsed;
-            var dialog = new CameraSettingsDialog(Session.Target, Session) { Owner = this };
+            var target = CameraSettings.TryLoadTarget(null, out var saved) ? saved : new CameraTarget("");
+            var dialog = new CameraSettingsDialog(target, Session) { Owner = this };
             dialog.PresetStopFailed += Session.Controller.ReportStopFailure;
             if (dialog.ShowDialog() == true)
             {

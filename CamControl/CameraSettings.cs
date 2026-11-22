@@ -41,7 +41,7 @@ namespace CamControl
             return target;
         }
 
-        private static bool TryLoadTarget(string? path, out CameraTarget target)
+        internal static bool TryLoadTarget(string? path, out CameraTarget target)
         {
             try
             {

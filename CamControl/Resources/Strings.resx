@@ -58,7 +58,7 @@
     <value>Language / Sprache</value>
   </data>
   <data name="Camera_Address" xml:space="preserve">
-    <value>Camera IP address</value>
+    <value>IP address</value>
   </data>
   <data name="Camera_Requirements" xml:space="preserve">
     <value>IPv4 · HTTP on port 80 · Camera and PC must be on a reachable network.</value>
@@ -406,7 +406,7 @@ When switching windows or opening settings, the app attempts to stop the camera.
   </data>
   <data name="Main_RestoreFull" xml:space="preserve"><value>Restore full view</value></data>
   <data name="Camera_Discovery_Find" xml:space="preserve">
-    <value>Find camera on the network</value>
+    <value>Search for a camera on the network</value>
   </data>
   <data name="Camera_Discovery_FindAgain" xml:space="preserve">
     <value>Find again</value>
@@ -418,10 +418,28 @@ When switching windows or opening settings, the app attempts to stop the camera.
     <value>No cameras found. Check that the camera is on the local network and ONVIF is enabled.</value>
   </data>
   <data name="Camera_Discovery_Manual" xml:space="preserve">
-    <value>Use IP manually</value>
+    <value>Enter IP address</value>
   </data>
   <data name="Camera_Discovery_Automatic" xml:space="preserve">
-    <value>Automatic camera recognition</value>
+    <value>Automatic</value>
+  </data>
+  <data name="Camera_Setup_Title" xml:space="preserve">
+    <value>Set up camera</value>
+  </data>
+  <data name="Camera_Setup_Manual" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="Camera_Setup_Configured" xml:space="preserve">
+    <value>Configured camera</value>
+  </data>
+  <data name="Camera_Setup_Mode" xml:space="preserve">
+    <value>Setup method</value>
+  </data>
+  <data name="Camera_Setup_FixedIp" xml:space="preserve">
+    <value>Manual (fixed IP address)</value>
+  </data>
+  <data name="Camera_Setup_Change" xml:space="preserve">
+    <value>Change camera</value>
   </data>
   <data name="Camera_Unreachable" xml:space="preserve">
     <value>Camera unreachable</value>

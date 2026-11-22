@@ -11,13 +11,11 @@ internal sealed class CameraSettingsDialog : AppWindow
     private readonly CameraSession? session;
     private readonly string? settingsPath;
     private readonly Func<CancellationToken, Task<IReadOnlyList<DiscoveredCamera>>> discover;
-    private readonly CancellationTokenSource discoveryLifetime = new();
+    private CancellationTokenSource? discoverySearch;
     private readonly Button findCamera, useManualIp;
     private readonly ListBox discoveryResults = new() { Name = "discoveredCameras", MaxHeight = 140, Visibility = Visibility.Collapsed };
     private readonly TextBlock discoveryFeedback = Ui.Text("", "MutedBrush");
-    private readonly TextBlock automaticCamera = Ui.Text(Texts.Camera_Discovery_Automatic, "MutedBrush");
-    private DiscoveredCamera? pendingCamera;
-    private bool manualSelected, applyingCamera;
+    private readonly StackPanel cameraOverview, cameraSetup, manualEntry;
     internal readonly TextBox Address;
     internal readonly Button SaveAddress, DemoAction, SaveAutomatic;
     internal readonly ComboBox StartPreset = new() { Name = "startPreset" }, ExitPreset = new() { Name = "exitPreset" };
@@ -53,30 +51,43 @@ internal sealed class CameraSettingsDialog : AppWindow
         Target = target;
         savedAutomatic = session?.Automatic ?? new();
         Title = Texts.Settings_Title; Width = 760; Height = 570; MinWidth = 600; MinHeight = 400; ShowInTaskbar = false;
-        Address = new() { Text = target.Ip, Name = "cameraAddress", MaxLength = 64, Margin = new(0, 0, 0, 8) };
+        Address = new() { Text = target.Ip, Name = "cameraAddress", MaxLength = 64, MaxWidth = 280, HorizontalAlignment = HorizontalAlignment.Left, MinWidth = 210 };
         AutomationProperties.SetName(Address, Texts.Camera_Address);
-        SaveAddress = Ui.Button(Texts.Common_Save, SaveCamera, "saveConfiguration"); SaveAddress.HorizontalAlignment = HorizontalAlignment.Left;
+        SaveAddress = PrimaryButton(Texts.Common_Save, SaveCamera, "saveConfiguration");
         close = Ui.Button(Texts.Common_Close, Close); close.IsCancel = true;
         DemoAction = Ui.Button(session?.IsDemo == true ? Texts.Demo_SwitchCamera : Texts.Demo_Start, () => { RequestedDemoMode = session?.IsDemo != true; DialogResult = true; }, "demoAction");
         SaveAutomatic = Ui.Button(Texts.Automatic_Save, StoreAutomatic, "saveAutomaticPositions"); SaveAutomatic.HorizontalAlignment = HorizontalAlignment.Left;
-        findCamera = Ui.Button(Texts.Camera_Discovery_Find, async () => await FindCamerasAsync(), "findCamera");
+        findCamera = PrimaryButton(Texts.Camera_Discovery_Find, async () => await FindCamerasAsync(), "findCamera");
         findCamera.HorizontalAlignment = HorizontalAlignment.Left;
         useManualIp = Ui.Button(Texts.Camera_Discovery_Manual, UseManualIp, "useManualCameraIp");
         useManualIp.HorizontalAlignment = HorizontalAlignment.Left;
+        manualEntry = Ui.Stack(Ui.Text(Texts.Camera_Address), Address);
+        manualEntry.Visibility = Visibility.Collapsed;
+        manualEntry.Margin = new(0, 8, 0, 0);
         AutomationProperties.SetName(discoveryResults, Texts.Camera_Discovery_Results);
         discoveryResults.SelectionChanged += (_, _) =>
         {
-            if (discoveryResults.SelectedItem is not CameraChoice choice) return;
-            pendingCamera = choice.Camera;
-            manualSelected = false;
-            applyingCamera = true;
-            Address.Text = choice.Camera.Ip;
-            applyingCamera = false;
+            if (discoveryResults.SelectedItem is CameraChoice)
+                manualEntry.Visibility = Visibility.Collapsed;
             UpdateAddress();
         };
-        pages[SettingsPage.Camera] = Ui.Stack(Ui.Heading(Texts.Settings_Camera), Ui.Text(Texts.Camera_Address), Address,
-            automaticCamera, useManualIp, findCamera, discoveryFeedback, discoveryResults, SaveAddress, feedback,
-            Ui.Text(Texts.Camera_Requirements, "MutedBrush"));
+        discoveryFeedback.Visibility = Visibility.Collapsed;
+        var automatic = Ui.Surface(Ui.Stack(SectionTitle(Texts.Camera_Discovery_Automatic), discoveryFeedback,
+            findCamera, discoveryResults), new(14));
+        automatic.SetResourceReference(Border.BackgroundProperty, "SelectionBrush");
+        automatic.Margin = new(0, 0, 0, 12);
+        var manual = Ui.Surface(Ui.Stack(SectionTitle(Texts.Camera_Setup_Manual), useManualIp, manualEntry), new(14));
+        bool configured = target.Ip.Length > 0;
+        cameraSetup = Ui.Stack(Ui.Heading(configured ? Texts.Camera_Setup_Change : Texts.Camera_Setup_Title), automatic, manual, feedback);
+        cameraSetup.Visibility = configured ? Visibility.Collapsed : Visibility.Visible;
+        var changeCamera = PrimaryButton(Texts.Camera_Setup_Change, OpenCameraSetup, "changeCamera");
+        changeCamera.HorizontalAlignment = HorizontalAlignment.Left;
+        cameraOverview = Ui.Stack(Ui.Heading(Texts.Camera_Setup_Configured),
+            CameraSummaryRow(Texts.Camera_Address, target.Ip),
+            CameraSummaryRow(Texts.Camera_Setup_Mode, target.DeviceId != null ? Texts.Camera_Discovery_Automatic : Texts.Camera_Setup_FixedIp),
+            changeCamera);
+        cameraOverview.Visibility = configured ? Visibility.Visible : Visibility.Collapsed;
+        pages[SettingsPage.Camera] = Ui.Stack(cameraOverview, cameraSetup);
         pages[SettingsPage.Presets] = Ui.Stack(Ui.Heading(Texts.Settings_Presets), Ui.Text(Texts.Preset_Description, "MutedBrush"), presets);
         pages[SettingsPage.Automatic] = Ui.Stack(Ui.Heading(Texts.Settings_Automatic), Ui.Text(Texts.Automatic_Description, "MutedBrush"), Ui.Text(Texts.Automatic_Start), StartPreset, Ui.Text(Texts.Automatic_Exit), ExitPreset, SaveAutomatic, automaticFeedback);
         pages[SettingsPage.Demo] = Ui.Stack(Ui.Heading(Texts.Settings_Demo), Ui.Text(session?.IsDemo == true ? Texts.Demo_Active : Texts.Demo_Description), DemoAction);
@@ -140,10 +151,13 @@ internal sealed class CameraSettingsDialog : AppWindow
         var body = new Grid(); body.ColumnDefinitions.Add(new() { Width = new(185) }); body.ColumnDefinitions.Add(new());
         Navigation.Margin = new(8); Navigation.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled); body.Children.Add(Navigation);
         page.Margin = new(18); Grid.SetColumn(page, 1); body.Children.Add(page);
-        var actions = new DockPanel { Margin = new(12, 8, 12, 8), LastChildFill = false }; DockPanel.SetDock(close, Dock.Right); actions.Children.Add(close);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(12, 8, 12, 8) };
+        SaveAddress.Margin = new(8, 4, 0, 4);
+        actions.Children.Add(close);
+        actions.Children.Add(SaveAddress);
         var layout = new DockPanel(); DockPanel.SetDock(actions, Dock.Bottom); layout.Children.Add(actions); layout.Children.Add(body); Content = layout;
-        Address.TextChanged += (_, _) => { if (!applyingCamera) UseManualIp(); };
-        Closed += (_, _) => { discoveryLifetime.Cancel(); discoveryLifetime.Dispose(); };
+        Address.TextChanged += (_, _) => UpdateAddress();
+        Closed += (_, _) => discoverySearch?.Cancel();
         StartPreset.SelectionChanged += (_, _) => UpdateAutomatic(); ExitPreset.SelectionChanged += (_, _) => UpdateAutomatic();
         RefreshPresets(); RefreshAutomatic(); Navigation.SelectedIndex = 0;
     }
@@ -161,6 +175,41 @@ internal sealed class CameraSettingsDialog : AppWindow
         _ => throw new ArgumentOutOfRangeException(nameof(page))
     };
     private static TextBox ReadOnlyText(string text, string name) => new() { Name = name, Text = text, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, BorderThickness = new(0), Background = System.Windows.Media.Brushes.Transparent, Padding = new(0), AcceptsReturn = true };
+    private static Button PrimaryButton(string label, Action action, string name)
+    {
+        var button = Ui.Button(label, action, name);
+        button.SetResourceReference(StyleProperty, "PrimaryButton");
+        return button;
+    }
+
+    private static TextBlock SectionTitle(string title)
+    {
+        var heading = Ui.Text(title);
+        heading.FontWeight = FontWeights.SemiBold;
+        heading.Margin = new(0, 0, 0, 6);
+        return heading;
+    }
+
+    private static Grid CameraSummaryRow(string label, string value)
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new() { Width = new(130) });
+        row.ColumnDefinitions.Add(new());
+        var detail = Ui.Text(value);
+        Grid.SetColumn(detail, 1);
+        row.Children.Add(Ui.Text(label, "MutedBrush"));
+        row.Children.Add(detail);
+        return row;
+    }
+
+    private void OpenCameraSetup()
+    {
+        cameraOverview.Visibility = Visibility.Collapsed;
+        cameraSetup.Visibility = Visibility.Visible;
+        UpdateAddress();
+        findCamera.Focus();
+    }
+
     private sealed record CameraChoice(DiscoveredCamera Camera)
     {
         public override string ToString() => string.IsNullOrWhiteSpace(Camera.Name) ? Camera.Ip : $"{Camera.Name} · {Camera.Ip}";
@@ -169,54 +218,84 @@ internal sealed class CameraSettingsDialog : AppWindow
     private async Task FindCamerasAsync()
     {
         if (!findCamera.IsEnabled) return;
-        var token = discoveryLifetime.Token;
+        using var search = new CancellationTokenSource();
+        discoverySearch = search;
         findCamera.IsEnabled = false;
+        manualEntry.Visibility = Visibility.Collapsed;
+        discoveryResults.ItemsSource = null;
+        discoveryResults.Visibility = Visibility.Collapsed;
         discoveryFeedback.Text = Texts.Camera_Discovery_Searching;
+        discoveryFeedback.Visibility = Visibility.Visible;
+        UpdateAddress();
         try
         {
-            var cameras = await discover(token);
-            if (token.IsCancellationRequested) return;
+            var cameras = await discover(search.Token);
+            if (search.IsCancellationRequested) return;
             var choices = cameras.Select(camera => new CameraChoice(camera)).ToArray();
             discoveryResults.ItemsSource = choices;
-            discoveryResults.SelectedItem = choices.FirstOrDefault(choice => choice.Camera == pendingCamera);
             discoveryResults.Visibility = choices.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            discoveryFeedback.Visibility = choices.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
             discoveryFeedback.Text = choices.Length > 0 ? "" : Texts.Camera_Discovery_NoResults;
+            if (choices.Length == 1)
+                discoveryResults.SelectedIndex = 0;
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (search.IsCancellationRequested) { }
         finally
         {
-            if (!token.IsCancellationRequested)
+            if (discoverySearch == search)
             {
-                Ui.SetButtonLabel(findCamera, Texts.Camera_Discovery_FindAgain);
-                findCamera.IsEnabled = true;
+                discoverySearch = null;
+                if (!search.IsCancellationRequested)
+                    EnableSearchRetry();
             }
         }
     }
 
-    private void UseManualIp()
+    private void EnableSearchRetry()
     {
-        pendingCamera = null;
-        manualSelected = Target.DeviceId != null;
-        discoveryResults.SelectedItem = null;
-        UpdateAddress();
+        Ui.SetButtonLabel(findCamera, Texts.Camera_Discovery_FindAgain);
+        findCamera.IsEnabled = true;
     }
 
-    private CameraTarget? EditedTarget => CameraSettings.TryNormalizeIp(Address.Text, out var ip)
-        ? new CameraTarget(ip, pendingCamera?.DeviceId ?? (manualSelected ? null : Target.DeviceId))
-        : null;
+    private void UseManualIp()
+    {
+        if (discoverySearch is { } search)
+        {
+            discoverySearch = null;
+            search.Cancel();
+            discoveryFeedback.Visibility = Visibility.Collapsed;
+            EnableSearchRetry();
+        }
+        manualEntry.Visibility = Visibility.Visible;
+        discoveryResults.SelectedItem = null;
+        UpdateAddress();
+        Address.Focus();
+    }
+
+    private CameraTarget? EditedTarget
+    {
+        get
+        {
+            if (discoveryResults.SelectedItem is CameraChoice choice)
+                return new CameraTarget(choice.Camera.Ip, choice.Camera.DeviceId);
+            if (manualEntry.Visibility == Visibility.Visible && CameraSettings.TryNormalizeIp(Address.Text, out var ip))
+                return new CameraTarget(ip);
+            return null;
+        }
+    }
 
     private void UpdateAddress()
     {
         bool onCamera = (Navigation.SelectedItem as ListBoxItem)?.Tag is SettingsPage.Camera;
-        bool canSave = EditedTarget is { } target && target != Target;
-        bool edited = Address.Text.Trim() != CameraIp || canSave;
-        SaveAddress.IsEnabled = canSave; SaveAddress.IsDefault = onCamera && canSave;
-        bool automatic = EditedTarget?.DeviceId != null;
-        automaticCamera.Visibility = useManualIp.Visibility = automatic ? Visibility.Visible : Visibility.Collapsed;
+        bool showSave = onCamera && cameraSetup.Visibility == Visibility.Visible;
+        bool changed = EditedTarget is { } target && target != Target;
+        bool edited = changed || (manualEntry.Visibility == Visibility.Visible && Address.Text.Trim() != CameraIp);
+        SaveAddress.Visibility = showSave ? Visibility.Visible : Visibility.Collapsed;
+        SaveAddress.IsEnabled = SaveAddress.IsDefault = showSave && changed;
         DemoAction.IsEnabled = !edited;
         pages[SettingsPage.Presets].IsEnabled = !edited;
         pages[SettingsPage.Automatic].IsEnabled = !edited && session != null;
-        close.Content = edited && onCamera ? Texts.Common_Cancel : Texts.Common_Close;
+        Ui.SetButtonLabel(close, showSave && (CameraIp.Length > 0 || edited) ? Texts.Common_Cancel : Texts.Common_Close);
     }
     internal void SaveCamera()
     {

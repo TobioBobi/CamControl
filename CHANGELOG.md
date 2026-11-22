@@ -4,7 +4,9 @@
 
 - Kameras per ONVIF im lokalen Netzwerk finden und auswählen.
 - Eine ausgewählte Kamera nach einem DHCP-Adresswechsel automatisch wiedererkennen.
-- Die manuelle IPv4-Eingabe bleibt verfügbar.
+- Die Kameraeinrichtung bietet zuerst die Netzwerksuche und daneben einen direkten
+  Einstieg zur manuellen IPv4-Eingabe. Bei eingerichteten Kameras zeigt der Tab
+  die gespeicherte Adresse und die Einrichtungsart.
 
 Hinweise zur Vorbereitung und Abnahme: [Release 1.5.0](docs/release-1.5.0.md).
 
